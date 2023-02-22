@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "moduleResolution":"node",
+        "sourceMap": true,
+        "target": "ES2015",
+        "module": "ES2015",
+        "strict": true
+    }
+}
