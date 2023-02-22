@@ -46,13 +46,13 @@ export class Function {
     public module: Module;
     public ident: string;
     public params: Array<Param>;
-    public returnType: string;
+    public returnType: Type;
     public body: Array<Stmt>;
     // TODO: change the data structure here
     public locals: Map<string, _Symbol>;
     public label: number;
 
-    constructor(module: Module, ident: string, params: Array<Param>, returnType: string, body: Array<Stmt>) {
+    constructor(module: Module, ident: string, params: Array<Param>, returnType: Type, body: Array<Stmt>) {
         this.module = module;
         this.ident = ident;
         this.params = params;

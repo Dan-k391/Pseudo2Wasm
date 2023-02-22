@@ -51,6 +51,7 @@ type Type = binaryen.Type;
 export class Generator {
     private ast: ProgramNode;
     private module: binaryen.Module;
+    private functions: Map<string, Function>;
     private globals: Map<string, Type>;
     private offset: number;
     private size: number;
@@ -59,6 +60,8 @@ export class Generator {
     constructor(ast: ProgramNode) {
         this.ast = ast;
         this.module = new binaryen.Module();
+
+        this.functions = new Map<string, Function>();
         // all variables in the body are global variables
         // just store the variable, this Map is actualy meaningless, keep it maybe for type check
         this.globals = new Map<string, Type>();
@@ -100,6 +103,19 @@ export class Generator {
         }
     }
 
+    private getFunction(name: string): Function {
+        if (!this.functions.has(name)) {
+            throw("Function '" + name + "' is not declared");
+        }
+        return this.functions.get(name) as Function;
+    }
+
+    private setFunction(name: string, func: Function): void {
+        if (!this.functions.has(name)) {
+            this.functions.set(name, func);
+        }
+    }
+
     // private generateMainFunction(statements: Array<Stmt>): void {
     //     // prevent overlapping of variables
     //     const block = this.generateBlock(statements);
@@ -125,9 +141,12 @@ export class Generator {
     }
 
     private generateFunctionDefinition(node: FuncDefNode): void {
-        const func = new Function(this.module, node.ident.lexeme, node.params, node.type.lexeme, node.body);
+        const name = node.ident.lexeme;
+        // FIXME: single type problem
+        const func = new Function(this.module, name, node.params, binaryen.f64, node.body);
 
-        func.generate();
+        this.setFunction(name, func);
+        this.getFunction(name).generate();
     }
 
     // Expressions
@@ -137,6 +156,8 @@ export class Generator {
                 return this.varAssignExpression(expression as VarAssignNode);
             case nodeKind.VarExprNode:
                 return this.varExpression(expression as VarExprNode);
+            case nodeKind.CallExprNode:
+                return this.callExpression(expression as CallExprNode);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
@@ -161,6 +182,21 @@ export class Generator {
         const name = node.ident.lexeme;
         const type = this.getGlobalTypeForSymbol(name);
         return this.module.global.get(name, type);
+    }
+
+    private callExpression(node: CallExprNode): ExpressionRef {
+        if (node.ident.kind == nodeKind.VarExprNode) {
+            const name = (node.ident as VarExprNode).ident.lexeme;
+            const args = new Array<ExpressionRef>();
+            for (const arg of node.args) {
+                const expr = this.generateExpression(arg);
+                args.push(expr);
+            }
+            const type = this.getFunction(name).returnType;
+            return this.module.call(name, args, type);
+        }
+        // FIXME: The complicated call possibilities are not supported
+        return -1;
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {
