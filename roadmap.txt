@@ -2,7 +2,9 @@
 2. 变量操作 *
 3. IF *
 4. 循环 (WHILE, REPEAT, FOR) *
-5. FUNCTION & PROCEDURE
+5. FUNCTION *
+   &
+   PROCEDURE 
 6. 数组和字符串
 7. 指针
 8. 文件操作

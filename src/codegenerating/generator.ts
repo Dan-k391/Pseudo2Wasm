@@ -63,7 +63,6 @@ export class Generator {
 
         this.functions = new Map<string, Function>();
         // all variables in the body are global variables
-        // just store the variable, this Map is actualy meaningless, keep it maybe for type check
         this.globals = new Map<string, Type>();
 
         // memory
@@ -141,12 +140,22 @@ export class Generator {
     }
 
     private generateFunctionDefinition(node: FuncDefNode): void {
-        const name = node.ident.lexeme;
-        // FIXME: single type problem
-        const func = new Function(this.module, name, node.params, binaryen.f64, node.body);
+        const funcName = node.ident.lexeme;
+        const funcParams = new Map<string, _Symbol>();
 
-        this.setFunction(name, func);
-        this.getFunction(name).generate();
+        let index = 0;
+        for (const param of node.params) {
+            const paramName = param.ident.lexeme;
+            // FIXME: single type problem
+            const paramSymbol = new _Symbol(index, binaryen.f64);
+            funcParams.set(paramName, paramSymbol);
+            index++;
+        }
+        // FIXME: single type problem
+        const func = new Function(this.module, funcName, funcParams, binaryen.f64, node.body);
+
+        this.setFunction(funcName, func);
+        this.getFunction(funcName).generate();
     }
 
     // Expressions
@@ -174,26 +183,26 @@ export class Generator {
     }
 
     private varAssignExpression(node: VarAssignNode): ExpressionRef {
-        const name = node.ident.lexeme;
-        return this.module.global.set(name, this.generateExpression(node.expr));
+        const varName = node.ident.lexeme;
+        return this.module.global.set(varName, this.generateExpression(node.expr));
     }
 
     private varExpression(node: VarExprNode): ExpressionRef {
-        const name = node.ident.lexeme;
-        const type = this.getGlobalTypeForSymbol(name);
-        return this.module.global.get(name, type);
+        const varName = node.ident.lexeme;
+        const varType = this.getGlobalTypeForSymbol(varName);
+        return this.module.global.get(varName, varType);
     }
 
     private callExpression(node: CallExprNode): ExpressionRef {
         if (node.ident.kind == nodeKind.VarExprNode) {
-            const name = (node.ident as VarExprNode).ident.lexeme;
-            const args = new Array<ExpressionRef>();
+            const funcName = (node.ident as VarExprNode).ident.lexeme;
+            const funcArgs = new Array<ExpressionRef>();
             for (const arg of node.args) {
                 const expr = this.generateExpression(arg);
-                args.push(expr);
+                funcArgs.push(expr);
             }
-            const type = this.getFunction(name).returnType;
-            return this.module.call(name, args, type);
+            const returnType = this.getFunction(funcName).returnType;
+            return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported
         return -1;
@@ -304,10 +313,10 @@ export class Generator {
     }
 
     private varDeclStatement(node: VarDeclNode): ExpressionRef {
-        const name = node.ident.lexeme;
+        const varName = node.ident.lexeme;
         // FIXME: now all variables are double
-        this.setGlobalTypeForSymbol(name, binaryen.f64);
-        return this.module.global.set(name, this.module.f64.const(0));
+        this.setGlobalTypeForSymbol(varName, binaryen.f64);
+        return this.module.global.set(varName, this.module.f64.const(0));
     }
 
     private ifStatement(node: IfNode): ExpressionRef {
@@ -362,28 +371,16 @@ export class Generator {
         //   )
         //  )
         // )
-        const name = node.ident.lexeme;
-        const type = this.getGlobalTypeForSymbol(name);
+        const varName = node.ident.lexeme;
+        const varType = this.getGlobalTypeForSymbol(varName);
 
-        const init = this.module.global.set(name, this.generateExpression(node.start));
+        const init = this.module.global.set(varName, this.generateExpression(node.start));
 
         const statements = this.generateStatements(node.body);
-        const condition = this.module.f64.ge(this.generateExpression(node.end), this.module.global.get(name, type));
-        const step = this.module.global.set(name, this.module.f64.add(this.module.global.get(name, type), this.generateExpression(node.step)));
+        const condition = this.module.f64.ge(this.generateExpression(node.end), this.module.global.get(varName, varType));
+        const step = this.module.global.set(varName, this.module.f64.add(this.module.global.get(varName, varType), this.generateExpression(node.step)));
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));
         return this.module.block(null, [init, this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)))]);
     }
-
-    // private funcDefStatement(node: FuncDefNode): ExpressionRef {
-    //     const params = new Array<Type>();
-    //     const paramNames = new Array<string>();
-    //     for (const param of node.params) {
-    //         params.push(binaryen.f64);
-    //         paramNames.push(param.ident.lexeme);
-    //     }
-    //     const funcType = this.module.addFunctionType(node.ident.lexeme, binaryen.none, params);
-    //     const func = this.module.addFunction(node.ident.lexeme, funcType, paramNames, this.generateBlock(node.body), binaryen.none);
-    //     return func;
-    // }
 }

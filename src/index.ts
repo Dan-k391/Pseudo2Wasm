@@ -78,8 +78,39 @@ j <- 2
 OUTPUT add(i, j)
 `
 
-const codes = [code0, code1, code2, code3, code4, code5, code6, code7];
-const expected = [1, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3];
+const code8 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    FOR b <- 1 TO a
+        c <- b
+    NEXT b
+    RETURN c
+ENDFUNCTION
+
+DECLARE i:INTEGER
+
+i <- 1
+OUTPUT for(10)
+`
+
+const code9 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
+    DECLARE b:INTEGER
+
+    FOR a <- 1 TO 11
+        b <- a
+    NEXT a
+    RETURN b
+ENDFUNCTION
+
+DECLARE i:INTEGER
+
+i <- 1
+OUTPUT for(1)
+`
+
+const codes = [code0, code1, code2, code3, code4, code5, code6, code7, code8, code9];
+const expected = [1, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
