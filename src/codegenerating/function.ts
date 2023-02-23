@@ -45,14 +45,15 @@ type Type = binaryen.Type;
 export class Function {
     public module: Module;
     public ident: string;
-    public params: Array<Param>;
+    // Params are initialized to a Map in the generator
+    public params: Map<string, _Symbol>;
     public returnType: Type;
     public body: Array<Stmt>;
     // TODO: change the data structure here
     public locals: Map<string, _Symbol>;
     public label: number;
 
-    constructor(module: Module, ident: string, params: Array<Param>, returnType: Type, body: Array<Stmt>) {
+    constructor(module: Module, ident: string, params: Map<string, _Symbol>, returnType: Type, body: Array<Stmt>) {
         this.module = module;
         this.ident = ident;
         this.params = params;
@@ -64,37 +65,46 @@ export class Function {
 
     public generate(): void {
         // FIXME: fix the type conversion, also only supports BYVAL currently
-        const paramTypes = binaryen.createType(this.params.map(param => binaryen.f64));
+        const paramTypes = new Array<Type>();
 
-        for (const param of this.params) {
-            const name = param.ident.lexeme;
-            // FIXME: single type problem
-            this.setTypeForLocal(name, binaryen.f64);
+        for (const param of this.params.values()) {
+            paramTypes.push(param.type);
         }
 
-        const block = this.generateBlock(this.body);
+        const paramType = binaryen.createType(paramTypes);
+
+        const funcBlock = this.generateBlock(this.body);
         const vars = new Array<Type>();
 
-        for (const symbol of this.locals.values()) {
-            vars.push(symbol.type);
+        for (const local of this.locals.values()) {
+            vars.push(local.type);
         }
 
         // FIXME: returnType has problem here
-        this.module.addFunction(this.ident, paramTypes, binaryen.f64, vars, block);
+        this.module.addFunction(this.ident, paramType, binaryen.f64, vars, funcBlock);
     }
 
     private setTypeForLocal(name: string, type: Type): _Symbol {
-        if (!this.locals.has(name)) {
-            this.locals.set(name, new _Symbol(this.locals.size, type));
+        if (!this.locals.has(name) && !this.params.has(name)) {
+            this.locals.set(name, new _Symbol(this.locals.size + this.params.size, type));
         }
         return this.getSymbolForLocal(name);
     }
 
     private getSymbolForLocal(name: string): _Symbol {
         if (!this.locals.has(name)) {
+            return this.getSymbolForParam(name);
+        }
+
+        return this.locals.get(name) as _Symbol;
+    }
+
+    private getSymbolForParam(name: string): _Symbol {
+        if (!this.params.has(name)) {
             throw new RuntimeError("Symbol '" + name + "' is not declared");
         }
-        return this.locals.get(name) as _Symbol;
+
+        return this.params.get(name) as _Symbol;
     }
 
     // Expressions
@@ -288,13 +298,15 @@ export class Function {
         //   )
         //  )
         // )
-        const name = node.ident.lexeme;
+        const varName = node.ident.lexeme;
+        const varIndex = this.getSymbolForLocal(varName).index;
+        const varType = this.getSymbolForLocal(varName).type;
 
-        const init = this.module.local.set(this.getSymbolForLocal(name).index, this.generateExpression(node.start));
+        const init = this.module.local.set(this.getSymbolForLocal(varName).index, this.generateExpression(node.start));
 
         const statements = this.generateStatements(node.body);
-        const condition = this.module.f64.gt(this.generateExpression(node.end), this.module.local.get(this.getSymbolForLocal(name).index, this.getSymbolForLocal(name).index));
-        const step = this.module.local.set(this.getSymbolForLocal(name).index, this.module.f64.add(this.module.local.get(this.getSymbolForLocal(name).index, this.getSymbolForLocal(name).type), this.generateExpression(node.step)));
+        const condition = this.module.f64.ge(this.generateExpression(node.end), this.module.local.get(varIndex, varType));
+        const step = this.module.local.set(varIndex, this.module.f64.add(this.module.local.get(varIndex, varType), this.generateExpression(node.step)));
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));
         return this.module.block(null, [init, this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)))]);
