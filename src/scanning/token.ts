@@ -2,6 +2,7 @@ export const enum tokenType {
     // single character tokens
     LEFT_PAREN, RIGHT_PAREN, LEFT_BRACKET, RIGHT_BRACKET,
     COMMA, DOT, MINUS, PLUS, STAR, SLASH, COLON, AMPERSAND, // &
+    CARET, //^
 
     // one or two character tokens
     LESS_GREATER, LESS_MINUS,

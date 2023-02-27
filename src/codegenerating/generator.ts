@@ -29,7 +29,8 @@ import {
     ExprStmtNode,
     VarExprNode,
     ArrExprNode,
-    CallExprNode,
+    CallFunctionExprNode,
+    CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
     NumberExprNode,
@@ -66,7 +67,7 @@ export class Generator {
         this.globals = new Map<string, Type>();
 
         // memory
-        this.size = 65536
+        this.size = 65536;
         this.offset = 0;
 
         this.label = 0;
@@ -152,7 +153,7 @@ export class Generator {
             index++;
         }
         // FIXME: single type problem
-        const func = new Function(this.module, funcName, funcParams, binaryen.f64, node.body);
+        const func = new Function(this.module, this.functions, funcName, funcParams, binaryen.f64, node.body);
 
         this.setFunction(funcName, func);
         this.getFunction(funcName).generate();
@@ -165,8 +166,8 @@ export class Generator {
                 return this.varAssignExpression(expression as VarAssignNode);
             case nodeKind.VarExprNode:
                 return this.varExpression(expression as VarExprNode);
-            case nodeKind.CallExprNode:
-                return this.callExpression(expression as CallExprNode);
+            case nodeKind.CallFunctionExprNode:
+                return this.callFunctionExpression(expression as CallFunctionExprNode);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
@@ -193,7 +194,7 @@ export class Generator {
         return this.module.global.get(varName, varType);
     }
 
-    private callExpression(node: CallExprNode): ExpressionRef {
+    private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
         if (node.ident.kind == nodeKind.VarExprNode) {
             const funcName = (node.ident as VarExprNode).ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();

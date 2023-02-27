@@ -13,15 +13,19 @@ Equality ::= Comparison {("=" | "<>" | "OR") Comparison}
 Relation ::= Expr {("<" | "<=" | ">" | ">=" | "AND") Expr}
 Term ::= Factor {("+" | "-" | "&") Factor}
 Factor ::= Unary {("*" | "/" | "MOD") Unary}
-Unary ::= ["+" | "-" | "NOT"] Unary | CallExpr
+Unary ::= ["+" | "-" | "NOT"] Unary | Pointer
+/* The below rule should be the correct one but i do not know how to implement it with a recursive descent parser. */
+/* Pointer ::= "^" Pointer | Pointer "^" | LVal | CallExpr */
+Pointer ::= "^" Pointer | Pointer "^" | CallExpr
 
 Args ::= Expr {"," Expr}
-CallExpr ::= Primary "(" [Args] ")" | "CALL" Primary "(" [Args] ")"
+CallExpr ::= Primary ["(" [Args] ")"] | "CALL" Primary "(" [Args] ")"
 LVal ::= IDENT {"[" Expr "]"}
 Primary ::= LVal | INTEGER | REAL | CHAR | STRING | BOOLEAN | "(" Expr ")" | CallExpr
 
-Statement ::= Decl | Assign | If | While | Repeat | For | Return
+Statement ::= Decl | TypeDecl | Assign | If | While | Repeat | For | Return
 Decl ::= "DECLARE" IDENT ":" Type | "DECLARE" IDENT ":" "ARRAY" "OF" Type
+TypeDecl ::= "TYPE" IDENT {Decl} "ENDTYPE" | "TYPE" IDENT "=" "(" Value {"," Value} ")" | "TYPE" IDENT "=" "^" Type
 Assign ::= LVal "<-" Expr
 If ::= "IF" Expr "THEN" {Statement} ["ELSE" {Statement}] "ENDIF"
 While ::= "WHILE" Expr {Statement} "ENDWHILE"

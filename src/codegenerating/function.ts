@@ -26,7 +26,8 @@ import {
     ExprStmtNode,
     VarExprNode,
     ArrExprNode,
-    CallExprNode,
+    CallFunctionExprNode,
+    CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
     NumberExprNode,
@@ -43,18 +44,21 @@ type ExpressionRef = binaryen.ExpressionRef;
 type Type = binaryen.Type;
 
 export class Function {
-    public module: Module;
-    public ident: string;
+    private module: Module;
+    private functions: Map<string, Function>;
+    private ident: string;
     // Params are initialized to a Map in the generator
-    public params: Map<string, _Symbol>;
+    private params: Map<string, _Symbol>;
+    // The only public variable
     public returnType: Type;
-    public body: Array<Stmt>;
+    private body: Array<Stmt>;
     // TODO: change the data structure here
-    public locals: Map<string, _Symbol>;
-    public label: number;
+    private locals: Map<string, _Symbol>;
+    private label: number;
 
-    constructor(module: Module, ident: string, params: Map<string, _Symbol>, returnType: Type, body: Array<Stmt>) {
+    constructor(module: Module, functions: Map<string, Function>, ident: string, params: Map<string, _Symbol>, returnType: Type, body: Array<Stmt>) {
         this.module = module;
+        this.functions = functions;
         this.ident = ident;
         this.params = params;
         this.returnType = returnType;
@@ -80,7 +84,7 @@ export class Function {
             vars.push(local.type);
         }
 
-        // FIXME: returnType has problem here
+        // FIXME: single returnType has problem here
         this.module.addFunction(this.ident, paramType, binaryen.f64, vars, funcBlock);
     }
 
@@ -107,6 +111,19 @@ export class Function {
         return this.params.get(name) as _Symbol;
     }
 
+    private getFunction(name: string): Function {
+        if (!this.functions.has(name)) {
+            throw("Function '" + name + "' is not declared");
+        }
+        return this.functions.get(name) as Function;
+    }
+
+    private setFunction(name: string, func: Function): void {
+        if (!this.functions.has(name)) {
+            this.functions.set(name, func);
+        }
+    }
+
     // Expressions
     private generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
@@ -114,6 +131,8 @@ export class Function {
                 return this.varAssignExpression(expression as VarAssignNode);
             case nodeKind.VarExprNode:
                 return this.varExpression(expression as VarExprNode);
+            case nodeKind.CallFunctionExprNode:
+                return this.callExpression(expression as CallFunctionExprNode);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
@@ -130,11 +149,29 @@ export class Function {
     }
 
     private varAssignExpression(node: VarAssignNode): ExpressionRef {
-        return this.module.local.set(this.getSymbolForLocal(node.ident.lexeme).index, this.generateExpression(node.expr));
+        const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
+        return this.module.local.set(varIndex, this.generateExpression(node.expr));
     }
 
     private varExpression(node: VarExprNode): ExpressionRef {
-        return this.module.local.get(this.getSymbolForLocal(node.ident.lexeme).index, this.getSymbolForLocal(node.ident.lexeme).type);
+        const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
+        const varType = this.getSymbolForLocal(node.ident.lexeme).type;
+        return this.module.local.get(varIndex, varType);
+    }
+
+    private callExpression(node: CallFunctionExprNode): ExpressionRef {
+        if (node.ident.kind == nodeKind.VarExprNode) {
+            const funcName = (node.ident as VarExprNode).ident.lexeme;
+            const funcArgs = new Array<ExpressionRef>();
+            for (const arg of node.args) {
+                const expr = this.generateExpression(arg);
+                funcArgs.push(expr);
+            }
+            const returnType = this.getFunction(funcName).returnType;
+            return this.module.call(funcName, funcArgs, returnType);
+        }
+        // FIXME: The complicated call possibilities are not supported
+        return -1;
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {

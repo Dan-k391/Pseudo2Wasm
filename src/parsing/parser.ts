@@ -23,6 +23,7 @@ import {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
+    PointerDeclNode,
     TypeDefNode,
     VarAssignNode,
     ArrAssignNode,
@@ -33,9 +34,12 @@ import {
     ExprStmtNode,
     VarExprNode,
     ArrExprNode,
-    CallExprNode,
+    CallFunctionExprNode,
+    CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
+    PointerExprNode,
+    LocationExprNode,
     NumberExprNode,
     CharExprNode,
     StringExprNode,
@@ -61,7 +65,7 @@ export class Parser {
         const statements: Array<Stmt> = new Array<Stmt>();
         while (!this.isAtEnd()) {
             if (this.match(tokenType.FUNCTION)) statements.push(this.funcDefinition());
-            // else if (this.match(tokenType.PROCEDURE)) statements.push(this.procDefinition());
+            else if (this.match(tokenType.PROCEDURE)) statements.push(this.procDefinition());
             else statements.push(this.statement());
         }
         return new ProgramNode(statements);
@@ -136,17 +140,37 @@ export class Parser {
             const right: Expr = this.unary();
             return new UnaryExprNode(operator, right);
         }
-        return this.call();
+        return this.pointer();
     }
 
+    private pointer(): Expr {
+        if (this.match(tokenType.CARET)) {
+            const leftValue: Expr = this.pointer();
+            return new LocationExprNode(leftValue);
+        }
+
+        // FIXME: A very hard problem here, this.call() should be this.pointer().
+        let expr = this.call();
+
+        while (this.match(tokenType.CARET)) expr = new PointerExprNode(expr);
+        return expr;
+    }           
+
     private call(): Expr {
+        if (this.match(tokenType.CALL)) {
+            const expr: Expr = this.primary();
+
+            this.consume("Expect '(' after 'CALL'.", tokenType.LEFT_PAREN);
+            return this.finishProcedureCall(expr);
+        }
+
         const expr: Expr = this.primary();
 
-        if (this.match(tokenType.LEFT_PAREN)) return this.finishCall(expr);
+        if (this.match(tokenType.LEFT_PAREN)) return this.finishFunctionCall(expr);
         return expr;
     }
 
-    private finishCall(callee: Expr): Expr {
+    private finishFunctionCall(callee: Expr): Expr {
         const args: Array<Expr> = new Array<Expr>();
         if (!this.check(tokenType.RIGHT_PAREN)) {
             do {
@@ -159,7 +183,23 @@ export class Parser {
             while (this.match(tokenType.COMMA));
         }
         const paren: Token = this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
-        return new CallExprNode(callee, args);
+        return new CallFunctionExprNode(callee, args);
+    }
+
+    private finishProcedureCall(callee: Expr): Expr {
+        const args: Array<Expr> = new Array<Expr>();
+        if (!this.check(tokenType.RIGHT_PAREN)) {
+            do {
+                // keep it
+                if (args.length >= 255) {
+                    this.error(this.peek(), "Cannot have more than 255 arguments.");
+                }
+                args.push(this.expression());
+            }
+            while (this.match(tokenType.COMMA));
+        }
+        const paren: Token = this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
+        return new CallProcedureExprNode(callee, args);
     }
 
     private primary(): Expr {
@@ -182,7 +222,10 @@ export class Parser {
     private statement(): Stmt {
         if (this.match(tokenType.OUTPUT)) return this.outputStatement();
         if (this.match(tokenType.RETURN)) return this.returnStatement();
+        // FIXME: declaration only supports variable
         if (this.match(tokenType.DECLARE)) return this.varDeclaration();
+        // FIXME: type declaration only supports pointer
+        if (this.match(tokenType.TYPE)) return this.pointerDeclaration();
 
         if (this.match(tokenType.IF)) return this.ifStatement();
         if (this.match(tokenType.WHILE)) return this.whileStatement();
@@ -207,6 +250,14 @@ export class Parser {
         this.consume("Expected colon", tokenType.COLON);
         const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
         return new VarDeclNode(ident, type);
+    }
+
+    private pointerDeclaration(): Stmt {
+        const ident: Token = this.consume("Expected type name", tokenType.IDENTIFIER);
+        this.consume("Expected equal", tokenType.EQUAL);
+        this.consume("Expected caret", tokenType.CARET);
+        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+        return new PointerDeclNode(ident, type);
     }
 
     private ifStatement(): Stmt {
@@ -297,6 +348,7 @@ export class Parser {
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
                 let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+                // default passType is BYVAL
                 params.push(new Param(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));
         }
@@ -309,6 +361,32 @@ export class Parser {
         }
         this.consume("Expected 'ENDFUNCTION'", tokenType.ENDFUNCTION);
         return new FuncDefNode(ident, params, type, body);
+    }
+
+    private procDefinition(): Stmt {
+        const ident: Token = this.consume("Expected procedure name", tokenType.IDENTIFIER);
+        this.consume("Expected left parenthesis", tokenType.LEFT_PAREN);
+        const params: Array<Param> = new Array<Param>();
+        if (!this.check(tokenType.RIGHT_PAREN)) {
+            do {
+                if (params.length >= 255) {
+                    // useless but keep it
+                    this.error(this.peek(), "Cannot have more than 255 parameters.");
+                }
+                let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
+                this.consume("Expected colon", tokenType.COLON);
+                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+                // default passType is BYVAL
+                params.push(new Param(ident, type, passType.BYVAL));
+            } while (this.match(tokenType.COMMA));
+        }
+        this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
+        const body: Array<Stmt> = new Array<Stmt>();
+        while (!this.check(tokenType.ENDPROCEDURE) && !this.isAtEnd()) {
+            body.push(this.statement());
+        }
+        this.consume("Expected 'ENDPROCEDURE'", tokenType.ENDPROCEDURE);
+        return new ProcDefNode(ident, params, body);
     }
 
     private match(...types: Array<tokenType>): boolean {

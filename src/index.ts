@@ -88,9 +88,6 @@ const code8 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
     RETURN c
 ENDFUNCTION
 
-DECLARE i:INTEGER
-
-i <- 1
 OUTPUT for(10)
 `
 
@@ -103,14 +100,37 @@ const code9 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
     RETURN b
 ENDFUNCTION
 
-DECLARE i:INTEGER
-
-i <- 1
 OUTPUT for(1)
 `
 
-const codes = [code0, code1, code2, code3, code4, code5, code6, code7, code8, code9];
-const expected = [1, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11];
+const code10 = `FUNCTION recur(a:INTEGER) RETURNS INTEGER
+    IF a = 10 THEN
+        RETURN a
+    ENDIF
+    RETURN recur(a + 1)
+ENDFUNCTION
+
+OUTPUT recur(1)
+`
+
+const code11 = `TYPE a = ^INTEGER
+DECLARE i:INTEGER
+
+i <- 9
+a <- ^i
+OUTPUT a^
+`
+
+const code12 = `TYPE a = ^INTEGER
+DECLARE i:INTEGER
+
+i <- 9
+a <- ^^^^i^^^
+OUTPUT a^
+`
+
+const codes = [code0, code1, code2, code3, code4, code5, code6, code7, code8, code9, code10, code11, code12];
+const expected = [1, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 9, 9];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
@@ -145,11 +165,11 @@ async function test() {
 }
 
 test().then(() => {
-    // fetch("http://127.0.0.1:5500/wasmtry/temp.wasm")
-    // .then((response) => response.arrayBuffer())
-    // .then((buffer) => new Uint8Array(buffer))
-    // .then((array) => binaryen.readBinary(array))
-    // .then((module) => console.log(module.emitText()));
+//     fetch("http://127.0.0.1:5570/wasmtry/temp.wasm")
+//     .then((response) => response.arrayBuffer())
+//     .then((buffer) => new Uint8Array(buffer))
+//     .then((array) => binaryen.readBinary(array))
+//     .then((module) => {module.optimize(); console.log(module.emitText())});
 
     // const instance = new WebAssembly.Instance(module);
     console.log(`compileCount: ${compileCount}/${total}`);

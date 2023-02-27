@@ -2,6 +2,7 @@ import { Token, tokenType } from "../scanning/token";
 import { Environment } from "../semantics/environment";
 
 import { passType } from "../passtype";
+import { node } from "webpack";
 
 
 export const enum nodeKind {
@@ -11,6 +12,7 @@ export const enum nodeKind {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
+    PointerDeclNode,
     TypeDefNode,
     VarAssignNode,
     ArrAssignNode,
@@ -21,9 +23,12 @@ export const enum nodeKind {
     ExprStmtNode,
     VarExprNode,
     ArrExprNode,
-    CallExprNode,
+    CallFunctionExprNode,
+    CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
+    PointerExprNode,
+    LocationExprNode,
     NumberExprNode,
     CharExprNode,
     StringExprNode,
@@ -96,11 +101,11 @@ export class FuncDefNode extends Stmt {
 }
 
 export class ProcDefNode extends Stmt {
-    public ident: string;
+    public ident: Token;
     public params: Array<Param>;
     public body: Array<Stmt>;
 
-    constructor(ident: string, params: Array<Param>, body: Array<Stmt>) {
+    constructor(ident: Token, params: Array<Param>, body: Array<Stmt>) {
         super(nodeKind.ProcDefNode);
         this.ident = ident;
         this.params = params;
@@ -168,6 +173,25 @@ export class ArrDeclNode extends Stmt {
 
     toString(): string {
         return "ArrDeclNode";
+    }
+
+    evaluate(environment: Environment): unknown {
+        return;
+    }
+}
+
+export class PointerDeclNode extends Stmt {
+    public ident: Token;
+    public type: Token;
+
+    constructor(ident: Token, type: Token) {
+        super(nodeKind.PointerDeclNode);
+        this.ident = ident;
+        this.type = type;
+    }
+
+    toString(): string {
+        return "PointerDeclNode";
     }
 
     evaluate(environment: Environment): unknown {
@@ -378,18 +402,38 @@ export class ArrExprNode extends Expr {
     }
 }
 
-export class CallExprNode extends Expr {
+// seperate the function and procedure calls
+export class CallFunctionExprNode extends Expr {
     public ident: Expr;
     public args: Array<Expr>;
 
     constructor(ident: Expr, args: Array<Expr>) {
-        super(nodeKind.CallExprNode);
+        super(nodeKind.CallFunctionExprNode);
         this.ident = ident;
         this.args = args;
     }
 
     toString(): string {
-        return "CallExprNode";
+        return "CallFunctionExprNode";
+    }
+
+    evaluate(environment: Environment): unknown {
+        return;
+    }
+}
+
+export class CallProcedureExprNode extends Expr {
+    public ident: Expr;
+    public args: Array<Expr>;
+
+    constructor(ident: Expr, args: Array<Expr>) {
+        super(nodeKind.CallProcedureExprNode);
+        this.ident = ident;
+        this.args = args;
+    }
+
+    toString(): string {
+        return "CallProcedureExprNode";
     }
 
     evaluate(environment: Environment): unknown {
@@ -430,6 +474,42 @@ export class BinaryExprNode extends Expr {
 
     toString(): string {
         return "BinaryExprNode";
+    }
+
+    evaluate(environment: Environment): unknown {
+        return;
+    }
+}
+
+export class PointerExprNode extends Expr {
+    // FIXME: ident should be LeftValue
+    public leftValue: Expr;
+
+    constructor(leftValue: Expr) {
+        super(nodeKind.PointerExprNode);
+        this.leftValue = leftValue;
+    }
+
+    toString(): string {
+        return "PointerExprNode";
+    }
+
+    evaluate(environment: Environment): unknown {
+        return;
+    }
+}
+
+export class LocationExprNode extends Expr {
+    // FIXME: ident should be LeftValue
+    public leftValue: Expr;
+
+    constructor(leftValue: Expr) {
+        super(nodeKind.LocationExprNode);
+        this.leftValue = leftValue;
+    }
+
+    toString(): string {
+        return "LocationExprNode";
     }
 
     evaluate(environment: Environment): unknown {

@@ -109,6 +109,7 @@ export class Scanner {
                 break;
             case ':': this.addToken(tokenType.COLON); break;
             case '&': this.addToken(tokenType.AMPERSAND); break;
+            case '^': this.addToken(tokenType.CARET); break;
             case '=': this.addToken(tokenType.EQUAL); break;
             case '<': this.addToken(this.match('>') ? tokenType.LESS_GREATER : (this.match('-') ? tokenType.LESS_MINUS : (this.match('=') ? tokenType.LESS_EQUAL : tokenType.LESS))); break;
             case '>': this.addToken(this.match('=') ? tokenType.GREATER_EQUAL : tokenType.GREATER); break;
