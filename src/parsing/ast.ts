@@ -39,18 +39,16 @@ export const enum nodeKind {
 
 export abstract class ASTNode {
     constructor(public kind: nodeKind) { }
+
+    public abstract evaluate(environment: Environment): unknown;
 }
 
 export abstract class Expr extends ASTNode {
     public abstract toString(): string;
-
-    public abstract evaluate(environment: Environment): unknown;
 }
 
 export abstract class Stmt extends ASTNode {
     public abstract toString(): string;
-
-    public abstract evaluate(environment: Environment): unknown;
 }
 
 // fix it
@@ -73,6 +71,10 @@ export class ProgramNode extends ASTNode {
     constructor(body: Array<Stmt>) {
         super(nodeKind.ProgramNode);
         this.body = body;
+    }
+
+    evaluate(environment: Environment): unknown {
+        throw new Error("Method not implemented.");
     }
 }
 
