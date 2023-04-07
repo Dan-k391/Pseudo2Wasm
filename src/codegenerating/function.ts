@@ -36,7 +36,7 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode
-} from "../parsing/ast";
+} from "../ast";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -160,8 +160,8 @@ export class Function {
     }
 
     private callExpression(node: CallFunctionExprNode): ExpressionRef {
-        if (node.ident.kind == nodeKind.VarExprNode) {
-            const funcName = (node.ident as VarExprNode).ident.lexeme;
+        if (node.callee.kind == nodeKind.VarExprNode) {
+            const funcName = (node.callee as VarExprNode).ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
             for (const arg of node.args) {
                 const expr = this.generateExpression(arg);

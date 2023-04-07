@@ -1,6 +1,6 @@
 // TODO: add stuff later
 import binaryen from "binaryen";
-import { Param, Stmt } from "../parsing/ast";
+import { Param, Stmt } from "../ast";
 import { _Symbol } from "./symbol";
 
 export class Function {

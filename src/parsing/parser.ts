@@ -46,7 +46,7 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode
-} from "./ast";
+} from "../ast";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../scanning/token";
 import { passType } from "../passtype";
@@ -432,5 +432,26 @@ export class Parser {
 
     private error(token: Token, message: string): void {
         throw new SyntaxError(message, token.line, token.startColumn, token.endColumn);
+    }
+
+    private synchronize() {
+        this.advance();
+
+        while (!this.isAtEnd()) {
+            switch (this.peek().type) {
+                case tokenType.IF:
+                case tokenType.WHILE:
+                case tokenType.REPEAT:
+                case tokenType.FOR:
+                case tokenType.FUNCTION:
+                case tokenType.PROCEDURE:
+                case tokenType.OUTPUT:
+                case tokenType.INPUT:
+                case tokenType.RETURN:
+                    return;
+            }
+
+            this.advance();
+        }
     }
 }

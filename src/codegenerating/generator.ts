@@ -39,7 +39,7 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode
-} from "../parsing/ast";
+} from "../ast";
 
 import { Function } from "./function";
 
@@ -195,8 +195,8 @@ export class Generator {
     }
 
     private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
-        if (node.ident.kind == nodeKind.VarExprNode) {
-            const funcName = (node.ident as VarExprNode).ident.lexeme;
+        if (node.callee.kind == nodeKind.VarExprNode) {
+            const funcName = (node.callee as VarExprNode).ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
             for (const arg of node.args) {
                 const expr = this.generateExpression(arg);
