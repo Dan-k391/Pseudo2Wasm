@@ -5,4 +5,7 @@ OAC (Oh a compiler)
 灵感来源于zjj
 
 ###
-Pseudo2Wasm, 简称shit
+Pseudo2Wasm,
+is an improvement to OAC(Web version),
+adds an IR generation layer implemented with binaryen.
+still in progress
