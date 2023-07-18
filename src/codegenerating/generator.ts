@@ -42,6 +42,7 @@ import {
 } from "../ast";
 
 import { Function } from "./function";
+import { Procedure } from "./procedure";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -53,6 +54,7 @@ export class Generator {
     private ast: ProgramNode;
     private module: binaryen.Module;
     private functions: Map<string, Function>;
+    private procedures: Map<string, Procedure>;
     private globals: Map<string, Type>;
     private offset: number;
     private size: number;
@@ -63,6 +65,7 @@ export class Generator {
         this.module = new binaryen.Module();
 
         this.functions = new Map<string, Function>();
+        this.procedures = new Map<string, Procedure>();
         // all variables in the body are global variables
         this.globals = new Map<string, Type>();
 
@@ -92,7 +95,7 @@ export class Generator {
 
     private getGlobalTypeForSymbol(name: string): Type {
         if (!this.globals.has(name)) {
-            throw("Symbol '" + name + "' is not declared");
+            throw new RuntimeError("Symbol '" + name + "' is not declared");
         }
         return this.globals.get(name) as Type;
     }
@@ -103,16 +106,29 @@ export class Generator {
         }
     }
 
-    private getFunction(name: string): Function {
+    public getFunction(name: string): Function {
         if (!this.functions.has(name)) {
-            throw("Function '" + name + "' is not declared");
+            throw new RuntimeError("Function '" + name + "' is not declared");
         }
         return this.functions.get(name) as Function;
     }
 
-    private setFunction(name: string, func: Function): void {
+    public setFunction(name: string, func: Function): void {
         if (!this.functions.has(name)) {
             this.functions.set(name, func);
+        }
+    }
+    
+    public getProcedure(name: string): Procedure {
+        if (!this.procedures.has(name)) {
+            throw new RuntimeError("Procedure '" + name + "' is not declared");
+        }
+        return this.procedures.get(name) as Procedure;
+    }
+
+    public setProcedure(name: string, proc: Procedure): void {
+        if (!this.procedures.has(name)) {
+            this.procedures.set(name, proc);
         }
     }
 
@@ -153,14 +169,32 @@ export class Generator {
             index++;
         }
         // FIXME: single type problem
-        const func = new Function(this.module, this.functions, funcName, funcParams, binaryen.f64, node.body);
+        const func = new Function(this.module, this, funcName, funcParams, binaryen.f64, node.body);
 
         this.setFunction(funcName, func);
         this.getFunction(funcName).generate();
     }
 
+    private generateProcedureDefinition(node: ProcDefNode): void {
+        const procName = node.ident.lexeme;
+        const procParams = new Map<string, _Symbol>();
+
+        let index = 0;
+        for (const param of node.params) {
+            const paramName = param.ident.lexeme;
+            // FIXME: single type problem
+            const paramSymbol = new _Symbol(index, binaryen.f64);
+            procParams.set(paramName, paramSymbol);
+            index++;
+        }
+        const proc = new Procedure(this.module, this, procName, procParams, node.body);
+
+        this.setProcedure(procName, proc);
+        this.getProcedure(procName).generate();
+    }
+
     // Expressions
-    private generateExpression(expression: Expr): ExpressionRef {
+    protected generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.VarAssignNode:
                 return this.varAssignExpression(expression as VarAssignNode);
@@ -168,6 +202,8 @@ export class Generator {
                 return this.varExpression(expression as VarExprNode);
             case nodeKind.CallFunctionExprNode:
                 return this.callFunctionExpression(expression as CallFunctionExprNode);
+            case nodeKind.CallProcedureExprNode:
+                return this.callProcedureExpression(expression as CallProcedureExprNode);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
@@ -183,12 +219,12 @@ export class Generator {
         }
     }
 
-    private varAssignExpression(node: VarAssignNode): ExpressionRef {
+    public varAssignExpression(node: VarAssignNode): ExpressionRef {
         const varName = node.ident.lexeme;
         return this.module.global.set(varName, this.generateExpression(node.expr));
     }
 
-    private varExpression(node: VarExprNode): ExpressionRef {
+    public varExpression(node: VarExprNode): ExpressionRef {
         const varName = node.ident.lexeme;
         const varType = this.getGlobalTypeForSymbol(varName);
         return this.module.global.get(varName, varType);
@@ -205,7 +241,22 @@ export class Generator {
             const returnType = this.getFunction(funcName).returnType;
             return this.module.call(funcName, funcArgs, returnType);
         }
-        // FIXME: The complicated call possibilities are not supported
+        // FIXME: The complicated call possibilities are not supported (calling a complex expression)
+        return -1;
+    }
+
+    private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
+        if (node.callee.kind == nodeKind.VarExprNode) {
+            const procName = (node.callee as VarExprNode).ident.lexeme;
+            const procArgs = new Array<ExpressionRef>();
+            for (const arg of node.args) {
+                const expr = this.generateExpression(arg);
+                procArgs.push(expr);
+            }
+            // all procedures are voids
+            return this.module.call(procName, procArgs, binaryen.none);
+        }
+        // FIXME: The complicated call possibilities are not supported (calling a complex expression)
         return -1;
     }
 
@@ -247,11 +298,11 @@ export class Generator {
         }
     }
 
-    private numberExpression(node: NumberExprNode): ExpressionRef {
+    public numberExpression(node: NumberExprNode): ExpressionRef {
         return this.module.f64.const(node.value);
     }
 
-    private charExpression(node: CharExprNode): ExpressionRef {
+    public charExpression(node: CharExprNode): ExpressionRef {
         return this.module.i32.const(node.value.charCodeAt(0));
     }
 
@@ -279,6 +330,9 @@ export class Generator {
             if (statement.kind == nodeKind.FuncDefNode) {
                 this.generateFunctionDefinition(statement as FuncDefNode);
             }
+            else if (statement.kind == nodeKind.ProcDefNode) {
+                this.generateProcedureDefinition(statement as ProcDefNode);
+            }
             else {
                 stmts.push(this.generateStatement(statement));
             }
@@ -286,12 +340,12 @@ export class Generator {
         return stmts;
     }
 
-    private generateStatement(statement: Stmt): ExpressionRef {
+    protected generateStatement(statement: Stmt): ExpressionRef {
         switch (statement.kind) {
             case nodeKind.ExprStmtNode:
                 return this.generateExpression((statement as ExprStmtNode).expr);
             case nodeKind.ReturnNode:
-                throw("Really, what were you expecting it to return?");
+                throw new RuntimeError("Really, what were you expecting it to return?");
             case nodeKind.OutputNode:
                 return this.outputStatement(statement as OutputNode);
             case nodeKind.VarDeclNode:
