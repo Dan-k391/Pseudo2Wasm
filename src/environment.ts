@@ -2,7 +2,7 @@ import { VarType, Variable } from "./variable";
 
 import { Token } from "./scanning/token";
 import { RuntimeError } from "./error";
-import { convertToVarType } from "./utils";
+import { convertToVarType } from "./util";
 
 export class Environment {
     private enclosing?: Environment;

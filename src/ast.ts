@@ -529,15 +529,16 @@ export class PointerDeclNode extends Stmt {
     }
 
     public evaluate(environment: Environment): unknown {
+        console.log("Pointers are not supported in the interpreter");
         return;
     }
 }
 
 export class TypeDefNode extends Stmt {
-    public ident: string;
-    public body: VarDeclNode;
+    public ident: Token;
+    public body: Array<VarDeclNode>;
 
-    constructor(ident: string, body: VarDeclNode) {
+    constructor(ident: Token, body: Array<VarDeclNode>) {
         super(nodeKind.TypeDefNode);
         this.ident = ident;
         this.body = body;

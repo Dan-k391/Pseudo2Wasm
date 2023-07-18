@@ -37,6 +37,7 @@ import {
     OutputNode,
     InputNode
 } from "../ast";
+import { Generator } from "./generator";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -45,7 +46,8 @@ type Type = binaryen.Type;
 
 export class Function {
     private module: Module;
-    private functions: Map<string, Function>;
+    // I have no better idea for the name of the outergenerator instead of 'enclosing'
+    private enclosing: Generator;
     private ident: string;
     // Params are initialized to a Map in the generator
     private params: Map<string, _Symbol>;
@@ -56,9 +58,9 @@ export class Function {
     private locals: Map<string, _Symbol>;
     private label: number;
 
-    constructor(module: Module, functions: Map<string, Function>, ident: string, params: Map<string, _Symbol>, returnType: Type, body: Array<Stmt>) {
+    constructor(module: Module, enclosing: Generator, ident: string, params: Map<string, _Symbol>, returnType: Type, body: Array<Stmt>) {
         this.module = module;
-        this.functions = functions;
+        this.enclosing = enclosing;
         this.ident = ident;
         this.params = params;
         this.returnType = returnType;
@@ -105,23 +107,12 @@ export class Function {
 
     private getSymbolForParam(name: string): _Symbol {
         if (!this.params.has(name)) {
+            // if not a param try to get from the global scope
+            // return this.getSymbolForGlobal(name);
             throw new RuntimeError("Symbol '" + name + "' is not declared");
         }
 
         return this.params.get(name) as _Symbol;
-    }
-
-    private getFunction(name: string): Function {
-        if (!this.functions.has(name)) {
-            throw("Function '" + name + "' is not declared");
-        }
-        return this.functions.get(name) as Function;
-    }
-
-    private setFunction(name: string, func: Function): void {
-        if (!this.functions.has(name)) {
-            this.functions.set(name, func);
-        }
     }
 
     // Expressions
@@ -132,13 +123,13 @@ export class Function {
             case nodeKind.VarExprNode:
                 return this.varExpression(expression as VarExprNode);
             case nodeKind.CallFunctionExprNode:
-                return this.callExpression(expression as CallFunctionExprNode);
+                return this.callFunctionExpression(expression as CallFunctionExprNode);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
                 return this.binaryExpression(expression as BinaryExprNode);
             case nodeKind.NumberExprNode:
-                return this.numberExpression(expression as NumberExprNode);
+                return this.enclosing.numberExpression(expression as NumberExprNode);
             // case nodeKind.CharExprNode:
             //     return this.charExpression(expression as CharExprNode);
             // case nodeKind.StringExprNode:
@@ -149,17 +140,27 @@ export class Function {
     }
 
     private varAssignExpression(node: VarAssignNode): ExpressionRef {
-        const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
-        return this.module.local.set(varIndex, this.generateExpression(node.expr));
+        if (this.locals.has(node.ident.lexeme) || this.params.has(node.ident.lexeme)) {
+            const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
+            return this.module.local.set(varIndex, this.generateExpression(node.expr));
+        }
+        else {
+            return this.enclosing.varAssignExpression(node);
+        }
     }
 
     private varExpression(node: VarExprNode): ExpressionRef {
-        const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
-        const varType = this.getSymbolForLocal(node.ident.lexeme).type;
-        return this.module.local.get(varIndex, varType);
+        if (this.locals.has(node.ident.lexeme) || this.params.has(node.ident.lexeme)) {
+            const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
+            const varType = this.getSymbolForLocal(node.ident.lexeme).type;
+            return this.module.local.get(varIndex, varType);
+        }
+        else {
+            return this.enclosing.varExpression(node);
+        }
     }
 
-    private callExpression(node: CallFunctionExprNode): ExpressionRef {
+    private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
         if (node.callee.kind == nodeKind.VarExprNode) {
             const funcName = (node.callee as VarExprNode).ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
@@ -167,7 +168,7 @@ export class Function {
                 const expr = this.generateExpression(arg);
                 funcArgs.push(expr);
             }
-            const returnType = this.getFunction(funcName).returnType;
+            const returnType = this.enclosing.getFunction(funcName).returnType;
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported
@@ -206,32 +207,11 @@ export class Function {
             case tokenType.LESS_EQUAL:
                 return this.module.f64.le(this.generateExpression(node.left), this.generateExpression(node.right));
             case tokenType.GREATER_EQUAL:
-                return this.module.f64.ge(this.generateExpression(node.left), this.generateExpression(node.right,));
+                return this.module.f64.ge(this.generateExpression(node.left), this.generateExpression(node.right));
             default:
                 return -1
         }
     }
-
-    private numberExpression(node: NumberExprNode): ExpressionRef {
-        return this.module.f64.const(node.value);
-    }
-
-    private charExpression(node: CharExprNode): ExpressionRef {
-        return this.module.i32.const(node.value.charCodeAt(0));
-    }
-
-    // use null-terminated strings
-    // private stringExpression(node: StringExprNode): ExpressionRef {
-    //     const stringIndex = this.offset;
-    //     this.offset += node.value.length + 1;
-    //     console.log(new TextEncoder().encode(node.value + '\0'));
-    //     this.module.setMemory(node.value.length + 1, node.value.length + 1, null, [{
-    //         offset: stringIndex,
-    //         data: new TextEncoder().encode(node.value + '\0'),
-    //         passive: false,
-    //     }], false);
-    //     return this.module.i32.const(stringIndex);
-    // }
 
     // Statements
     private generateBlock(statements: Array<Stmt>): ExpressionRef {

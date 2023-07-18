@@ -2,7 +2,7 @@ import { FuncDefNode } from "./ast";
 import { Callable } from "./callable";
 import { Environment } from "./environment";
 import { Return } from "./return";
-import { convertToVarType } from "./utils";
+import { convertToVarType } from "./util";
 import { Variable } from "./variable";
 
 

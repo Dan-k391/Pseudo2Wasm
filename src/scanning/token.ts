@@ -14,6 +14,7 @@ export const enum tokenType {
     // keywords
     FUNCTION, ENDFUNCTION,
     PROCEDURE, ENDPROCEDURE,
+    BYVAL, BYREF,
     RETURNS, RETURN,
     CALL,
     DECLARE,

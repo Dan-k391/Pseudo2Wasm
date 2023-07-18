@@ -20,6 +20,8 @@ const KEYWORDS: Map<string, tokenType> = new Map([
     ["ENDFUNCTION", tokenType.ENDFUNCTION],
     ["PROCEDURE", tokenType.PROCEDURE],
     ["ENDPROCEDURE", tokenType.ENDPROCEDURE],
+    ["BYVAL", tokenType.BYVAL],
+    ["BYREF", tokenType.BYREF],
     ["RETURNS", tokenType.RETURNS],
     ["RETURN", tokenType.RETURN],
     ["CALL", tokenType.CALL],

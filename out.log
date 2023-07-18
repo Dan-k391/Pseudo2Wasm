@@ -1,0 +1,648 @@
+  Removing intrinsics.JSON.rawJSON
+visitProperties @ lockdown-install.js:1
+  Removing intrinsics.JSON.isRawJSON
+visitProperties @ lockdown-install.js:1
+  Removing intrinsics.%ArrayPrototype%.toReversed
+visitProperties @ lockdown-install.js:1
+  Removing intrinsics.%ArrayPrototype%.toSorted
+visitProperties @ lockdown-install.js:1
+  Removing intrinsics.%ArrayPrototype%.toSpliced
+visitProperties @ lockdown-install.js:1
+  Removing intrinsics.%ArrayPrototype%.with
+visitProperties @ lockdown-install.js:1
+  Removing intrinsics.%ArrayPrototype%.@@unscopables.toReversed
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%ArrayPrototype%.@@unscopables.toSorted
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%ArrayPrototype%.@@unscopables.toSpliced
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%ArrayBufferPrototype%.transferToFixedLength
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%ArrayBufferPrototype%.detached
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%StringPrototype%.isWellFormed
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%StringPrototype%.toWellFormed
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%RegExpPrototype%.unicodeSets
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%TypedArrayPrototype%.toReversed
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%TypedArrayPrototype%.toSorted
+visitProperties @ lockdown-install.js:1
+lockdown-install.js:1  Removing intrinsics.%TypedArrayPrototype%.with
+visitProperties @ lockdown-install.js:1
+content_scripts.js:1 今天您打开了 1 次 localhost:8080，花费了 0 秒 来浏览它。
+content_scripts.js:1 你可以在【网费很贵】的选项中关闭以上提示！
+index.js:551 [webpack-dev-server] Server started: Hot Module Replacement enabled, Live Reloading enabled, Progress disabled, Overlay enabled.
+log.js:24 [HMR] Waiting for update signal from WDS...
+:8080/favicon.ico:1   Failed to load resource: the server responded with a status of 404 (Not Found)
+index.ts:146 OUTPUT 1 + 9
+
+compiler.ts:18 Array(5)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(5)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (call $logNumber
+   (f64.add
+    (f64.const 1)
+    (f64.const 9)
+   )
+  )
+ )
+)
+
+index.ts:146 DECLARE i:INTEGER
+DECLARE j:INTEGER
+DECLARE k:REAL
+
+i <- 1
+j <- 2
+k <- 3.14
+OUTPUT i + j * k
+
+compiler.ts:18 Array(28)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(28)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (global $j (mut f64) (f64.const 0))
+ (global $k (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $j
+   (f64.const 0)
+  )
+  (global.set $k
+   (f64.const 0)
+  )
+  (global.set $i
+   (f64.const 1)
+  )
+  (global.set $j
+   (f64.const 2)
+  )
+  (global.set $k
+   (f64.const 3.14)
+  )
+  (call $logNumber
+   (f64.add
+    (global.get $i)
+    (f64.mul
+     (global.get $j)
+     (global.get $k)
+    )
+   )
+  )
+ )
+)
+
+index.ts:146 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- -1.99
+j <- 2.99
+IF i = j + i THEN
+    OUTPUT 1
+ELSE
+    OUTPUT 2
+ENDIF
+
+compiler.ts:18 Array(29)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(29)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (global $j (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $j
+   (f64.const 0)
+  )
+  (global.set $i
+   (f64.neg
+    (f64.const 1.99)
+   )
+  )
+  (global.set $j
+   (f64.const 2.99)
+  )
+  (if
+   (f64.eq
+    (global.get $i)
+    (f64.add
+     (global.get $j)
+     (global.get $i)
+    )
+   )
+   (call $logNumber
+    (f64.const 1)
+   )
+   (call $logNumber
+    (f64.const 2)
+   )
+  )
+ )
+)
+
+index.ts:146 DECLARE i:STRING
+i <- "Hi"
+OUTPUT i
+
+compiler.ts:18 Array(10)
+compiler.ts:21 ProgramNode
+index.ts:153 RuntimeError: memory access out of bounds
+    at 01497326:0x3a3134
+    at Object.set (index.js:9:146880)
+    at Generator.varAssignExpression (generator.ts:188:35)
+    at Generator.generateExpression (generator.ts:166:29)
+    at Generator.generateStatement (generator.ts:292:29)
+    at Generator.generateStatements (generator.ts:283:33)
+    at Generator.generateBody (generator.ts:135:28)
+    at Generator.generate (generator.ts:82:35)
+    at Compiler.compile (compiler.ts:23:34)
+    at index.ts:149:22
+compiler.ts:18 Array(10)
+compiler.ts:21 ProgramNode
+index.ts:165 RuntimeError: memory access out of bounds
+    at 01497326:0x3a3134
+    at Object.set (index.js:9:146880)
+    at Generator.varAssignExpression (generator.ts:188:35)
+    at Generator.generateExpression (generator.ts:166:29)
+    at Generator.generateStatement (generator.ts:292:29)
+    at Generator.generateStatements (generator.ts:283:33)
+    at Generator.generateBody (generator.ts:135:28)
+    at Generator.generate (generator.ts:82:35)
+    at Compiler.compile (compiler.ts:23:34)
+    at Compiler.<anonymous> (compiler.ts:65:29)
+index.ts:146 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- 1
+WHILE i < 10
+    i <- i + 1
+    j <- i
+ENDWHILE
+
+OUTPUT j
+
+compiler.ts:18 Array(27)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(27)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (global $j (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $j
+   (f64.const 0)
+  )
+  (global.set $i
+   (f64.const 1)
+  )
+  (loop $1
+   (if
+    (f64.lt
+     (global.get $i)
+     (f64.const 10)
+    )
+    (block
+     (global.set $i
+      (f64.add
+       (global.get $i)
+       (f64.const 1)
+      )
+     )
+     (global.set $j
+      (global.get $i)
+     )
+     (br $1)
+    )
+   )
+  )
+  (call $logNumber
+   (global.get $j)
+  )
+ )
+)
+
+index.ts:146 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- 1
+REPEAT
+    i <- i + 1
+    j <- i
+UNTIL i = 10
+
+OUTPUT j
+
+compiler.ts:18 Array(27)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(27)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (global $j (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $j
+   (f64.const 0)
+  )
+  (global.set $i
+   (f64.const 1)
+  )
+  (loop $1
+   (global.set $i
+    (f64.add
+     (global.get $i)
+     (f64.const 1)
+    )
+   )
+   (global.set $j
+    (global.get $i)
+   )
+   (if
+    (i32.eqz
+     (f64.eq
+      (global.get $i)
+      (f64.const 10)
+     )
+    )
+    (br $1)
+   )
+  )
+  (call $logNumber
+   (global.get $j)
+  )
+ )
+)
+
+index.ts:146 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+FOR i <- 1 TO 11
+    j <- i
+NEXT i
+
+OUTPUT j
+
+compiler.ts:18 Array(22)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(22)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (global $j (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $j
+   (f64.const 0)
+  )
+  (block
+   (global.set $i
+    (f64.const 1)
+   )
+   (loop $1
+    (if
+     (f64.ge
+      (f64.const 11)
+      (global.get $i)
+     )
+     (block
+      (global.set $j
+       (global.get $i)
+      )
+      (global.set $i
+       (f64.add
+        (global.get $i)
+        (f64.const 1)
+       )
+      )
+      (br $1)
+     )
+    )
+   )
+  )
+  (call $logNumber
+   (global.get $j)
+  )
+ )
+)
+
+index.ts:146 FUNCTION add(a:INTEGER, b:INTEGER) RETURNS INTEGER
+    RETURN a + b
+ENDFUNCTION
+
+DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- 1
+j <- 2
+OUTPUT add(i, j)
+
+compiler.ts:18 Array(40)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(40)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_f64_=>_f64 (func (param f64 f64) (result f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (global $j (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $add (param $0 f64) (param $1 f64) (result f64)
+  (return
+   (f64.add
+    (local.get $0)
+    (local.get $1)
+   )
+  )
+ )
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $j
+   (f64.const 0)
+  )
+  (global.set $i
+   (f64.const 1)
+  )
+  (global.set $j
+   (f64.const 2)
+  )
+  (call $logNumber
+   (call $add
+    (global.get $i)
+    (global.get $j)
+   )
+  )
+ )
+)
+
+index.ts:146 FUNCTION for(a:INTEGER) RETURNS INTEGER
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    FOR b <- 1 TO a
+        c <- b
+    NEXT b
+    RETURN c
+ENDFUNCTION
+
+OUTPUT for(10)
+
+compiler.ts:18 Array(37)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(37)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_f64 (func (param f64) (result f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $for (param $0 f64) (result f64)
+  (local $1 f64)
+  (local $2 f64)
+  (local.set $1
+   (f64.const 0)
+  )
+  (local.set $2
+   (f64.const 0)
+  )
+  (block
+   (local.set $1
+    (f64.const 1)
+   )
+   (loop $1
+    (if
+     (f64.ge
+      (local.get $0)
+      (local.get $1)
+     )
+     (block
+      (local.set $2
+       (local.get $1)
+      )
+      (local.set $1
+       (f64.add
+        (local.get $1)
+        (f64.const 1)
+       )
+      )
+      (br $1)
+     )
+    )
+   )
+  )
+  (return
+   (local.get $2)
+  )
+ )
+ (func $main
+  (call $logNumber
+   (call $for
+    (f64.const 10)
+   )
+  )
+ )
+)
+
+index.ts:146 FUNCTION for(a:INTEGER) RETURNS INTEGER
+    DECLARE b:INTEGER
+
+    FOR a <- 1 TO 11
+        b <- a
+    NEXT a
+    RETURN b
+ENDFUNCTION
+
+OUTPUT for(1)
+
+compiler.ts:18 Array(33)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(33)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_f64 (func (param f64) (result f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $for (param $0 f64) (result f64)
+  (local $1 f64)
+  (local.set $1
+   (f64.const 0)
+  )
+  (block
+   (local.set $0
+    (f64.const 1)
+   )
+   (loop $1
+    (if
+     (f64.ge
+      (f64.const 11)
+      (local.get $0)
+     )
+     (block
+      (local.set $1
+       (local.get $0)
+      )
+      (local.set $0
+       (f64.add
+        (local.get $0)
+        (f64.const 1)
+       )
+      )
+      (br $1)
+     )
+    )
+   )
+  )
+  (return
+   (local.get $1)
+  )
+ )
+ (func $main
+  (call $logNumber
+   (call $for
+    (f64.const 1)
+   )
+  )
+ )
+)
+
+index.ts:146 FUNCTION recur(a:INTEGER) RETURNS INTEGER
+    IF a = 10 THEN
+        RETURN a
+    ENDIF
+    RETURN recur(a + 1)
+ENDFUNCTION
+
+OUTPUT recur(1)
+
+compiler.ts:18 Array(31)
+compiler.ts:21 ProgramNode
+compiler.ts:18 Array(31)
+compiler.ts:21 ProgramNode
+compiler.ts:69 (module
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_f64 (func (param f64) (result f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $buffer 0 65536))
+ (import "env" "logNumber" (func $logNumber (param f64)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $recur (param $0 f64) (result f64)
+  (if
+   (f64.eq
+    (local.get $0)
+    (f64.const 10)
+   )
+   (return
+    (local.get $0)
+   )
+  )
+  (return
+   (call $recur
+    (f64.add
+     (local.get $0)
+     (f64.const 1)
+    )
+   )
+  )
+ )
+ (func $main
+  (call $logNumber
+   (call $recur
+    (f64.const 1)
+   )
+  )
+ )
+)
+
+index.ts:203 compileCount: 10/11
+index.ts:204 compileFailed: 3
+index.ts:205 runCount: 10/11
+index.ts:206 runFailed: 3

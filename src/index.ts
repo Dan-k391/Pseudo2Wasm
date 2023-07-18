@@ -2,7 +2,6 @@
 
 import { Compiler } from "./compiler";
 import { Interpreter } from "./interpreter";
-import binaryen from "binaryen";
 
 
 const code0 = `OUTPUT 1 + 9
@@ -116,6 +115,55 @@ ENDFUNCTION
 OUTPUT recur(1)
 `
 
+const code11 = `DECLARE a:INTEGER
+a <- 1
+
+FUNCTION scope() RETURNS INTEGER
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    b <- 1
+    c <- 2
+    RETURN a + b + c
+ENDFUNCTION
+
+OUTPUT scope()
+`
+
+const code12 = `PROCEDURE print(a:INTEGER)
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    b <- 2
+    c <- 2
+    OUTPUT a + b + c
+ENDPROCEDURE
+
+CALL print(1)
+`
+
+const code13 = `DECLARE i: INTEGER
+i <- 1
+
+PROCEDURE increment(BYREF a:INTEGER)
+    a <- a + 1
+ENDPROCEDURE
+
+CALL increment(i)
+OUTPUT i
+`
+
+const code14 = `DECLARE i: INTEGER
+i <- 1
+
+PROCEDURE increment()
+    i <- i + 1
+ENDPROCEDURE
+
+CALL increment()
+OUTPUT i
+`
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
 
@@ -134,8 +182,24 @@ OUTPUT recur(1)
 
 
 
-const codes = [code0, code1, code2, code3, code4, code5, code6, code7, code8, code9, code10];
-const expected = [1, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10];
+const codes = [
+    code0,
+    code1,
+    code2,
+    code3,
+    code4,
+    code5,
+    code6,
+    code7,
+    code8,
+    code9,
+    code10,
+    code11,
+    code12,
+    code13,
+    code14
+];
+const expected = [10, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
@@ -193,7 +257,7 @@ async function interpretTest() {
     }
 }
 
-interpretTest().then(() => {
+compileTest().then(() => {
 //     fetch("http://127.0.0.1:5570/wasmtry/temp.wasm")
 //     .then((response) => response.arrayBuffer())
 //     .then((buffer) => new Uint8Array(buffer))

@@ -170,7 +170,7 @@ export class Parser {
         return expr;
     }
 
-    private finishFunctionCall(callee: Expr): Expr {
+    private finishFunctionCall(callee: Expr): CallFunctionExprNode {
         const args: Array<Expr> = new Array<Expr>();
         if (!this.check(tokenType.RIGHT_PAREN)) {
             do {
@@ -182,11 +182,11 @@ export class Parser {
             }
             while (this.match(tokenType.COMMA));
         }
-        const paren: Token = this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
+        this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
         return new CallFunctionExprNode(callee, args);
     }
 
-    private finishProcedureCall(callee: Expr): Expr {
+    private finishProcedureCall(callee: Expr): CallProcedureExprNode {
         const args: Array<Expr> = new Array<Expr>();
         if (!this.check(tokenType.RIGHT_PAREN)) {
             do {
@@ -198,7 +198,7 @@ export class Parser {
             }
             while (this.match(tokenType.COMMA));
         }
-        const paren: Token = this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
+        this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
         return new CallProcedureExprNode(callee, args);
     }
 
@@ -225,7 +225,7 @@ export class Parser {
         // FIXME: declaration only supports variable
         if (this.match(tokenType.DECLARE)) return this.varDeclaration();
         // FIXME: type declaration only supports pointer
-        if (this.match(tokenType.TYPE)) return this.pointerDeclaration();
+        if (this.match(tokenType.TYPE)) return this.typeDeclaration();
 
         if (this.match(tokenType.IF)) return this.ifStatement();
         if (this.match(tokenType.WHILE)) return this.whileStatement();
@@ -245,22 +245,29 @@ export class Parser {
         return new ReturnNode(expr);
     }
 
-    private varDeclaration(): Stmt {
+    private varDeclaration(): VarDeclNode {
         const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
         this.consume("Expected colon", tokenType.COLON);
         const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
         return new VarDeclNode(ident, type);
     }
 
-    private pointerDeclaration(): Stmt {
+    private typeDeclaration(): Stmt {
         const ident: Token = this.consume("Expected type name", tokenType.IDENTIFIER);
-        this.consume("Expected equal", tokenType.EQUAL);
-        this.consume("Expected caret", tokenType.CARET);
-        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
-        return new PointerDeclNode(ident, type);
+        if (this.match(tokenType.EQUAL)) {
+            this.consume("Expected caret", tokenType.CARET);
+            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+            return new PointerDeclNode(ident, type);
+        }
+        const component: Array<VarDeclNode> = new Array<VarDeclNode>();
+        while (!this.check(tokenType.ENDTYPE) && !this.isAtEnd()) {
+            this.consume("Expected Declaration", tokenType.DECLARE);
+            component.push(this.varDeclaration());
+        }
+        return new TypeDefNode(ident, component);
     }
 
-    private ifStatement(): Stmt {
+    private ifStatement(): IfNode {
         const condition: Expr = this.expression();
         this.consume("Expected 'THEN'", tokenType.THEN);
         const thenBranch: Array<Stmt> = new Array<Stmt>();
@@ -283,7 +290,7 @@ export class Parser {
         }
     }
 
-    private whileStatement(): Stmt {
+    private whileStatement(): WhileNode {
         const condition: Expr = this.expression();
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDWHILE) && !this.isAtEnd()) {
@@ -293,7 +300,7 @@ export class Parser {
         return new WhileNode(condition, body);
     }
 
-    private repeatStatement(): Stmt {
+    private repeatStatement(): RepeatNode {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.UNTIL) && !this.isAtEnd()) {
             body.push(this.statement());
@@ -303,7 +310,7 @@ export class Parser {
         return new RepeatNode(body, condition);
     }
 
-    private forStatement(): Stmt {
+    private forStatement(): ForNode {
         const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
         this.consume("Expected assignment symbol", tokenType.LESS_MINUS);
         const start: Expr = this.expression();
@@ -335,7 +342,7 @@ export class Parser {
         return new ExprStmtNode(expr);
     }
 
-    private funcDefinition(): Stmt {
+    private funcDefinition(): FuncDefNode {
         const ident: Token = this.consume("Expected function name", tokenType.IDENTIFIER);
         this.consume("Expected left parenthesis", tokenType.LEFT_PAREN);
         const params: Array<Param> = new Array<Param>();
@@ -348,7 +355,7 @@ export class Parser {
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
                 let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
-                // default passType is BYVAL
+                // function only supports BYVAL
                 params.push(new Param(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));
         }
@@ -363,7 +370,7 @@ export class Parser {
         return new FuncDefNode(ident, params, type, body);
     }
 
-    private procDefinition(): Stmt {
+    private procDefinition(): ProcDefNode {
         const ident: Token = this.consume("Expected procedure name", tokenType.IDENTIFIER);
         this.consume("Expected left parenthesis", tokenType.LEFT_PAREN);
         const params: Array<Param> = new Array<Param>();
@@ -373,11 +380,21 @@ export class Parser {
                     // useless but keep it
                     this.error(this.peek(), "Cannot have more than 255 parameters.");
                 }
+                // add an underscore to the parameter name
+                let _passType: passType = passType.BYVAL;
+                if (this.check(tokenType.BYVAL)) {
+                    _passType = passType.BYVAL;
+                    this.advance();
+                }
+                else if (this.check(tokenType.BYREF)) {
+                    _passType = passType.BYREF;
+                    this.advance();
+                }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
                 let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
                 // default passType is BYVAL
-                params.push(new Param(ident, type, passType.BYVAL));
+                params.push(new Param(ident, type, _passType));
             } while (this.match(tokenType.COMMA));
         }
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
