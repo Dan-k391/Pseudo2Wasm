@@ -1,10 +1,10 @@
 // TODO: add ts type to every statement
 
 import { Compiler } from "./compiler";
-import binaryen from "binaryen";
+import { Interpreter } from "./interpreter";
 
 
-const code0 = `OUTPUT 1
+const code0 = `OUTPUT 1 + 9
 `
 
 const code1 = `DECLARE i:INTEGER
@@ -31,6 +31,7 @@ ENDIF
 
 const code3 = `DECLARE i:STRING
 i <- "Hi"
+OUTPUT i
 `
 
 const code4 = `DECLARE i:INTEGER
@@ -48,6 +49,7 @@ OUTPUT j
 const code5 = `DECLARE i:INTEGER
 DECLARE j:INTEGER
 
+i <- 1
 REPEAT
     i <- i + 1
     j <- i
@@ -113,31 +115,98 @@ ENDFUNCTION
 OUTPUT recur(1)
 `
 
-const code11 = `TYPE a = ^INTEGER
-DECLARE i:INTEGER
+const code11 = `DECLARE a:INTEGER
+a <- 1
 
-i <- 9
-a <- ^i
-OUTPUT a^
+FUNCTION scope() RETURNS INTEGER
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    b <- 1
+    c <- 2
+    RETURN a + b + c
+ENDFUNCTION
+
+OUTPUT scope()
 `
 
-const code12 = `TYPE a = ^INTEGER
-DECLARE i:INTEGER
+const code12 = `PROCEDURE print(a:INTEGER)
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
 
-i <- 9
-a <- ^^^^i^^^
-OUTPUT a^
+    b <- 2
+    c <- 2
+    OUTPUT a + b + c
+ENDPROCEDURE
+
+CALL print(1)
 `
 
-const codes = [code0, code1, code2, code3, code4, code5, code6, code7, code8, code9, code10, code11, code12];
-const expected = [1, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 9, 9];
+const code13 = `DECLARE i: INTEGER
+i <- 1
+
+PROCEDURE increment(BYREF a:INTEGER)
+    a <- a + 1
+ENDPROCEDURE
+
+CALL increment(i)
+OUTPUT i
+`
+
+const code14 = `DECLARE i: INTEGER
+i <- 1
+
+PROCEDURE increment()
+    i <- i + 1
+ENDPROCEDURE
+
+CALL increment()
+OUTPUT i
+`
+
+// const code11 = `TYPE a = ^INTEGER
+// DECLARE i:INTEGER
+
+// i <- 9
+// a <- ^i
+// OUTPUT a^
+// `
+
+// const code12 = `TYPE a = ^INTEGER
+// DECLARE i:INTEGER
+
+// i <- 9
+// a <- ^^^^i^^^
+// OUTPUT a^
+// `
+
+
+
+const codes = [
+    code0,
+    code1,
+    code2,
+    code3,
+    code4,
+    code5,
+    code6,
+    code7,
+    code8,
+    code9,
+    code10,
+    code11,
+    code12,
+    code13,
+    code14
+];
+const expected = [10, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
 const compileFailed: Array<number> = [];
 const runFailed: Array<number> = [];
 
-async function test() {
+async function compileTest() {
     for (let i = 0; i < total; i++) {
         console.log(codes[i]);
         const compiler = new Compiler(codes[i]);
@@ -152,7 +221,7 @@ async function test() {
 
         try {
             // if fail push
-            if (await compiler.test(expected[i]) == false)
+            if (await compiler.test(expected[i]) === false)
                 runFailed.push(i);
             else
                 runCount++;
@@ -164,7 +233,31 @@ async function test() {
     }
 }
 
-test().then(() => {
+async function interpretTest() {
+    for (let i = 0; i < total; i++) {
+        console.log(codes[i]);
+        const interpreter = new Interpreter(codes[i]);
+        try {
+            interpreter.interpret();
+            compileCount++;
+        } 
+        catch (e) {
+            console.log(e);
+            compileFailed.push(i);
+        }
+
+        try {
+            await interpreter.test();
+            runCount++;
+        }
+        catch (e) {
+            console.log(e);
+            runFailed.push(i);
+        }
+    }
+}
+
+compileTest().then(() => {
 //     fetch("http://127.0.0.1:5570/wasmtry/temp.wasm")
 //     .then((response) => response.arrayBuffer())
 //     .then((buffer) => new Uint8Array(buffer))
