@@ -43,6 +43,8 @@ import {
 
 import { Function } from "./function";
 import { Procedure } from "./procedure";
+import { convertToBinaryenType } from "../util";
+
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -86,11 +88,22 @@ export class Generator {
 
         // initialize the globals
         for (const name of this.globals.keys()) {
-            // FIXME: single type problem
-            this.module.addGlobal(name, this.getGlobalTypeForSymbol(name), true, this.module.f64.const(0));
+            const binaryenType = this.getGlobalTypeForSymbol(name);
+            this.module.addGlobal(name, binaryenType, true, this.generateConstant(binaryenType, 0));
         }
 
         return this.module;
+    }
+
+    // basically, all the constant value which are generated are numbers, either i32 or f64
+    private generateConstant(type: Type, value: number): ExpressionRef {
+        if (type === binaryen.i32) {
+            return this.module.i32.const(value);
+        }
+        else if (type === binaryen.f64) {
+            return this.module.f64.const(value);
+        }
+        throw new RuntimeError("Unknown type '" + type + "'");
     }
 
     private getGlobalTypeForSymbol(name: string): Type {
@@ -163,13 +176,11 @@ export class Generator {
         let index = 0;
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            // FIXME: single type problem
-            const paramSymbol = new _Symbol(index, binaryen.f64);
+            const paramSymbol = new _Symbol(index, convertToBinaryenType(param.type));
             funcParams.set(paramName, paramSymbol);
             index++;
         }
-        // FIXME: single type problem
-        const func = new Function(this.module, this, funcName, funcParams, binaryen.f64, node.body);
+        const func = new Function(this.module, this, funcName, funcParams, convertToBinaryenType(node.type), node.body);
 
         this.setFunction(funcName, func);
         this.getFunction(funcName).generate();
@@ -182,8 +193,7 @@ export class Generator {
         let index = 0;
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            // FIXME: single type problem
-            const paramSymbol = new _Symbol(index, binaryen.f64);
+            const paramSymbol = new _Symbol(index, convertToBinaryenType(param.type));
             procParams.set(paramName, paramSymbol);
             index++;
         }
@@ -221,24 +231,49 @@ export class Generator {
 
     public varAssignExpression(node: VarAssignNode): ExpressionRef {
         const varName = node.ident.lexeme;
-        return this.module.global.set(varName, this.generateExpression(node.expr));
+        const varType = this.getGlobalTypeForSymbol(varName);
+        const rhs = this.generateExpression(node.expr);
+        if (varType === binaryen.i32) {
+            return this.module.global.set(varName, this.module.i32.trunc_s.f64(rhs));
+        }
+        return this.module.global.set(varName, rhs);
     }
 
     public varExpression(node: VarExprNode): ExpressionRef {
         const varName = node.ident.lexeme;
         const varType = this.getGlobalTypeForSymbol(varName);
-        return this.module.global.get(varName, varType);
+        const variable = this.module.global.get(varName, varType);
+        // if the type is i32, convert it to f64
+        if (varType === binaryen.i32) {
+            return this.module.f64.convert_s.i32(variable);
+        }
+        // otherwise the type is f64
+        return variable;
     }
 
     private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
-        if (node.callee.kind == nodeKind.VarExprNode) {
+        if (node.callee.kind === nodeKind.VarExprNode) {
             const funcName = (node.callee as VarExprNode).ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
-            for (const arg of node.args) {
+            const func = this.getFunction(funcName);
+            if (func.params.size !== node.args.length) {
+                throw new RuntimeError("Function '" + funcName + "' expects " + func.params.size + " arguments, but " + node.args.length + " are provided");
+            }
+            for (let i = 0, paramNames = Array.from(func.params.keys()); i < node.args.length; i++) {
+                const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                funcArgs.push(expr);
+                const paramType = func.getSymbolForParam(paramNames[i]).type;
+                if (paramType === binaryen.i32) {
+                    funcArgs.push(this.module.i32.trunc_s.f64(expr));
+                }
+                else {
+                    funcArgs.push(expr);
+                }
             }
             const returnType = this.getFunction(funcName).returnType;
+            if (returnType === binaryen.i32) {
+                return this.module.f64.convert_s.i32(this.module.call(funcName, funcArgs, binaryen.f64));
+            }
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
@@ -246,14 +281,25 @@ export class Generator {
     }
 
     private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
-        if (node.callee.kind == nodeKind.VarExprNode) {
+        if (node.callee.kind === nodeKind.VarExprNode) {
             const procName = (node.callee as VarExprNode).ident.lexeme;
             const procArgs = new Array<ExpressionRef>();
-            for (const arg of node.args) {
-                const expr = this.generateExpression(arg);
-                procArgs.push(expr);
+            const proc = this.getProcedure(procName);
+            if (proc.params.size !== node.args.length) {
+                throw new RuntimeError("Procedure '" + procName + "' expects " + proc.params.size + " arguments, but " + node.args.length + " are provided");
             }
-            // all procedures are voids
+
+            for (let i = 0, paramNames = Array.from(proc.params.keys()); i < node.args.length; i++) {
+                const arg = node.args[i];
+                const expr = this.generateExpression(arg);
+                const paramType = proc.getSymbolForParam(paramNames[i]).type;
+                if (paramType === binaryen.i32) {
+                    procArgs.push(this.module.i32.trunc_s.f64(expr));
+                }
+                else {
+                    procArgs.push(expr);
+                }
+            }
             return this.module.call(procName, procArgs, binaryen.none);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
@@ -271,6 +317,7 @@ export class Generator {
         }
     }
 
+    // all the binary expressions are f64, the teo sides are converted to f64 and if needed, converted back to i32
     private binaryExpression(node: BinaryExprNode): ExpressionRef {
         switch(node.operator.type) {
             case tokenType.PLUS:
@@ -298,6 +345,7 @@ export class Generator {
         }
     }
 
+    // all numbers are initialized as f64, they are converted to i32 if needed
     public numberExpression(node: NumberExprNode): ExpressionRef {
         return this.module.f64.const(node.value);
     }
@@ -345,7 +393,7 @@ export class Generator {
             case nodeKind.ExprStmtNode:
                 return this.generateExpression((statement as ExprStmtNode).expr);
             case nodeKind.ReturnNode:
-                throw new RuntimeError("Really, what were you expecting it to return?");
+                throw new RuntimeError("Really? What were you expecting it to return?");
             case nodeKind.OutputNode:
                 return this.outputStatement(statement as OutputNode);
             case nodeKind.VarDeclNode:
@@ -369,9 +417,9 @@ export class Generator {
 
     private varDeclStatement(node: VarDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
-        // FIXME: now all variables are double
-        this.setGlobalTypeForSymbol(varName, binaryen.f64);
-        return this.module.global.set(varName, this.module.f64.const(0));
+        const binaryenType = convertToBinaryenType(node.type);
+        this.setGlobalTypeForSymbol(varName, binaryenType);
+        return this.module.global.set(varName, this.generateConstant(binaryenType, 0));
     }
 
     private ifStatement(node: IfNode): ExpressionRef {
@@ -429,11 +477,42 @@ export class Generator {
         const varName = node.ident.lexeme;
         const varType = this.getGlobalTypeForSymbol(varName);
 
-        const init = this.module.global.set(varName, this.generateExpression(node.start));
+        const initExpr = this.generateExpression(node.start);
+
+        // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
+        let init: ExpressionRef;
+        if (varType === binaryen.i32) {
+            init = this.module.global.set(varName, this.module.i32.trunc_s.f64(initExpr));
+        }
+        else {
+            init = this.module.global.set(varName, initExpr);
+        }
 
         const statements = this.generateStatements(node.body);
-        const condition = this.module.f64.ge(this.generateExpression(node.end), this.module.global.get(varName, varType));
-        const step = this.module.global.set(varName, this.module.f64.add(this.module.global.get(varName, varType), this.generateExpression(node.step)));
+        const variable = this.module.global.get(varName, varType);
+
+        let condition: ExpressionRef;
+
+        if (varType === binaryen.i32) {
+            condition = this.module.f64.ge(this.generateExpression(node.end), this.module.f64.convert_s.i32(variable));
+        }
+        else {
+            condition = this.module.f64.ge(this.generateExpression(node.end), variable);
+        }
+
+        let step: ExpressionRef;
+        if (varType === binaryen.i32) {
+            // two ways here that can be used
+            // 1. add the step to the variable as f64 and then convert it to an i32
+            // 2. convert the expression into an i32 and then add it to the variable
+            // although in the whole program generator everything is converted into f64 and then back to i32
+            // both of them work so I use the second one because it's shorter
+            step = this.module.global.set(varName, this.module.i32.add(variable, this.module.i32.trunc_s.f64(this.generateExpression(node.step))));
+        }
+        else {
+            step = this.module.global.set(varName, this.module.f64.add(variable, this.generateExpression(node.step)));
+        }
+
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));
         return this.module.block(null, [init, this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)))]);

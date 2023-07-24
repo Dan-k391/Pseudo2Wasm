@@ -1,5 +1,7 @@
+import binaryen from "binaryen";
 import { Token } from "./scanning/token";
 import { VarType } from "./variable";
+import { RuntimeError } from "./error";
 
 export function convertToVarType(type: Token): VarType {
     switch (type.lexeme) {
@@ -14,6 +16,24 @@ export function convertToVarType(type: Token): VarType {
         case "BOOLEAN":
             return VarType.BOOL;
         default:
-            throw new Error("Unknown type '" + type.lexeme + "'");
+            throw new RuntimeError("Unknown type '" + type.lexeme + "'");
+    }
+}
+
+
+export function convertToBinaryenType(type: Token): binaryen.Type {
+    switch (type.lexeme) {
+        case "INTEGER":
+            return binaryen.i32;
+        case "REAL":
+            return binaryen.f64;
+        case "CHAR":
+            return binaryen.i32;
+        case "STRING":
+            return binaryen.i32;
+        case "BOOLEAN":
+            return binaryen.i32;
+        default:
+            throw new RuntimeError("Unknown type '" + type.lexeme + "'");
     }
 }

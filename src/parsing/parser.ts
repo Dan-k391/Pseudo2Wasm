@@ -2,11 +2,7 @@
  * This parser is also highly overlapping with "https://craftinginterpreters.com/parsing-expressions.html"
  * (perhaps I would change it in the future)
  * 
- * I personally do not like doing this his way of writing the parser. However, due to the fact that he has
- * published a book and I am just a high school student, I prefer to believe that his logic on the parser
- * is better than mine for others to understand.
- * 
- * Furthermore, I strongly recommend the book above (It really helped on my first hand-writen parser).
+ * I strongly recommend the book above (It really helped on my first hand-writen parser).
  * 
  */
 

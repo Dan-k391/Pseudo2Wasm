@@ -50,7 +50,7 @@ export class Function {
     private enclosing: Generator;
     private ident: string;
     // Params are initialized to a Map in the generator
-    private params: Map<string, _Symbol>;
+    public params: Map<string, _Symbol>;
     // The only public variable
     public returnType: Type;
     private body: Array<Stmt>;
@@ -87,7 +87,7 @@ export class Function {
         }
 
         // FIXME: single returnType has problem here
-        this.module.addFunction(this.ident, paramType, binaryen.f64, vars, funcBlock);
+        this.module.addFunction(this.ident, paramType, this.returnType, vars, funcBlock);
     }
 
     private setTypeForLocal(name: string, type: Type): _Symbol {
@@ -105,7 +105,7 @@ export class Function {
         return this.locals.get(name) as _Symbol;
     }
 
-    private getSymbolForParam(name: string): _Symbol {
+    public getSymbolForParam(name: string): _Symbol {
         if (!this.params.has(name)) {
             // if not a param try to get from the global scope
             // return this.getSymbolForGlobal(name);
@@ -124,6 +124,8 @@ export class Function {
                 return this.varExpression(expression as VarExprNode);
             case nodeKind.CallFunctionExprNode:
                 return this.callFunctionExpression(expression as CallFunctionExprNode);
+            case nodeKind.CallProcedureExprNode:
+                return this.callProcedureExpression(expression as CallProcedureExprNode);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
@@ -142,7 +144,12 @@ export class Function {
     private varAssignExpression(node: VarAssignNode): ExpressionRef {
         if (this.locals.has(node.ident.lexeme) || this.params.has(node.ident.lexeme)) {
             const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
-            return this.module.local.set(varIndex, this.generateExpression(node.expr));
+            const varType = this.getSymbolForLocal(node.ident.lexeme).type;
+            const rhs = this.generateExpression(node.expr);
+            if (varType === binaryen.i32) {
+                return this.module.local.set(varIndex, this.module.i32.trunc_s.f64(rhs));
+            }
+            return this.module.local.set(varIndex, rhs);
         }
         else {
             return this.enclosing.varAssignExpression(node);
@@ -153,7 +160,11 @@ export class Function {
         if (this.locals.has(node.ident.lexeme) || this.params.has(node.ident.lexeme)) {
             const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
             const varType = this.getSymbolForLocal(node.ident.lexeme).type;
-            return this.module.local.get(varIndex, varType);
+            const variable = this.module.local.get(varIndex, varType);
+            if (varType === binaryen.i32) {
+                return this.module.f64.convert_s.i32(variable);
+            }
+            return variable;
         }
         else {
             return this.enclosing.varExpression(node);
@@ -164,14 +175,54 @@ export class Function {
         if (node.callee.kind == nodeKind.VarExprNode) {
             const funcName = (node.callee as VarExprNode).ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
-            for (const arg of node.args) {
+            const func = this.enclosing.getFunction(funcName);
+            if (func.params.size !== node.args.length) {
+                throw new RuntimeError("Function '" + funcName + "' expects " + func.params.size + " arguments, but " + node.args.length + " are provided");
+            }
+            for (let i = 0, paramNames = Array.from(func.params.keys()); i < node.args.length; i++) {
+                const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                funcArgs.push(expr);
+                const paramType = func.getSymbolForParam(paramNames[i]).type;
+                if (paramType === binaryen.i32) {
+                    funcArgs.push(this.module.i32.trunc_s.f64(expr));
+                }
+                else {
+                    funcArgs.push(expr);
+                }
             }
             const returnType = this.enclosing.getFunction(funcName).returnType;
+            if (returnType === binaryen.i32) {
+                return this.module.f64.convert_s.i32(this.module.call(funcName, funcArgs, binaryen.f64));
+            }
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported
+        return -1;
+    }
+
+    private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
+        if (node.callee.kind === nodeKind.VarExprNode) {
+            const procName = (node.callee as VarExprNode).ident.lexeme;
+            const procArgs = new Array<ExpressionRef>();
+            const proc = this.enclosing.getProcedure(procName);
+            if (proc.params.size !== node.args.length) {
+                throw new RuntimeError("Procedure '" + procName + "' expects " + proc.params.size + " arguments, but " + node.args.length + " are provided");
+            }
+
+            for (let i = 0, paramNames = Array.from(proc.params.keys()); i < node.args.length; i++) {
+                const arg = node.args[i];
+                const expr = this.generateExpression(arg);
+                const paramType = proc.getSymbolForParam(paramNames[i]).type;
+                if (paramType === binaryen.i32) {
+                    procArgs.push(this.module.i32.trunc_s.f64(expr));
+                }
+                else {
+                    procArgs.push(expr);
+                }
+            }
+            return this.module.call(procName, procArgs, binaryen.none);
+        }
+        // FIXME: The complicated call possibilities are not supported (calling a complex expression)
         return -1;
     }
 
@@ -254,6 +305,9 @@ export class Function {
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
+        if (this.returnType === binaryen.i32) {
+            return this.module.return(this.module.i32.trunc_s.f64(this.generateExpression(node.expr)));
+        }
         return this.module.return(this.generateExpression(node.expr));
     }
 
@@ -319,11 +373,36 @@ export class Function {
         const varIndex = this.getSymbolForLocal(varName).index;
         const varType = this.getSymbolForLocal(varName).type;
 
-        const init = this.module.local.set(this.getSymbolForLocal(varName).index, this.generateExpression(node.start));
+        const initExpr = this.generateExpression(node.start);
+
+        let init: ExpressionRef;
+        if (varType === binaryen.i32) {
+            init = this.module.local.set(varIndex, this.module.i32.trunc_s.f64(initExpr));
+        }
+        else {
+            init = this.module.local.set(varIndex, initExpr);
+        }
 
         const statements = this.generateStatements(node.body);
-        const condition = this.module.f64.ge(this.generateExpression(node.end), this.module.local.get(varIndex, varType));
-        const step = this.module.local.set(varIndex, this.module.f64.add(this.module.local.get(varIndex, varType), this.generateExpression(node.step)));
+        const variable = this.module.local.get(varIndex, varType);
+
+        let condition: ExpressionRef;
+
+        if (varType === binaryen.i32) {
+            condition = this.module.f64.ge(this.generateExpression(node.end), this.module.f64.convert_s.i32(variable));
+        }
+        else {
+            condition = this.module.f64.ge(this.generateExpression(node.end), variable);
+        }
+
+        let step: ExpressionRef;
+        if (varType === binaryen.i32) {
+            step = this.module.local.set(varIndex, this.module.i32.add(variable, this.module.i32.trunc_s.f64(this.generateExpression(node.step))));
+        }
+        else {
+            step = this.module.local.set(varIndex, this.module.f64.add(variable, this.generateExpression(node.step)));
+        }
+
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));
         return this.module.block(null, [init, this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)))]);
