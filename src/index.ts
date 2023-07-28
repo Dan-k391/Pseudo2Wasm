@@ -1,5 +1,6 @@
 // TODO: add ts type to every statement
 
+import binaryen from "binaryen";
 import { Compiler } from "./compiler";
 import { Interpreter } from "./interpreter";
 
@@ -275,11 +276,11 @@ async function interpretTest() {
 }
 
 compileTest().then(() => {
-//     fetch("http://127.0.0.1:5570/wasmtry/temp.wasm")
-//     .then((response) => response.arrayBuffer())
-//     .then((buffer) => new Uint8Array(buffer))
-//     .then((array) => binaryen.readBinary(array))
-//     .then((module) => {module.optimize(); console.log(module.emitText())});
+    // fetch("http://127.0.0.1:5570/wasmtry/pointer.wasm")
+    // .then((response) => response.arrayBuffer())
+    // .then((buffer) => new Uint8Array(buffer))
+    // .then((array) => binaryen.readBinary(array))
+    // .then((module) => {console.log(module.emitText())});
 
     // const instance = new WebAssembly.Instance(module);
     console.log(`compileCount: ${compileCount}/${total}`);

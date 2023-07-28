@@ -76,6 +76,7 @@ export class Compiler {
                 buffer: memory,
                 logNumber: (output: number) => {
                     correct = (output == expected);
+                    console.log(output);
                 },
                 logString: (output: number) => {
                     const bytes = new Uint8Array(memory.buffer, output);

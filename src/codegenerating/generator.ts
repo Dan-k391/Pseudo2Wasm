@@ -19,6 +19,7 @@ import {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
+    PointerDeclNode,
     TypeDefNode,
     VarAssignNode,
     ArrAssignNode,
@@ -44,6 +45,7 @@ import {
 import { Function } from "./function";
 import { Procedure } from "./procedure";
 import { convertToBinaryenType } from "../util";
+import { node } from "webpack";
 
 
 // TODO: maybe new a common file to contain these
@@ -398,6 +400,8 @@ export class Generator {
                 return this.outputStatement(statement as OutputNode);
             case nodeKind.VarDeclNode:
                 return this.varDeclStatement(statement as VarDeclNode);
+            case nodeKind.PointerDeclNode:
+                return this.pointerDeclStatement(statement as PointerDeclNode);
             case nodeKind.IfNode:
                 return this.ifStatement(statement as IfNode);
             case nodeKind.WhileNode:
@@ -416,6 +420,13 @@ export class Generator {
     }
 
     private varDeclStatement(node: VarDeclNode): ExpressionRef {
+        const varName = node.ident.lexeme;
+        const binaryenType = convertToBinaryenType(node.type);
+        this.setGlobalTypeForSymbol(varName, binaryenType);
+        return this.module.global.set(varName, this.generateConstant(binaryenType, 0));
+    }
+
+    private pointerDeclStatement(node: PointerDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         const binaryenType = convertToBinaryenType(node.type);
         this.setGlobalTypeForSymbol(varName, binaryenType);
