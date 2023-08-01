@@ -188,7 +188,8 @@ export class Scanner {
             throw new SyntaxError("Unterminated char", this.line, this.start, this.current);
         }
         // char only contains a single character
-        else if (this.current - this.start > 1) {
+        // the first character is the '
+        else if (this.current - this.start > 2) {
             throw new SyntaxError("Char contains only a single character", this.line, this.start, this.current);
         }
 

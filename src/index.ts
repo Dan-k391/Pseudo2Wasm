@@ -2,7 +2,6 @@
 
 import binaryen from "binaryen";
 import { Compiler } from "./compiler";
-import { Interpreter } from "./interpreter";
 
 
 const code0 = `OUTPUT 1 + 9
@@ -171,12 +170,20 @@ const code15 = `FUNCTION add(a:REAL, b:REAL) RETURNS REAL
     RETURN c
 ENDFUNCTION
 
-DECLARE i:REAL
-DECLARE j:REAL
+DECLARE i: REAL
+DECLARE j: REAL
 
 i <- 1.1
 j <- 2.2
 OUTPUT add(i, j)
+`
+
+const code16 = `OUTPUT 'a'`
+
+const code17 = `DECLARE i: CHAR
+i <- 'v'
+
+OUTPUT i
 `
 
 // const code11 = `TYPE a = ^INTEGER
@@ -195,8 +202,6 @@ OUTPUT add(i, j)
 // OUTPUT a^
 // `
 
-
-
 const codes = [
     code0,
     code1,
@@ -214,8 +219,11 @@ const codes = [
     code13,
     code14,
     code15,
+    code16,
+    code17
 ];
-const expected = [10, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/];
+const expected = [10, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
+    , 'a', 'v'];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
@@ -250,30 +258,8 @@ async function compileTest() {
     }
 }
 
-async function interpretTest() {
-    for (let i = 0; i < total; i++) {
-        console.log(i);
-        console.log(codes[i]);
-        const interpreter = new Interpreter(codes[i]);
-        try {
-            interpreter.interpret();
-            compileCount++;
-        } 
-        catch (e) {
-            console.log(e);
-            compileFailed.push(i);
-        }
 
-        try {
-            await interpreter.test();
-            runCount++;
-        }
-        catch (e) {
-            console.log(e);
-            runFailed.push(i);
-        }
-    }
-}
+// The interpreter part now is under the interpreter branch, and it is not finished
 
 compileTest().then(() => {
     // fetch("http://127.0.0.1:5570/wasmtry/pointer.wasm")

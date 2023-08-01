@@ -59,7 +59,7 @@ export class Compiler {
     }
 
     // the test function
-    async test(expected: number): Promise<Boolean> {
+    async test(expected: number | string): Promise<Boolean> {
         let correct = false;
 
         const module = this.compile();

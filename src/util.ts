@@ -14,14 +14,14 @@ export function convertToVarType(type: Token): VarType {
         case "STRING":
             return VarType.STRING;
         case "BOOLEAN":
-            return VarType.BOOL;
+            return VarType.BOOLEAN;
         default:
             throw new RuntimeError("Unknown type '" + type.lexeme + "'");
     }
 }
 
 
-export function convertToBinaryenType(type: Token): binaryen.Type {
+export function convertToWasmType(type: Token): binaryen.Type {
     switch (type.lexeme) {
         case "INTEGER":
             return binaryen.i32;

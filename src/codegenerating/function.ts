@@ -38,6 +38,9 @@ import {
     InputNode
 } from "../ast";
 import { Generator } from "./generator";
+import { convertToVarType, convertToWasmType } from "../util";
+import { LocalTable } from "./local";
+import { VarType } from "../variable";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -49,23 +52,23 @@ export class Function {
     // I have no better idea for the name of the outergenerator instead of 'enclosing'
     private enclosing: Generator;
     private ident: string;
-    // Params are initialized to a Map in the generator
-    public params: Map<string, _Symbol>;
-    // The only public variable
+    // Public variable
     public returnType: Type;
     private body: Array<Stmt>;
-    // TODO: change the data structure here
-    private locals: Map<string, _Symbol>;
+    // public params
+    public params: LocalTable;
+    // updated data structure
+    private locals: LocalTable;
     private label: number;
 
-    constructor(module: Module, enclosing: Generator, ident: string, params: Map<string, _Symbol>, returnType: Type, body: Array<Stmt>) {
+    constructor(module: Module, enclosing: Generator, ident: string, params: LocalTable, returnType: Type, body: Array<Stmt>) {
         this.module = module;
         this.enclosing = enclosing;
         this.ident = ident;
         this.params = params;
         this.returnType = returnType;
         this.body = body;
-        this.locals = new Map<string, _Symbol>();
+        this.locals = new LocalTable();
         this.label = 0;
     }
 
@@ -73,8 +76,8 @@ export class Function {
         // FIXME: fix the type conversion, also only supports BYVAL currently
         const paramTypes = new Array<Type>();
 
-        for (const param of this.params.values()) {
-            paramTypes.push(param.type);
+        for (const wasmType of this.params.wasmTypes.values()) {
+            paramTypes.push(wasmType);
         }
 
         const paramType = binaryen.createType(paramTypes);
@@ -82,37 +85,71 @@ export class Function {
         const funcBlock = this.generateBlock(this.body);
         const vars = new Array<Type>();
 
-        for (const local of this.locals.values()) {
-            vars.push(local.type);
+        for (const wasmType of this.locals.wasmTypes.values()) {
+            vars.push(wasmType);
         }
 
         // FIXME: single returnType has problem here
         this.module.addFunction(this.ident, paramType, this.returnType, vars, funcBlock);
     }
 
-    private setTypeForLocal(name: string, type: Type): _Symbol {
-        if (!this.locals.has(name) && !this.params.has(name)) {
-            this.locals.set(name, new _Symbol(this.locals.size + this.params.size, type));
+    private generateConstant(type: Type, value: number): ExpressionRef {
+        if (type === binaryen.i32) {
+            return this.module.i32.const(value);
         }
-        return this.getSymbolForLocal(name);
+        else if (type === binaryen.f64) {
+            return this.module.f64.const(value);
+        }
+        throw new RuntimeError("Unknown type '" + type + "'");
     }
 
-    private getSymbolForLocal(name: string): _Symbol {
-        if (!this.locals.has(name)) {
-            return this.getSymbolForParam(name);
-        }
-
-        return this.locals.get(name) as _Symbol;
+    // returns bask the index
+    private setLocal(name: string, type: VarType, wasmType: Type): number {
+        const index = this.params.size() + this.locals.size();
+        this.locals.set(name, type, wasmType, index);
+        return index;
     }
 
-    public getSymbolForParam(name: string): _Symbol {
-        if (!this.params.has(name)) {
-            // if not a param try to get from the global scope
-            // return this.getSymbolForGlobal(name);
+    private getTypeForLocal(name: string): VarType {
+        if (!this.locals.names.includes(name)) {
+            return this.getTypeForParam(name);
+        }
+        return this.locals.getType(name);
+    }
+
+    private getTypeForParam(name: string): Type {
+        if (!this.params.names.includes(name)) {
             throw new RuntimeError("Symbol '" + name + "' is not declared");
         }
+        return this.params.getType(name);
+    }
 
-        return this.params.get(name) as _Symbol;
+    private getWasmTypeForLocal(name: string): Type {
+        if (!this.locals.names.includes(name)) {
+            return this.getWasmTypeForParam(name);
+        }
+        return this.locals.getWasmType(name);
+    }
+
+    private getWasmTypeForParam(name: string): Type {
+        if (!this.params.names.includes(name)) {
+            throw new RuntimeError("Symbol '" + name + "' is not declared");
+        }
+        return this.params.getWasmType(name);
+    }
+
+    private getIndexForLocal(name: string): number {
+        if (!this.locals.names.includes(name)) {
+            return this.getIndexForParam(name);
+        }
+        return this.locals.getIndex(name);
+    }
+
+    private getIndexForParam(name: string): number {
+        if (!this.params.names.includes(name)) {
+            throw new RuntimeError("Symbol '" + name + "' is not declared");
+        }
+        return this.params.getIndex(name);
     }
 
     // Expressions
@@ -142,11 +179,12 @@ export class Function {
     }
 
     private varAssignExpression(node: VarAssignNode): ExpressionRef {
-        if (this.locals.has(node.ident.lexeme) || this.params.has(node.ident.lexeme)) {
-            const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
-            const varType = this.getSymbolForLocal(node.ident.lexeme).type;
+        const varName = node.ident.lexeme;
+        if (this.params.names.includes(varName) || this.locals.names.includes(varName)) {
+            const varIndex = this.getIndexForLocal(varName);
+            const wasmType = this.getWasmTypeForLocal(varName);
             const rhs = this.generateExpression(node.expr);
-            if (varType === binaryen.i32) {
+            if (wasmType === binaryen.i32) {
                 return this.module.local.set(varIndex, this.module.i32.trunc_s.f64(rhs));
             }
             return this.module.local.set(varIndex, rhs);
@@ -157,11 +195,13 @@ export class Function {
     }
 
     private varExpression(node: VarExprNode): ExpressionRef {
-        if (this.locals.has(node.ident.lexeme) || this.params.has(node.ident.lexeme)) {
-            const varIndex = this.getSymbolForLocal(node.ident.lexeme).index;
-            const varType = this.getSymbolForLocal(node.ident.lexeme).type;
-            const variable = this.module.local.get(varIndex, varType);
-            if (varType === binaryen.i32) {
+        const varName = node.ident.lexeme;
+        // first param then local
+        if (this.params.names.includes(varName) || this.locals.names.includes(varName)) {
+            const paramIndex = this.getIndexForLocal(varName);
+            const wasmType = this.getWasmTypeForLocal(varName);
+            const variable = this.module.local.get(paramIndex, wasmType);
+            if (wasmType === binaryen.i32) {
                 return this.module.f64.convert_s.i32(variable);
             }
             return variable;
@@ -176,14 +216,14 @@ export class Function {
             const funcName = (node.callee as VarExprNode).ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
             const func = this.enclosing.getFunction(funcName);
-            if (func.params.size !== node.args.length) {
+            if (func.params.size() !== node.args.length) {
                 throw new RuntimeError("Function '" + funcName + "' expects " + func.params.size + " arguments, but " + node.args.length + " are provided");
             }
-            for (let i = 0, paramNames = Array.from(func.params.keys()); i < node.args.length; i++) {
+            for (let i = 0, paramNames = func.params.names; i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                const paramType = func.getSymbolForParam(paramNames[i]).type;
-                if (paramType === binaryen.i32) {
+                const wasmType = func.params.getWasmType(paramNames[i]);
+                if (wasmType === binaryen.i32) {
                     funcArgs.push(this.module.i32.trunc_s.f64(expr));
                 }
                 else {
@@ -205,15 +245,15 @@ export class Function {
             const procName = (node.callee as VarExprNode).ident.lexeme;
             const procArgs = new Array<ExpressionRef>();
             const proc = this.enclosing.getProcedure(procName);
-            if (proc.params.size !== node.args.length) {
+            if (proc.params.size() !== node.args.length) {
                 throw new RuntimeError("Procedure '" + procName + "' expects " + proc.params.size + " arguments, but " + node.args.length + " are provided");
             }
 
-            for (let i = 0, paramNames = Array.from(proc.params.keys()); i < node.args.length; i++) {
+            for (let i = 0, paramNames = proc.params.names; i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                const paramType = proc.getSymbolForParam(paramNames[i]).type;
-                if (paramType === binaryen.i32) {
+                const wasmType = proc.params.getWasmType(paramNames[i]);
+                if (wasmType === binaryen.i32) {
                     procArgs.push(this.module.i32.trunc_s.f64(expr));
                 }
                 else {
@@ -312,9 +352,11 @@ export class Function {
     }
 
     private varDeclStatement(node: VarDeclNode): ExpressionRef {
-        // FIXME: single type problem
-        const index = this.setTypeForLocal(node.ident.lexeme, binaryen.f64).index;
-        return this.module.local.set(index, this.module.f64.const(0));
+        const varName = node.ident.lexeme;
+        const varType = convertToVarType(node.type);
+        const wasmType = convertToWasmType(node.type);
+        const varIndex = this.setLocal(varName, varType, wasmType)
+        return this.module.local.set(varIndex, this.generateConstant(wasmType, 0));
     }
 
     private ifStatement(node: IfNode): ExpressionRef {
@@ -370,13 +412,13 @@ export class Function {
         //  )
         // )
         const varName = node.ident.lexeme;
-        const varIndex = this.getSymbolForLocal(varName).index;
-        const varType = this.getSymbolForLocal(varName).type;
+        const varIndex = this.getIndexForLocal(varName);
+        const wasmType = this.getWasmTypeForLocal(varName);
 
         const initExpr = this.generateExpression(node.start);
 
         let init: ExpressionRef;
-        if (varType === binaryen.i32) {
+        if (wasmType === binaryen.i32) {
             init = this.module.local.set(varIndex, this.module.i32.trunc_s.f64(initExpr));
         }
         else {
@@ -384,11 +426,11 @@ export class Function {
         }
 
         const statements = this.generateStatements(node.body);
-        const variable = this.module.local.get(varIndex, varType);
+        const variable = this.module.local.get(varIndex, wasmType);
 
         let condition: ExpressionRef;
 
-        if (varType === binaryen.i32) {
+        if (wasmType === binaryen.i32) {
             condition = this.module.f64.ge(this.generateExpression(node.end), this.module.f64.convert_s.i32(variable));
         }
         else {
@@ -396,7 +438,7 @@ export class Function {
         }
 
         let step: ExpressionRef;
-        if (varType === binaryen.i32) {
+        if (wasmType === binaryen.i32) {
             step = this.module.local.set(varIndex, this.module.i32.add(variable, this.module.i32.trunc_s.f64(this.generateExpression(node.step))));
         }
         else {
