@@ -36,7 +36,8 @@ export const enum nodeKind {
     BinaryExprNode,
     PointerExprNode,
     LocationExprNode,
-    NumberExprNode,
+    IntegerExprNode,
+    RealExprNode,
     CharExprNode,
     StringExprNode,
     BoolExprNode,
@@ -403,17 +404,33 @@ export class LocationExprNode extends Expr {
     }
 }
 
-// integers and reals are both numbers, currently
-export class NumberExprNode extends Expr {
+export class IntegerExprNode extends Expr {
     public value: number;
 
     constructor(value: number) {
-        super(nodeKind.NumberExprNode);
+        super(nodeKind.IntegerExprNode);
         this.value = value;
     }
 
     public toString(): string {
-        return "NumberExprNode";
+        return "IntegerExprNode";
+    }
+
+    public evaluate(environment: Environment): number {
+        return this.value;
+    }
+}
+
+export class RealExprNode extends Expr {
+    public value: number;
+
+    constructor(value: number) {
+        super(nodeKind.RealExprNode);
+        this.value = value;
+    }
+
+    public toString(): string {
+        return "RealExprNode";
     }
 
     public evaluate(environment: Environment): number {

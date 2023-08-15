@@ -30,7 +30,8 @@ import {
     CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
-    NumberExprNode,
+    IntegerExprNode,
+    RealExprNode,
     CharExprNode,
     StringExprNode,
     BoolExprNode,
@@ -114,7 +115,7 @@ export class Procedure {
         return this.locals.getType(name);
     }
 
-    private getTypeForParam(name: string): Type {
+    private getTypeForParam(name: string): VarType {
         if (!this.params.names.includes(name)) {
             throw new RuntimeError("Symbol '" + name + "' is not declared");
         }
@@ -164,8 +165,8 @@ export class Procedure {
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
                 return this.binaryExpression(expression as BinaryExprNode);
-            case nodeKind.NumberExprNode:
-                return this.enclosing.numberExpression(expression as NumberExprNode);
+            case nodeKind.IntegerExprNode:
+                return this.enclosing.integerExpression(expression as IntegerExprNode);
             // case nodeKind.CharExprNode:
             //     return this.charExpression(expression as CharExprNode);
             // case nodeKind.StringExprNode:
@@ -227,7 +228,7 @@ export class Procedure {
                     funcArgs.push(expr);
                 }
             }
-            const returnType = this.enclosing.getFunction(funcName).returnType;
+            const returnType = this.enclosing.getFunction(funcName).wasmReturnType;
             if (returnType === binaryen.i32) {
                 return this.module.f64.convert_s.i32(this.module.call(funcName, funcArgs, binaryen.f64));
             }

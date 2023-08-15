@@ -36,7 +36,8 @@ import {
     BinaryExprNode,
     PointerExprNode,
     LocationExprNode,
-    NumberExprNode,
+    IntegerExprNode,
+    RealExprNode,
     CharExprNode,
     StringExprNode,
     BoolExprNode,
@@ -201,8 +202,8 @@ export class Parser {
     private primary(): Expr {
         if (this.match(tokenType.FALSE)) return new BoolExprNode(false);
         if (this.match(tokenType.TRUE)) return new BoolExprNode(true);
-        if (this.match(tokenType.INTEGER)) return new NumberExprNode(this.previous().literal);
-        if (this.match(tokenType.REAL)) return new NumberExprNode(this.previous().literal);
+        if (this.match(tokenType.INTEGER)) return new IntegerExprNode(this.previous().literal);
+        if (this.match(tokenType.REAL)) return new RealExprNode(this.previous().literal);
         if (this.match(tokenType.CHAR)) return new CharExprNode(this.previous().literal);
         if (this.match(tokenType.STRING)) return new StringExprNode(this.previous().literal);
         if (this.match(tokenType.IDENTIFIER)) return new VarExprNode(this.previous());
@@ -314,7 +315,7 @@ export class Parser {
         const end: Expr = this.expression();
         
         // step expression
-        let step: Expr = new NumberExprNode(1);
+        let step: Expr = new IntegerExprNode(1);
         if (this.match(tokenType.STEP)) {
             step = this.expression();
         }

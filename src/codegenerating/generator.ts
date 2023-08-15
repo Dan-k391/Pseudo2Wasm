@@ -34,7 +34,8 @@ import {
     CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
-    NumberExprNode,
+    IntegerExprNode,
+    RealExprNode,
     CharExprNode,
     StringExprNode,
     BoolExprNode,
@@ -47,7 +48,7 @@ import { Procedure } from "./procedure";
 import { convertToVarType, convertToWasmType } from "../util";
 import { GlobalTable } from "./global";
 import { LocalTable } from "./local";
-
+import { VarType } from "../variable";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -83,7 +84,9 @@ export class Generator {
 
     public generate(): Module {
         // createType although it is useless
-        this.module.addFunctionImport("logNumber", "env", "logNumber", binaryen.createType([binaryen.f64]), binaryen.none);
+        this.module.addFunctionImport("logInteger", "env", "logInteger", binaryen.createType([binaryen.i32]), binaryen.none);
+        this.module.addFunctionImport("logReal", "env", "logReal", binaryen.createType([binaryen.f64]), binaryen.none);
+        this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addMemoryImport("buffer", "env", "buffer");
 
@@ -148,6 +151,193 @@ export class Generator {
     //     this.module.addFunctionExport("main", "main");
     // }
 
+    private convertType(current: VarType, target: VarType, expression: ExpressionRef): ExpressionRef {
+        switch (current) {
+            case VarType.INTEGER:
+                // no need to convert for INTEGER, CHAR and BOOLEAN
+                if (target == VarType.INTEGER || target == VarType.CHAR || target == VarType.BOOLEAN) {
+                    return expression;
+                }
+                else if (target == VarType.REAL) {
+                    return this.module.f64.convert_s.i32(expression);
+                }
+                throw new RuntimeError("Cannot convert" + current + "to" + target);
+            case VarType.REAL:
+                if (target == VarType.INTEGER) {
+                    return this.module.i32.trunc_s.f64(expression);
+                }
+                else if (target == VarType.REAL) {
+                    return expression;
+                }
+                throw new RuntimeError("Cannot convert" + current + "to" + target);
+            case VarType.CHAR:
+                if (target == VarType.INTEGER || target == VarType.CHAR || target == VarType.BOOLEAN) {
+                    return expression;
+                }
+                throw new RuntimeError("Cannot convert" + current + "to" + target);
+            case VarType.STRING:
+                throw new RuntimeError("Cannot convert" + current + "to" + target);
+            case VarType.BOOLEAN:
+                if (target == VarType.INTEGER || target == VarType.CHAR || target == VarType.BOOLEAN) {
+                    return expression;
+                }
+                throw new RuntimeError("Cannot convert" + current + "to" + target);
+            default:
+                return expression;
+        }
+    }
+
+    private resolveType(expression: Expr): VarType {
+        switch (expression.kind) {
+            // FIXME: some cases such as assignment are not considered
+            // maybe not need to be fixed, keep this FIXME though
+            case nodeKind.VarExprNode:
+                return this.resolveVarExprNodeType(expression as VarExprNode);
+            case nodeKind.CallFunctionExprNode:
+                return this.resolveCallFunctionExprNodeType(expression as CallFunctionExprNode);
+            case nodeKind.UnaryExprNode:
+                // The type of a expression remains the same after a unary operation 
+                // (as far as I can think)
+                return this.resolveType((expression as UnaryExprNode).expr);
+            case nodeKind.BinaryExprNode:
+                return this.resolveBinaryExprNodeType(expression as BinaryExprNode);
+            case nodeKind.IntegerExprNode:
+                return VarType.INTEGER;
+            case nodeKind.RealExprNode:
+                return VarType.REAL;
+            case nodeKind.CharExprNode:
+                return VarType.CHAR;
+            // case nodeKind.StringExprNode:
+            //     return VarType.STRING;
+            default:
+                return VarType.NONE;
+        }
+    }
+
+    private resolveVarExprNodeType(node: VarExprNode): VarType {
+        return this.globals.getType(node.ident.lexeme);
+    }
+
+    private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): VarType {
+        // FIXME: complicated expression calls are not implemented
+        if (node.callee.kind === nodeKind.VarExprNode) {
+            const funcName = (node.callee as VarExprNode).ident.lexeme;
+            return this.getFunction(funcName).returnType;
+        }
+        throw new RuntimeError("Not implemented yet");
+    }
+
+    private resolveBinaryExprNodeType(node: BinaryExprNode): VarType {
+        const leftType = this.resolveType(node.left);
+        const rightType = this.resolveType(node.right);
+        switch (node.operator.type) {
+            // arithmetic operations
+            case tokenType.PLUS:
+            case tokenType.MINUS:
+            case tokenType.STAR:
+            case tokenType.SLASH:
+                switch (leftType) {
+                    case VarType.INTEGER:
+                        // TODO: optimize the type resolving system here
+                        // The rules here may be incorret or not appropriate (fix it if needed)
+                        // The rule: INTEGER ARITHOP CHAR is INTEGER
+                        // CHAR ARITHOP INTEGER is CHAR
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.INTEGER;
+                        }
+                        else if (rightType == VarType.REAL) {
+                            return VarType.REAL;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.REAL:
+                        if (rightType == VarType.INTEGER || rightType == VarType.REAL) {
+                            return VarType.REAL;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.CHAR:
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.INTEGER;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.STRING:
+                        // FIXME: handle concat
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.BOOLEAN:
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.INTEGER;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                }
+            // logical operators
+            case tokenType.EQUAL:
+            case tokenType.LESS_GREATER:
+            case tokenType.LESS:
+            case tokenType.GREATER:
+            case tokenType.LESS_EQUAL:
+            case tokenType.GREATER_EQUAL:
+                // TODO: optimize the code
+                switch (leftType) {
+                    case VarType.INTEGER:
+                        if (rightType == VarType.INTEGER || rightType == VarType.REAL || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.REAL:
+                        if (rightType == VarType.INTEGER || rightType == VarType.REAL) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.CHAR:
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN || VarType.STRING) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.STRING:
+                        if (rightType == VarType.CHAR || rightType == VarType.STRING) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.BOOLEAN:
+                        if (rightType == VarType.INTEGER || rightType == VarType.BOOLEAN) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                }
+            // return anything here, it never comes to this step
+            default:
+                return VarType.NONE;
+        }
+    }
+
+    private minimalCompatableType(leftType: VarType, rightType: VarType): VarType {
+        if (leftType == VarType.INTEGER) {
+            if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                return VarType.INTEGER;
+            }
+            else if (rightType == VarType.REAL) {
+                return VarType.REAL;
+            }
+        }
+        else if (leftType == VarType.REAL) {
+            if (rightType == VarType.INTEGER || rightType == VarType.REAL) {
+                return VarType.REAL;
+            }
+        }
+        else if (leftType == VarType.CHAR) {
+            if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                return VarType.INTEGER;
+            }
+        }
+        // else if (leftType == VarType.STRING) {
+        // }
+        else if (leftType == VarType.BOOLEAN) {
+            if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                return VarType.INTEGER;
+            }
+        }
+        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+    }
+
 
     // returns the main functionref to be the start
     private generateBody(body: Array<Stmt>): FunctionRef {
@@ -173,7 +363,7 @@ export class Generator {
             index++;
         }
 
-        const func = new Function(this.module, this, funcName, funcParams, convertToWasmType(node.type), node.body);
+        const func = new Function(this.module, this, funcName, funcParams, convertToVarType(node.type), convertToWasmType(node.type), node.body);
 
         this.setFunction(funcName, func);
         this.getFunction(funcName).generate();
@@ -198,7 +388,7 @@ export class Generator {
     }
 
     // Expressions
-    protected generateExpression(expression: Expr): ExpressionRef {
+    private generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.VarAssignNode:
                 return this.varAssignExpression(expression as VarAssignNode);
@@ -212,8 +402,10 @@ export class Generator {
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
                 return this.binaryExpression(expression as BinaryExprNode);
-            case nodeKind.NumberExprNode:
-                return this.numberExpression(expression as NumberExprNode);
+            case nodeKind.IntegerExprNode:
+                return this.integerExpression(expression as IntegerExprNode);
+            case nodeKind.RealExprNode:
+                return this.realExpression(expression as RealExprNode);
             case nodeKind.CharExprNode:
                 return this.charExpression(expression as CharExprNode);
             // case nodeKind.StringExprNode:
@@ -225,23 +417,16 @@ export class Generator {
 
     public varAssignExpression(node: VarAssignNode): ExpressionRef {
         const varName = node.ident.lexeme;
-        const wasmType = this.globals.getWasmType(varName);
+        const varType = this.globals.getType(varName);
         const rhs = this.generateExpression(node.expr);
-        if (wasmType === binaryen.i32) {
-            return this.module.global.set(varName, this.module.i32.trunc_s.f64(rhs));
-        }
-        return this.module.global.set(varName, rhs);
+        const rightType = this.resolveType(node.expr);
+        return this.module.global.set(varName, this.convertType(rightType, varType, rhs));
     }
 
     public varExpression(node: VarExprNode): ExpressionRef {
         const varName = node.ident.lexeme;
         const wasmType = this.globals.getWasmType(varName);
         const variable = this.module.global.get(varName, wasmType);
-        // if the type is i32, convert it to f64
-        if (wasmType === binaryen.i32) {
-            return this.module.f64.convert_s.i32(variable);
-        }
-        // otherwise the type is f64
         return variable;
     }
 
@@ -264,7 +449,7 @@ export class Generator {
                     funcArgs.push(expr);
                 }
             }
-            const returnType = this.getFunction(funcName).returnType;
+            const returnType = this.getFunction(funcName).wasmReturnType;
             if (returnType === binaryen.i32) {
                 return this.module.f64.convert_s.i32(this.module.call(funcName, funcArgs, binaryen.f64));
             }
@@ -311,36 +496,83 @@ export class Generator {
         }
     }
 
-    // all the binary expressions are f64, the teo sides are converted to f64 and if needed, converted back to i32
-    private binaryExpression(node: BinaryExprNode): ExpressionRef {
+    // judge the expression type then perform the conversion and operation
+    private binaryExpression(node: BinaryExprNode): ExpressionRef {        
+        const leftType = this.resolveType(node.left);
+        const rightType = this.resolveType(node.right);
+
+        const type = this.minimalCompatableType(leftType, rightType);
+
+        let leftExpr = this.generateExpression(node.left);
+        let rightExpr = this.generateExpression(node.right);
+        // if the type is REAL, convert the INTEGER to REAL
+        if (type == VarType.REAL) {
+            if (leftType == VarType.INTEGER) {
+                leftExpr = this.module.f64.convert_s.i32(leftExpr);
+            }
+            else if (rightType == VarType.INTEGER) {
+                rightExpr = this.module.f64.convert_s.i32(rightExpr);
+            }
+
+            switch(node.operator.type) {
+                case tokenType.PLUS:
+                    return this.module.f64.add(leftExpr, rightExpr);
+                case tokenType.MINUS:
+                    return this.module.f64.sub(leftExpr, rightExpr);
+                case tokenType.STAR:
+                    return this.module.f64.mul(leftExpr, rightExpr);
+                case tokenType.SLASH:
+                    return this.module.f64.div(leftExpr, rightExpr);
+                case tokenType.EQUAL:
+                    return this.module.f64.eq(leftExpr, rightExpr);
+                case tokenType.LESS_GREATER:
+                    return this.module.f64.ne(leftExpr, rightExpr);
+                case tokenType.LESS:
+                    return this.module.f64.lt(leftExpr, rightExpr);
+                case tokenType.GREATER:
+                    return this.module.f64.gt(leftExpr, rightExpr);
+                case tokenType.LESS_EQUAL:
+                    return this.module.f64.le(leftExpr, rightExpr);
+                case tokenType.GREATER_EQUAL:
+                    return this.module.f64.ge(leftExpr, rightExpr);
+                default:
+                    return -1;
+            }
+        }
+
         switch(node.operator.type) {
             case tokenType.PLUS:
-                return this.module.f64.add(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.add(leftExpr, rightExpr);
             case tokenType.MINUS:
-                return this.module.f64.sub(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.sub(leftExpr, rightExpr);
             case tokenType.STAR:
-                return this.module.f64.mul(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.mul(leftExpr, rightExpr);
             case tokenType.SLASH:
-                return this.module.f64.div(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.div_s(leftExpr, rightExpr);
             case tokenType.EQUAL:
-                return this.module.f64.eq(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.eq(leftExpr, rightExpr);
             case tokenType.LESS_GREATER:
-                return this.module.f64.ne(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.ne(leftExpr, rightExpr);
             case tokenType.LESS:
-                return this.module.f64.lt(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.lt_s(leftExpr, rightExpr);
             case tokenType.GREATER:
-                return this.module.f64.gt(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.gt_s(leftExpr, rightExpr);
             case tokenType.LESS_EQUAL:
-                return this.module.f64.le(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.le_s(leftExpr, rightExpr);
             case tokenType.GREATER_EQUAL:
-                return this.module.f64.ge(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.ge_s(leftExpr, rightExpr);
             default:
-                return -1
+                return -1;
         }
+        // TODO: STRING
+
     }
 
-    // all numbers are initialized as f64, they are converted to i32 if needed
-    public numberExpression(node: NumberExprNode): ExpressionRef {
+    public integerExpression(node: IntegerExprNode): ExpressionRef {
+        return this.module.i32.const(node.value);
+    }
+
+    public realExpression(node: RealExprNode): ExpressionRef {
         return this.module.f64.const(node.value);
     }
 
@@ -408,7 +640,21 @@ export class Generator {
     }
 
     private outputStatement(node: OutputNode): ExpressionRef {
-        return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
+        const type = this.resolveType(node.expr);
+
+        console.log(type);
+
+        if (type == VarType.INTEGER) {
+            return this.module.call("logInteger", [this.generateExpression(node.expr)], binaryen.none);
+        }
+        else if (type == VarType.REAL) {
+            return this.module.call("logReal", [this.generateExpression(node.expr)], binaryen.none);
+        }
+        else if (type == VarType.CHAR) {
+            return this.module.call("logChar", [this.generateExpression(node.expr)], binaryen.none);
+        }
+        return -1;
+        // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
     }
 
     private varDeclStatement(node: VarDeclNode): ExpressionRef {

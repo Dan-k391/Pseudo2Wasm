@@ -1,9 +1,11 @@
 export const enum VarType {
-    INTEGER,
-    REAL,
-    CHAR,
-    STRING,
-    BOOLEAN
+    INTEGER = "INTEGER",
+    REAL = "REAL",
+    CHAR = "CHAR",
+    STRING = "STRING",
+    BOOLEAN = "BOOLEAN",
+    // NONE Type, for error handling
+    NONE = "NONE"
 }
 
 export class Variable {

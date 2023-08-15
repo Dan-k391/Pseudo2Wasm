@@ -71,12 +71,21 @@ export class Compiler {
 
         // initialize import objects
         const memory = new WebAssembly.Memory({ initial: 1, maximum: 2 });
+        // TODO: currently import many log functions, change to only logString later
         const importObect = {
             env: {
                 buffer: memory,
-                logNumber: (output: number) => {
+                logInteger: (output: number) => {
                     correct = (output == expected);
                     console.log(output);
+                },
+                logReal: (output: number) => {
+                    correct = (output == expected);
+                    console.log(output);
+                },
+                logChar: (output: number) => {
+                    correct = (String.fromCharCode(output) == expected);
+                    console.log(String.fromCharCode(output));
                 },
                 logString: (output: number) => {
                     const bytes = new Uint8Array(memory.buffer, output);

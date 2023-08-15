@@ -30,7 +30,8 @@ import {
     CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
-    NumberExprNode,
+    IntegerExprNode,
+    RealExprNode,
     CharExprNode,
     StringExprNode,
     BoolExprNode,
@@ -53,7 +54,8 @@ export class Function {
     private enclosing: Generator;
     private ident: string;
     // Public variable
-    public returnType: Type;
+    public returnType: VarType;
+    public wasmReturnType: Type;
     private body: Array<Stmt>;
     // public params
     public params: LocalTable;
@@ -61,12 +63,13 @@ export class Function {
     private locals: LocalTable;
     private label: number;
 
-    constructor(module: Module, enclosing: Generator, ident: string, params: LocalTable, returnType: Type, body: Array<Stmt>) {
+    constructor(module: Module, enclosing: Generator, ident: string, params: LocalTable, returnType: VarType, wasmReturnType: Type, body: Array<Stmt>) {
         this.module = module;
         this.enclosing = enclosing;
         this.ident = ident;
         this.params = params;
         this.returnType = returnType;
+        this.wasmReturnType = wasmReturnType;
         this.body = body;
         this.locals = new LocalTable();
         this.label = 0;
@@ -90,7 +93,7 @@ export class Function {
         }
 
         // FIXME: single returnType has problem here
-        this.module.addFunction(this.ident, paramType, this.returnType, vars, funcBlock);
+        this.module.addFunction(this.ident, paramType, this.wasmReturnType, vars, funcBlock);
     }
 
     private generateConstant(type: Type, value: number): ExpressionRef {
@@ -117,7 +120,7 @@ export class Function {
         return this.locals.getType(name);
     }
 
-    private getTypeForParam(name: string): Type {
+    private getTypeForParam(name: string): VarType {
         if (!this.params.names.includes(name)) {
             throw new RuntimeError("Symbol '" + name + "' is not declared");
         }
@@ -167,10 +170,12 @@ export class Function {
                 return this.unaryExpression(expression as UnaryExprNode);
             case nodeKind.BinaryExprNode:
                 return this.binaryExpression(expression as BinaryExprNode);
-            case nodeKind.NumberExprNode:
-                return this.enclosing.numberExpression(expression as NumberExprNode);
-            // case nodeKind.CharExprNode:
-            //     return this.charExpression(expression as CharExprNode);
+            case nodeKind.IntegerExprNode:
+                return this.enclosing.integerExpression(expression as IntegerExprNode);
+            case nodeKind.RealExprNode:
+                return this.enclosing.realExpression(expression as RealExprNode);
+            case nodeKind.CharExprNode:
+                return this.enclosing.charExpression(expression as CharExprNode);
             // case nodeKind.StringExprNode:
             //     return this.stringExpression(expression as StringExprNode);
             default:
@@ -230,7 +235,7 @@ export class Function {
                     funcArgs.push(expr);
                 }
             }
-            const returnType = this.enclosing.getFunction(funcName).returnType;
+            const returnType = this.enclosing.getFunction(funcName).wasmReturnType;
             if (returnType === binaryen.i32) {
                 return this.module.f64.convert_s.i32(this.module.call(funcName, funcArgs, binaryen.f64));
             }
@@ -345,7 +350,7 @@ export class Function {
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
-        if (this.returnType === binaryen.i32) {
+        if (this.wasmReturnType === binaryen.i32) {
             return this.module.return(this.module.i32.trunc_s.f64(this.generateExpression(node.expr)));
         }
         return this.module.return(this.generateExpression(node.expr));
