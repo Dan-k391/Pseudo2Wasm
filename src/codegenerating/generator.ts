@@ -642,8 +642,6 @@ export class Generator {
     private outputStatement(node: OutputNode): ExpressionRef {
         const type = this.resolveType(node.expr);
 
-        console.log(type);
-
         if (type == VarType.INTEGER) {
             return this.module.call("logInteger", [this.generateExpression(node.expr)], binaryen.none);
         }
@@ -726,43 +724,32 @@ export class Generator {
         //  )
         // )
         const varName = node.ident.lexeme;
+        const varType = this.globals.getType(varName);
+        const endType = this.resolveType(node.end);
+        const stepType = this.resolveType(node.step);
         const wasmType = this.globals.getWasmType(varName);
+        
+        if (varType != VarType.INTEGER) {
+            throw new RuntimeError("For loops only iterate over for INTEGERs");
+        }
+        if (endType != VarType.INTEGER) {
+            throw new RuntimeError("End value of for loops can only be INTEGERs");
+        }
+        if (stepType != VarType.INTEGER) {
+            throw new RuntimeError("Step value of for loops can only be INTEGERs");
+        }
 
         const initExpr = this.generateExpression(node.start);
 
         // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
-        let init: ExpressionRef;
-        if (wasmType === binaryen.i32) {
-            init = this.module.global.set(varName, this.module.i32.trunc_s.f64(initExpr));
-        }
-        else {
-            init = this.module.global.set(varName, initExpr);
-        }
+        let init = this.module.global.set(varName, initExpr);
 
         const statements = this.generateStatements(node.body);
         const variable = this.module.global.get(varName, wasmType);
 
-        let condition: ExpressionRef;
+        let condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
 
-        if (wasmType === binaryen.i32) {
-            condition = this.module.f64.ge(this.generateExpression(node.end), this.module.f64.convert_s.i32(variable));
-        }
-        else {
-            condition = this.module.f64.ge(this.generateExpression(node.end), variable);
-        }
-
-        let step: ExpressionRef;
-        if (wasmType === binaryen.i32) {
-            // two ways here that can be used
-            // 1. add the step to the variable as f64 and then convert it to an i32
-            // 2. convert the expression into an i32 and then add it to the variable
-            // although in the whole program generator everything is converted into f64 and then back to i32
-            // both of them work so I use the second one because it's shorter
-            step = this.module.global.set(varName, this.module.i32.add(variable, this.module.i32.trunc_s.f64(this.generateExpression(node.step))));
-        }
-        else {
-            step = this.module.global.set(varName, this.module.f64.add(variable, this.generateExpression(node.step)));
-        }
+        let step = this.module.global.set(varName, this.module.i32.add(variable, this.generateExpression(node.step)));
 
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));
