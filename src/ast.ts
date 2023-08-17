@@ -6,7 +6,7 @@ import { Token, tokenType } from "./scanning/token";
 import { Environment } from "./environment";
 
 import { passType } from "./passtype";
-import { VarType, Variable } from "./variable";
+import { VarType, Variable } from "./type/variable";
 import { Callable } from "./callable";
 import { Function } from "./function";
 import { Return } from "./return";

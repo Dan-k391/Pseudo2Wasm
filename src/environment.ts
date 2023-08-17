@@ -1,4 +1,4 @@
-import { VarType, Variable } from "./variable";
+import { VarType, Variable } from "./type/variable";
 
 import { Token } from "./scanning/token";
 import { RuntimeError } from "./error";

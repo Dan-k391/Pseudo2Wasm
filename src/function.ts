@@ -3,7 +3,7 @@ import { Callable } from "./callable";
 import { Environment } from "./environment";
 import { Return } from "./return";
 import { convertToVarType } from "./util";
-import { Variable } from "./variable";
+import { Variable } from "./type/variable";
 
 
 export class Function implements Callable {

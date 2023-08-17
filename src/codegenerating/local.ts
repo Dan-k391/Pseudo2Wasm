@@ -1,5 +1,5 @@
 import binaryen from "binaryen";
-import { VarType } from "../variable";
+import { VarType } from "../type/variable";
 
 type Type = binaryen.Type;
 

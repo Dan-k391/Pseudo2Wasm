@@ -48,7 +48,8 @@ import { Procedure } from "./procedure";
 import { convertToVarType, convertToWasmType } from "../util";
 import { GlobalTable } from "./global";
 import { LocalTable } from "./local";
-import { VarType } from "../variable";
+import { VarType } from "../type/variable";
+import { minimalCompatableType } from "../type/type";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -151,7 +152,7 @@ export class Generator {
     //     this.module.addFunctionExport("main", "main");
     // }
 
-    private convertType(current: VarType, target: VarType, expression: ExpressionRef): ExpressionRef {
+    public convertType(current: VarType, target: VarType, expression: ExpressionRef): ExpressionRef {
         switch (current) {
             case VarType.INTEGER:
                 // no need to convert for INTEGER, CHAR and BOOLEAN
@@ -214,7 +215,7 @@ export class Generator {
         }
     }
 
-    private resolveVarExprNodeType(node: VarExprNode): VarType {
+    public resolveVarExprNodeType(node: VarExprNode): VarType {
         return this.globals.getType(node.ident.lexeme);
     }
 
@@ -308,36 +309,6 @@ export class Generator {
                 return VarType.NONE;
         }
     }
-
-    private minimalCompatableType(leftType: VarType, rightType: VarType): VarType {
-        if (leftType == VarType.INTEGER) {
-            if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
-                return VarType.INTEGER;
-            }
-            else if (rightType == VarType.REAL) {
-                return VarType.REAL;
-            }
-        }
-        else if (leftType == VarType.REAL) {
-            if (rightType == VarType.INTEGER || rightType == VarType.REAL) {
-                return VarType.REAL;
-            }
-        }
-        else if (leftType == VarType.CHAR) {
-            if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
-                return VarType.INTEGER;
-            }
-        }
-        // else if (leftType == VarType.STRING) {
-        // }
-        else if (leftType == VarType.BOOLEAN) {
-            if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
-                return VarType.INTEGER;
-            }
-        }
-        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
-    }
-
 
     // returns the main functionref to be the start
     private generateBody(body: Array<Stmt>): FunctionRef {
@@ -441,18 +412,11 @@ export class Generator {
             for (let i = 0, paramNames = func.params.names; i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                const wasmType = func.params.getWasmType(paramNames[i]);
-                if (wasmType === binaryen.i32) {
-                    funcArgs.push(this.module.i32.trunc_s.f64(expr));
-                }
-                else {
-                    funcArgs.push(expr);
-                }
+                const argType = this.resolveType(arg);
+                const paramType = func.params.getType(paramNames[i]);
+                funcArgs.push(this.convertType(argType, paramType, expr));
             }
             const returnType = this.getFunction(funcName).wasmReturnType;
-            if (returnType === binaryen.i32) {
-                return this.module.f64.convert_s.i32(this.module.call(funcName, funcArgs, binaryen.f64));
-            }
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
@@ -471,13 +435,9 @@ export class Generator {
             for (let i = 0, paramNames = proc.params.names; i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                const wasmType = proc.params.getWasmType(paramNames[i]);
-                if (wasmType === binaryen.i32) {
-                    procArgs.push(this.module.i32.trunc_s.f64(expr));
-                }
-                else {
-                    procArgs.push(expr);
-                }
+                const argType = this.resolveType(arg);
+                const paramType = proc.params.getType(paramNames[i]);
+                procArgs.push(this.convertType(argType, paramType, expr));
             }
             return this.module.call(procName, procArgs, binaryen.none);
         }
@@ -486,11 +446,26 @@ export class Generator {
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {
+        const type = this.resolveType(node.expr);
+        
+        // currently keep these 2 switch cases
+        // TODO: optimize later
+        if (type == VarType.REAL) {
+            switch (node.operator.type) {
+                case tokenType.PLUS:
+                    return this.generateExpression(node.expr);
+                case tokenType.MINUS:
+                    return this.module.f64.neg(this.generateExpression(node.expr));
+                default:
+                    return -1;
+            }
+        }
+
         switch (node.operator.type) {
             case tokenType.PLUS:
                 return this.generateExpression(node.expr);
             case tokenType.MINUS:
-                return this.module.f64.neg(this.generateExpression(node.expr));
+                return this.module.i32.sub(0, this.generateExpression(node.expr));
             default:
                 return -1;
         }
@@ -501,17 +476,17 @@ export class Generator {
         const leftType = this.resolveType(node.left);
         const rightType = this.resolveType(node.right);
 
-        const type = this.minimalCompatableType(leftType, rightType);
+        const type = minimalCompatableType(leftType, rightType);
 
         let leftExpr = this.generateExpression(node.left);
         let rightExpr = this.generateExpression(node.right);
         // if the type is REAL, convert the INTEGER to REAL
         if (type == VarType.REAL) {
             if (leftType == VarType.INTEGER) {
-                leftExpr = this.module.f64.convert_s.i32(leftExpr);
+                leftExpr = this.convertType(VarType.INTEGER, VarType.REAL, leftExpr);
             }
             else if (rightType == VarType.INTEGER) {
-                rightExpr = this.module.f64.convert_s.i32(rightExpr);
+                rightExpr = this.convertType(VarType.INTEGER, VarType.REAL, rightExpr);
             }
 
             switch(node.operator.type) {
@@ -742,14 +717,13 @@ export class Generator {
         const initExpr = this.generateExpression(node.start);
 
         // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
-        let init = this.module.global.set(varName, initExpr);
+        const init = this.module.global.set(varName, initExpr);
 
         const statements = this.generateStatements(node.body);
         const variable = this.module.global.get(varName, wasmType);
 
-        let condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-
-        let step = this.module.global.set(varName, this.module.i32.add(variable, this.generateExpression(node.step)));
+        const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
+        const step = this.module.global.set(varName, this.module.i32.add(variable, this.generateExpression(node.step)));
 
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));

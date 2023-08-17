@@ -41,7 +41,8 @@ import {
 import { Generator } from "./generator";
 import { convertToVarType, convertToWasmType } from "../util";
 import { LocalTable } from "./local";
-import { VarType } from "../variable";
+import { VarType } from "../type/variable";
+import { minimalCompatableType } from "../type/type";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -155,6 +156,134 @@ export class Function {
         return this.params.getIndex(name);
     }
 
+    private resolveType(expression: Expr): VarType {
+        switch (expression.kind) {
+            // FIXME: some cases such as assignment are not considered
+            // maybe not need to be fixed, keep this FIXME though
+            case nodeKind.VarExprNode:
+                return this.resolveVarExprNodeType(expression as VarExprNode);
+            case nodeKind.CallFunctionExprNode:
+                return this.resolveCallFunctionExprNodeType(expression as CallFunctionExprNode);
+            case nodeKind.UnaryExprNode:
+                // The type of a expression remains the same after a unary operation 
+                // (as far as I can think)
+                return this.resolveType((expression as UnaryExprNode).expr);
+            case nodeKind.BinaryExprNode:
+                return this.resolveBinaryExprNodeType(expression as BinaryExprNode);
+            case nodeKind.IntegerExprNode:
+                return VarType.INTEGER;
+            case nodeKind.RealExprNode:
+                return VarType.REAL;
+            case nodeKind.CharExprNode:
+                return VarType.CHAR;
+            // case nodeKind.StringExprNode:
+            //     return VarType.STRING;
+            default:
+                return VarType.NONE;
+        }
+    }
+
+    private resolveVarExprNodeType(node: VarExprNode): VarType {
+        const varName = node.ident.lexeme;
+
+        if (this.params.names.includes(varName) || this.locals.names.includes(varName)) {
+            return this.getTypeForLocal(varName);
+        }
+
+        return this.enclosing.resolveVarExprNodeType(node);
+    }
+
+    private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): VarType {
+        // FIXME: complicated expression calls are not implemented
+        if (node.callee.kind === nodeKind.VarExprNode) {
+            const funcName = (node.callee as VarExprNode).ident.lexeme;
+            return this.enclosing.getFunction(funcName).returnType;
+        }
+        throw new RuntimeError("Not implemented yet");
+    }
+
+    private resolveBinaryExprNodeType(node: BinaryExprNode): VarType {
+        const leftType = this.resolveType(node.left);
+        const rightType = this.resolveType(node.right);
+        switch (node.operator.type) {
+            // arithmetic operations
+            case tokenType.PLUS:
+            case tokenType.MINUS:
+            case tokenType.STAR:
+            case tokenType.SLASH:
+                switch (leftType) {
+                    case VarType.INTEGER:
+                        // TODO: optimize the type resolving system here
+                        // The rules here may be incorret or not appropriate (fix it if needed)
+                        // The rule: INTEGER ARITHOP CHAR is INTEGER
+                        // CHAR ARITHOP INTEGER is CHAR
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.INTEGER;
+                        }
+                        else if (rightType == VarType.REAL) {
+                            return VarType.REAL;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.REAL:
+                        if (rightType == VarType.INTEGER || rightType == VarType.REAL) {
+                            return VarType.REAL;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.CHAR:
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.INTEGER;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.STRING:
+                        // FIXME: handle concat
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.BOOLEAN:
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.INTEGER;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                }
+            // logical operators
+            case tokenType.EQUAL:
+            case tokenType.LESS_GREATER:
+            case tokenType.LESS:
+            case tokenType.GREATER:
+            case tokenType.LESS_EQUAL:
+            case tokenType.GREATER_EQUAL:
+                // TODO: optimize the code
+                switch (leftType) {
+                    case VarType.INTEGER:
+                        if (rightType == VarType.INTEGER || rightType == VarType.REAL || rightType == VarType.CHAR || rightType == VarType.BOOLEAN) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.REAL:
+                        if (rightType == VarType.INTEGER || rightType == VarType.REAL) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.CHAR:
+                        if (rightType == VarType.INTEGER || rightType == VarType.CHAR || rightType == VarType.BOOLEAN || VarType.STRING) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.STRING:
+                        if (rightType == VarType.CHAR || rightType == VarType.STRING) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                    case VarType.BOOLEAN:
+                        if (rightType == VarType.INTEGER || rightType == VarType.BOOLEAN) {
+                            return VarType.BOOLEAN;
+                        }
+                        throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
+                }
+            // return anything here, it never comes to this step
+            default:
+                return VarType.NONE;
+        }
+    }
+
     // Expressions
     private generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
@@ -187,12 +316,10 @@ export class Function {
         const varName = node.ident.lexeme;
         if (this.params.names.includes(varName) || this.locals.names.includes(varName)) {
             const varIndex = this.getIndexForLocal(varName);
-            const wasmType = this.getWasmTypeForLocal(varName);
+            const varType = this.getTypeForLocal(varName);
             const rhs = this.generateExpression(node.expr);
-            if (wasmType === binaryen.i32) {
-                return this.module.local.set(varIndex, this.module.i32.trunc_s.f64(rhs));
-            }
-            return this.module.local.set(varIndex, rhs);
+            const rightType = this.resolveType(node.expr);
+            return this.module.local.set(varIndex, this.enclosing.convertType(rightType, varType, rhs));
         }
         else {
             return this.enclosing.varAssignExpression(node);
@@ -206,9 +333,6 @@ export class Function {
             const paramIndex = this.getIndexForLocal(varName);
             const wasmType = this.getWasmTypeForLocal(varName);
             const variable = this.module.local.get(paramIndex, wasmType);
-            if (wasmType === binaryen.i32) {
-                return this.module.f64.convert_s.i32(variable);
-            }
             return variable;
         }
         else {
@@ -227,18 +351,11 @@ export class Function {
             for (let i = 0, paramNames = func.params.names; i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                const wasmType = func.params.getWasmType(paramNames[i]);
-                if (wasmType === binaryen.i32) {
-                    funcArgs.push(this.module.i32.trunc_s.f64(expr));
-                }
-                else {
-                    funcArgs.push(expr);
-                }
+                const argType = this.resolveType(arg);
+                const paramType = func.params.getType(paramNames[i]);
+                funcArgs.push(this.enclosing.convertType(argType, paramType, expr));
             }
             const returnType = this.enclosing.getFunction(funcName).wasmReturnType;
-            if (returnType === binaryen.i32) {
-                return this.module.f64.convert_s.i32(this.module.call(funcName, funcArgs, binaryen.f64));
-            }
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported
@@ -257,13 +374,9 @@ export class Function {
             for (let i = 0, paramNames = proc.params.names; i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
-                const wasmType = proc.params.getWasmType(paramNames[i]);
-                if (wasmType === binaryen.i32) {
-                    procArgs.push(this.module.i32.trunc_s.f64(expr));
-                }
-                else {
-                    procArgs.push(expr);
-                }
+                const argType = this.resolveType(arg);
+                const paramType = proc.params.getType(paramNames[i]);
+                procArgs.push(this.enclosing.convertType(argType, paramType, expr));
             }
             return this.module.call(procName, procArgs, binaryen.none);
         }
@@ -272,40 +385,97 @@ export class Function {
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {
+        const type = this.resolveType(node.expr);
+        
+        // currently keep these 2 switch cases
+        // TODO: optimize later
+        if (type == VarType.REAL) {
+            switch (node.operator.type) {
+                case tokenType.PLUS:
+                    return this.generateExpression(node.expr);
+                case tokenType.MINUS:
+                    return this.module.f64.neg(this.generateExpression(node.expr));
+                default:
+                    return -1;
+            }
+        }
+
         switch (node.operator.type) {
             case tokenType.PLUS:
                 return this.generateExpression(node.expr);
             case tokenType.MINUS:
-                return this.module.f64.neg(this.generateExpression(node.expr));
+                return this.module.i32.sub(0, this.generateExpression(node.expr));
             default:
                 return -1;
         }
     }
 
     private binaryExpression(node: BinaryExprNode): ExpressionRef {
+        const leftType = this.resolveType(node.left);
+        const rightType = this.resolveType(node.right);
+
+        const type = minimalCompatableType(leftType, rightType);
+
+        let leftExpr = this.generateExpression(node.left);
+        let rightExpr = this.generateExpression(node.right);
+        // if the type is REAL, convert the INTEGER to REAL
+        if (type == VarType.REAL) {
+            if (leftType == VarType.INTEGER) {
+                leftExpr = this.module.f64.convert_s.i32(leftExpr);
+            }
+            else if (rightType == VarType.INTEGER) {
+                rightExpr = this.module.f64.convert_s.i32(rightExpr);
+            }
+
+            switch(node.operator.type) {
+                case tokenType.PLUS:
+                    return this.module.f64.add(leftExpr, rightExpr);
+                case tokenType.MINUS:
+                    return this.module.f64.sub(leftExpr, rightExpr);
+                case tokenType.STAR:
+                    return this.module.f64.mul(leftExpr, rightExpr);
+                case tokenType.SLASH:
+                    return this.module.f64.div(leftExpr, rightExpr);
+                case tokenType.EQUAL:
+                    return this.module.f64.eq(leftExpr, rightExpr);
+                case tokenType.LESS_GREATER:
+                    return this.module.f64.ne(leftExpr, rightExpr);
+                case tokenType.LESS:
+                    return this.module.f64.lt(leftExpr, rightExpr);
+                case tokenType.GREATER:
+                    return this.module.f64.gt(leftExpr, rightExpr);
+                case tokenType.LESS_EQUAL:
+                    return this.module.f64.le(leftExpr, rightExpr);
+                case tokenType.GREATER_EQUAL:
+                    return this.module.f64.ge(leftExpr, rightExpr);
+                default:
+                    return -1;
+            }
+        }
+
         switch(node.operator.type) {
             case tokenType.PLUS:
-                return this.module.f64.add(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.add(leftExpr, rightExpr);
             case tokenType.MINUS:
-                return this.module.f64.sub(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.sub(leftExpr, rightExpr);
             case tokenType.STAR:
-                return this.module.f64.mul(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.mul(leftExpr, rightExpr);
             case tokenType.SLASH:
-                return this.module.f64.div(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.div_s(leftExpr, rightExpr);
             case tokenType.EQUAL:
-                return this.module.f64.eq(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.eq(leftExpr, rightExpr);
             case tokenType.LESS_GREATER:
-                return this.module.f64.ne(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.ne(leftExpr, rightExpr);
             case tokenType.LESS:
-                return this.module.f64.lt(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.lt_s(leftExpr, rightExpr);
             case tokenType.GREATER:
-                return this.module.f64.gt(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.gt_s(leftExpr, rightExpr);
             case tokenType.LESS_EQUAL:
-                return this.module.f64.le(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.le_s(leftExpr, rightExpr);
             case tokenType.GREATER_EQUAL:
-                return this.module.f64.ge(this.generateExpression(node.left), this.generateExpression(node.right));
+                return this.module.i32.ge_s(leftExpr, rightExpr);
             default:
-                return -1
+                return -1;
         }
     }
 
@@ -346,13 +516,21 @@ export class Function {
     }
 
     private outputStatement(node: OutputNode): ExpressionRef {
-        return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
+        const type = this.resolveType(node.expr);
+
+        if (type == VarType.INTEGER) {
+            return this.module.call("logInteger", [this.generateExpression(node.expr)], binaryen.none);
+        }
+        else if (type == VarType.REAL) {
+            return this.module.call("logReal", [this.generateExpression(node.expr)], binaryen.none);
+        }
+        else if (type == VarType.CHAR) {
+            return this.module.call("logChar", [this.generateExpression(node.expr)], binaryen.none);
+        }
+        return -1;
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
-        if (this.wasmReturnType === binaryen.i32) {
-            return this.module.return(this.module.i32.trunc_s.f64(this.generateExpression(node.expr)));
-        }
         return this.module.return(this.generateExpression(node.expr));
     }
 
@@ -418,37 +596,30 @@ export class Function {
         // )
         const varName = node.ident.lexeme;
         const varIndex = this.getIndexForLocal(varName);
+        const varType = this.getTypeForLocal(varName);
+        const endType = this.resolveType(node.end);
+        const stepType = this.resolveType(node.step);
         const wasmType = this.getWasmTypeForLocal(varName);
+
+        if (varType != VarType.INTEGER) {
+            throw new RuntimeError("For loops only iterate over for INTEGERs");
+        }
+        if (endType != VarType.INTEGER) {
+            throw new RuntimeError("End value of for loops can only be INTEGERs");
+        }
+        if (stepType != VarType.INTEGER) {
+            throw new RuntimeError("Step value of for loops can only be INTEGERs");
+        }
 
         const initExpr = this.generateExpression(node.start);
 
-        let init: ExpressionRef;
-        if (wasmType === binaryen.i32) {
-            init = this.module.local.set(varIndex, this.module.i32.trunc_s.f64(initExpr));
-        }
-        else {
-            init = this.module.local.set(varIndex, initExpr);
-        }
+        const init = this.module.local.set(varIndex, initExpr);
 
         const statements = this.generateStatements(node.body);
         const variable = this.module.local.get(varIndex, wasmType);
-
-        let condition: ExpressionRef;
-
-        if (wasmType === binaryen.i32) {
-            condition = this.module.f64.ge(this.generateExpression(node.end), this.module.f64.convert_s.i32(variable));
-        }
-        else {
-            condition = this.module.f64.ge(this.generateExpression(node.end), variable);
-        }
-
-        let step: ExpressionRef;
-        if (wasmType === binaryen.i32) {
-            step = this.module.local.set(varIndex, this.module.i32.add(variable, this.module.i32.trunc_s.f64(this.generateExpression(node.step))));
-        }
-        else {
-            step = this.module.local.set(varIndex, this.module.f64.add(variable, this.generateExpression(node.step)));
-        }
+    
+        const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
+        const step = this.module.local.set(varIndex, this.module.i32.add(variable, this.generateExpression(node.step)));
 
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));

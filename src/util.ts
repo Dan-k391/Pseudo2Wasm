@@ -1,6 +1,6 @@
 import binaryen from "binaryen";
 import { Token } from "./scanning/token";
-import { VarType } from "./variable";
+import { VarType } from "./type/variable";
 import { RuntimeError } from "./error";
 
 export function convertToVarType(type: Token): VarType {
