@@ -186,6 +186,19 @@ i <- 'v'
 OUTPUT i
 `
 
+const code18 = `DECLARE i: INTEGER
+
+i <- 1
+OUTPUT -i
+`
+
+const code19 = `DECLARE i: REAL
+
+i <- 1
+OUTPUT -i
+`
+
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
 
@@ -220,10 +233,12 @@ const codes = [
     code14,
     code15,
     code16,
-    code17
+    code17,
+    code18,
+    code19
 ];
 const expected = [10, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
-    , 'a', 'v'];
+    , 'a', 'v', -1, -1];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;

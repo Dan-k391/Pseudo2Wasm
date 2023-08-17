@@ -397,7 +397,7 @@ export class Procedure {
             case tokenType.PLUS:
                 return this.generateExpression(node.expr);
             case tokenType.MINUS:
-                return this.module.i32.sub(0, this.generateExpression(node.expr));
+                return this.module.i32.sub(this.module.i32.const(0), this.generateExpression(node.expr));
             default:
                 return -1;
         }
