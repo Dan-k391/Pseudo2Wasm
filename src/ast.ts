@@ -177,10 +177,10 @@ export class VarExprNode extends Expr {
 }
 
 export class ArrExprNode extends Expr {
-    public ident: string;
-    public index: number;
+    public ident: Token;
+    public index: Expr;
 
-    constructor(ident: string, index: number) {
+    constructor(ident: Token, index: Expr) {
         super(nodeKind.ArrExprNode);
         this.ident = ident;
         this.index = index;
@@ -509,13 +509,13 @@ export class VarDeclNode extends Stmt {
 }
 
 export class ArrDeclNode extends Stmt {
-    public ident: string;
-    public type: string;
-    public lower: number;
-    public upper: number;
+    public ident: Token;
+    public type: Token;
+    public lower: Token;
+    public upper: Token;
 
-    constructor(ident: string, type: string, lower: number, upper: number) {
-        super(nodeKind.ArrAssignNode);
+    constructor(ident: Token, type: Token, lower: Token, upper: Token) {
+        super(nodeKind.ArrDeclNode);
         this.ident = ident;
         this.type = type;
         this.lower = lower;
@@ -553,9 +553,9 @@ export class PointerDeclNode extends Stmt {
 
 export class TypeDefNode extends Stmt {
     public ident: Token;
-    public body: Array<VarDeclNode>;
+    public body: Array<Stmt>;
 
-    constructor(ident: Token, body: Array<VarDeclNode>) {
+    constructor(ident: Token, body: Array<Stmt>) {
         super(nodeKind.TypeDefNode);
         this.ident = ident;
         this.body = body;
@@ -591,11 +591,11 @@ export class VarAssignNode extends Expr {
 }
 
 export class ArrAssignNode extends Expr {
-    public ident: string;
-    public index: number;
+    public ident: Token;
+    public index: Expr;
     public expr: Expr;
 
-    constructor(ident: string, index: number, expr: Expr) {
+    constructor(ident: Token, index: Expr, expr: Expr) {
         super(nodeKind.ArrAssignNode);
         this.ident = ident;
         this.index = index;

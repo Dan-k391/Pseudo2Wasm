@@ -198,6 +198,75 @@ i <- 1
 OUTPUT -i
 `
 
+const code20 = `OUTPUT "Hello World"`
+
+const code21 = `DECLARE arr: ARRAY[0: 10] OF INTEGER
+
+arr[0] <- 1
+arr[1] <- 2
+arr[2] <- 3
+arr[3] <- 4
+arr[4] <- 5
+arr[5] <- 6
+arr[6] <- 7
+arr[7] <- 8
+arr[8] <- 9
+arr[9] <- 10
+
+OUTPUT arr[0] + arr[1] + arr[2] + arr[3] + arr[4] + arr[5] + arr[6] + arr[7] + arr[8] + arr[9]
+`
+
+const code22 = `DECLARE arr: ARRAY[0: 10] OF INTEGER
+DECLARE i: iNTEGER
+
+FOR i <- 0 TO 10
+    arr[i] <- i
+NEXT i
+
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 0 TO 10
+    sum <- sum + arr[i]
+NEXT i
+
+OUTPUT sum
+`
+
+const code23 = `DECLARE arr: ARRAY[0: 10, 0: 10] OF INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
+
+FOR i <- 0 TO 10
+    FOR j <- 0 TO 10
+        arr[i, j] <- i + j
+    NEXT j
+NEXT i
+
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 0 TO 10
+    FOR j <- 0 TO 10
+        sum <- sum + arr[i, j]
+    NEXT j
+NEXT i
+
+OUTPUT sum
+`
+
+const code24 = `DECLARE i: INTEGER
+DECLARE j: INTEGER
+
+DECLARE sum: INTEGER
+
+FOR i <- 0 TO 10
+    FOR j <- 0 TO 10
+        sum <- sum + i + j
+    NEXT j
+NEXT i
+
+OUTPUT sum
+`
+
 
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
@@ -235,10 +304,15 @@ const codes = [
     code16,
     code17,
     code18,
-    code19
+    code19,
+    code20,
+    code21,
+    code22,
+    code23,
+    code24
 ];
-const expected = [10, 7.28, 2, 9/*"Hi"*/, 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
-    , 'a', 'v', -1, -1];
+const expected = [10, 7.28, 2, "Hi", 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
+    , 'a', 'v', -1, -1, "Hello World", 55, 55, 1210, 1210];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
