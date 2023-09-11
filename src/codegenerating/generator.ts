@@ -91,7 +91,7 @@ export class Generator {
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addMemoryImport("buffer", "env", "buffer");
 
-        this.module.setStart(this.generateBody(this.ast.body));
+        this.generateBody(this.ast.body);
 
         // initialize the globals
         for (const name of this.globals.names) {

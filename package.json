@@ -1,11 +1,11 @@
 {
   "name": "pseudo2wasm",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "",
-  "main": "index.js",
+  "main": "dist/pseudo2wasm.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack",
+    "build": "webpack --mode production",
     "start": "webpack serve --open"
   },
   "keywords": [],

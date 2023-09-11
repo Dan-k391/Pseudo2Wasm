@@ -24,7 +24,7 @@ export class Compiler {
         return module;
     }
 
-    async runtime(): Promise<number> {
+    async runtime(output: (a: number) => void): Promise<number> {
         const module = this.compile();
 
         // module.optimize();
@@ -37,11 +37,17 @@ export class Compiler {
         const importObect = {
             env: {
                 buffer: memory,
-                logNumber: (output: number) => {
-                    console.log(output);
+                logInteger: (value: number) => {
+                    output(value);
                 },
-                logString: (output: number) => {
-                    const bytes = new Uint8Array(memory.buffer, output);
+                logReal: (value: number) => {
+                    console.log(value);
+                },
+                logChar: (value: number) => {
+                    console.log(String.fromCharCode(value));
+                },
+                logString: (value: number) => {
+                    const bytes = new Uint8Array(memory.buffer, value);
                     const str = bytes.toString();
                     console.log(str);
                 }

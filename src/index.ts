@@ -276,7 +276,7 @@ async function compileTest() {
 
 // The interpreter part now is under the interpreter branch, and it is not finished
 
-compileTest().then(() => {
+// compileTest().then(() => {
     // fetch("http://127.0.0.1:5570/wasmtry/pointer.wasm")
     // .then((response) => response.arrayBuffer())
     // .then((buffer) => new Uint8Array(buffer))
@@ -284,8 +284,19 @@ compileTest().then(() => {
     // .then((module) => {console.log(module.emitText())});
 
     // const instance = new WebAssembly.Instance(module);
-    console.log(`compileCount: ${compileCount}/${total}`);
-    console.log(`compileFailed: ${compileFailed}`);
-    console.log(`runCount: ${runCount}/${total}`);
-    console.log(`runFailed: ${runFailed}`);
-});
+//     console.log(`compileCount: ${compileCount}/${total}`);
+//     console.log(`compileFailed: ${compileFailed}`);
+//     console.log(`runCount: ${runCount}/${total}`);
+//     console.log(`runFailed: ${runFailed}`);
+// });
+
+export async function runCode(code: string, output: (a: number) => void): Promise<number> {
+    const compiler = new Compiler(code);
+    const time = await compiler.runtime(output);
+
+    return time;
+}
+
+export function testCompiler(): number {
+    return 2;
+}

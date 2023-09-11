@@ -5,7 +5,7 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const { webpack } = require("webpack");
 
 module.exports = {
-    mode: "development",
+    mode: "production",
     entry: "./src/index.ts",
 
     experiments: {
@@ -14,7 +14,12 @@ module.exports = {
 
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: "bundle.js",
+        filename: "pseudo2wasm.js",
+        globalObject: "this",
+        library: {
+            name: "pseudo2wasm",
+            type: "umd",
+        },
     },
 
     resolve: {
