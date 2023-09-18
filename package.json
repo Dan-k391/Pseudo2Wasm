@@ -1,6 +1,6 @@
 {
   "name": "pseudo2wasm",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "",
   "main": "dist/pseudo2wasm.js",
   "scripts": {
