@@ -29,7 +29,8 @@ import {
     ForNode,
     ExprStmtNode,
     VarExprNode,
-    ArrExprNode,
+    IndexExprNode,
+    SelectExprNode,
     CallFunctionExprNode,
     CallProcedureExprNode,
     UnaryExprNode,
@@ -42,7 +43,8 @@ import {
     StringExprNode,
     BoolExprNode,
     OutputNode,
-    InputNode
+    InputNode,
+    AssignNode
 } from "../ast";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../scanning/token";
@@ -79,14 +81,7 @@ export class Parser {
             const equals: Token = this.previous();
             const value: Expr = this.assignment();
 
-            // I do not want to use instanceof function
-            if (expr.kind === nodeKind.VarExprNode) {
-                const ident: Token = (expr as VarExprNode).ident;
-                return new VarAssignNode(ident, value);
-            }
-
-            throw this.error(equals, "Invalid assignment target.");
-        
+            return new AssignNode(expr, value);
         }
         return expr;
     }
@@ -155,13 +150,13 @@ export class Parser {
 
     private call(): Expr {
         if (this.match(tokenType.CALL)) {
-            const expr: Expr = this.primary();
+            const expr: Expr = this.index();
 
             this.consume("Expect '(' after 'CALL'.", tokenType.LEFT_PAREN);
             return this.finishProcedureCall(expr);
         }
 
-        const expr: Expr = this.primary();
+        const expr: Expr = this.index();
 
         if (this.match(tokenType.LEFT_PAREN)) return this.finishFunctionCall(expr);
         return expr;
@@ -199,6 +194,25 @@ export class Parser {
         return new CallProcedureExprNode(callee, args);
     }
 
+    private index(): Expr {
+        let expr: Expr = this.primary();
+        while (true) {
+            if (this.match(tokenType.LEFT_BRACKET)) {
+                const index: Expr = this.expression();
+                this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
+                expr = new IndexExprNode(expr, index);
+            }
+            else if (this.match(tokenType.DOT)) {
+                const ident: Token = this.consume("Expected field name", tokenType.IDENTIFIER);
+                expr = new SelectExprNode(expr, ident);
+            }
+            else {
+                break;
+            }
+        }
+        return expr;
+    }
+
     private primary(): Expr {
         if (this.match(tokenType.FALSE)) return new BoolExprNode(false);
         if (this.match(tokenType.TRUE)) return new BoolExprNode(true);
@@ -210,7 +224,7 @@ export class Parser {
         if (this.match(tokenType.LEFT_PAREN)) {
             const expr: Expr = this.expression();
             this.consume("Expected ')' after expression.", tokenType.RIGHT_PAREN);
-            return expr
+            return expr;
         }
 
         throw this.error(this.peek(), "Expected expression.");
