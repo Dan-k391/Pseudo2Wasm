@@ -365,8 +365,8 @@ export class Function {
 
     private getOffset(node: Expr): ExpressionRef {
         console.log(node);
-
-        return this.enclosing.getOffset(node);
+        // FIXME
+        return -1;
     }
 
     private assignExpression(node: AssignNode): ExpressionRef {

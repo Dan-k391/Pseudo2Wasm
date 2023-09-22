@@ -1,4 +1,5 @@
 import { RuntimeError } from "../error";
+import { unreachable } from "../util";
 
 
 export const enum typeKind {
@@ -10,12 +11,13 @@ export const enum typeKind {
 }
 
 // empty class
-export class Type {
+export abstract class Type {
     constructor(public kind: typeKind) { }
 
-    public toString(): string {
-        return "Type";
-    }
+    public abstract toString(): string;
+
+    // calculate the size (in bytes) of each type
+    public abstract size(): number;
 }
 
 export const enum basicKind {
@@ -41,6 +43,23 @@ export class BasicType extends Type {
     public toString(): string {
         return this.type;
     }
+
+    public size(): number {
+        switch (this.type) {
+            case basicKind.INTEGER:
+                return 4;
+            case basicKind.REAL:
+                return 8;
+            case basicKind.CHAR:
+                return 4;
+            case basicKind.BOOLEAN:
+                return 4;
+            case basicKind.STRING:
+                return 4;
+            case basicKind.NONE:
+                unreachable();
+        }
+    }
 }
 
 export class ArrayType extends Type {
@@ -56,7 +75,19 @@ export class ArrayType extends Type {
     }
 
     public toString(): string {
-        return "ARRAY[" + this.lower + ".." + this.upper + "] OF " + this.elem;
+        return "ARRAY[" + this.lower + ": " + this.upper + "] OF " + this.elem;
+    }
+
+    public size(): number {
+        return this.elem.size() * (this.upper - this.lower);
+    }
+
+    // returns the offset relative to the array
+    public offset(index: number): number {
+        if (index >= this.upper) {
+            throw new RuntimeError("Index out of bounds for " + this.toString());
+        }
+        return this.elem.size() * (index - this.lower);
     }
 }
 
@@ -75,6 +106,30 @@ export class RecordType extends Type {
         }
         str += "ENDTYPE";
         return str;
+    }
+
+    public size() {
+        let total: number = 0;
+        for (let [key, value] of this.fields) {
+            total += value.size();
+        }
+        return total;
+    }
+
+    // returns the offset relative to the start of the record
+    public offset(name: string): number {
+        if (!this.fields.has(name)) {
+            throw new RuntimeError("No member named " + name + "in " + this.toString);
+        }
+        // find the offset of the value by going over every field before it
+        let offset: number = 0;
+        for (let [key, value] of this.fields) {
+            if (key === name) {
+                break;
+            }
+            offset += value.size();            
+        }
+        return offset;
     }
 }
 

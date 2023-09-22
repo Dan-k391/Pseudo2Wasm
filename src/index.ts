@@ -198,7 +198,13 @@ i <- 1
 OUTPUT -i
 `
 
-const code20 = `OUTPUT "Hello World"`
+const code20 = `DECLARE arr: ARRAY[0: 3] OF INTEGER
+
+arr[0] <- 1
+arr[1] <- 2
+arr[2] <- 3
+
+OUTPUT arr[0] + arr[1] + arr[2]`
 
 const code21 = `DECLARE arr: ARRAY[0: 10] OF INTEGER
 
@@ -217,7 +223,7 @@ OUTPUT arr[0] + arr[1] + arr[2] + arr[3] + arr[4] + arr[5] + arr[6] + arr[7] + a
 `
 
 const code22 = `DECLARE arr: ARRAY[0: 10] OF INTEGER
-DECLARE i: iNTEGER
+DECLARE i: INTEGER
 
 FOR i <- 0 TO 10
     arr[i] <- i
@@ -267,6 +273,7 @@ NEXT i
 OUTPUT sum
 `
 
+const code25 = `OUTPUT "Hello World"`
 
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
@@ -309,10 +316,11 @@ const codes = [
     code21,
     code22,
     code23,
-    code24
+    code24,
+    code25
 ];
 const expected = [10, 7.28, 2, "Hi", 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
-    , 'a', 'v', -1, -1, "Hello World", 55, 55, 1210, 1210];
+    , 'a', 'v', -1, -1, 6, 55, 55, 1210, 1210, "Hello World"];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
@@ -329,7 +337,7 @@ async function compileTest() {
             compileCount++;
         } 
         catch (e) {
-            console.log(e);
+            console.error(e);
             compileFailed.push(i);
         }
 
@@ -341,7 +349,7 @@ async function compileTest() {
                 runCount++;
         }
         catch (e) {
-            console.log(e);
+            console.error(e);
             runFailed.push(i);
         }
     }

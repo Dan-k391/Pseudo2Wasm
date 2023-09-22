@@ -120,6 +120,13 @@ export class Generator {
         throw new RuntimeError("Unknown type '" + type + "'");
     }
 
+    public getOffset(type: Type): ExpressionRef {
+        console.log(this.offset);
+        const old = this.offset;
+        this.offset += type.size()
+        return old;
+    }
+
     public getFunction(name: string): Function {
         if (!this.functions.has(name)) {
             throw new RuntimeError("Function '" + name + "' is not declared");
@@ -282,7 +289,7 @@ export class Generator {
         if (rVal.kind !== typeKind.RECORD) {
             throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
         }
-        return (rVal as ArrayType).elem;
+        return (rVal as RecordType).fields.get(node.ident.lexeme) as Type;
     }
 
     private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): Type {
@@ -447,12 +454,17 @@ export class Generator {
     }
 
     // Expressions
+    // specifically right values
     private generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.AssignNode:
                 return this.assignExpression(expression as AssignNode);
             case nodeKind.VarExprNode:
                 return this.varExpression(expression as VarExprNode);
+            case nodeKind.IndexExprNode:
+                return this.loadIndexExpression(expression as IndexExprNode);
+            case nodeKind.SelectExprNode:
+                return this.selectExpression(expression as SelectExprNode);
             case nodeKind.CallFunctionExprNode:
                 return this.callFunctionExpression(expression as CallFunctionExprNode);
             case nodeKind.CallProcedureExprNode:
@@ -474,10 +486,17 @@ export class Generator {
         }
     }
 
-    public getOffset(node: Expr): ExpressionRef {
-        console.log(node);
-        
-        return this.offset;
+    private generateLeftValue(expression: Expr): ExpressionRef {
+        switch (expression.kind) {
+            case nodeKind.VarExprNode:
+                return this.varExpression(expression as VarExprNode);
+            case nodeKind.IndexExprNode:
+                return this.indexExpression(expression as IndexExprNode);
+            case nodeKind.SelectExprNode:
+                return this.selectExpression(expression as SelectExprNode);
+            default:
+                throw new RuntimeError(expression.toString() + "cannot be a left value");
+        }
     }
 
     public assignExpression(node: AssignNode): ExpressionRef {
@@ -498,7 +517,7 @@ export class Generator {
             throw new RuntimeError("not implemented");
         }
         const basicType = (type as BasicType).type;
-        const ptr = this.getOffset(node.left);
+        const ptr = this.generateLeftValue(node.left);
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
             basicType === basicKind.BOOLEAN) {
@@ -516,6 +535,50 @@ export class Generator {
         const wasmType = this.globals.getWasmType(varName);
         const variable = this.module.global.get(varName, wasmType);
         return variable;
+    }
+
+    private loadIndexExpression(node: IndexExprNode): ExpressionRef {
+        const elemType = this.resolveType(node);
+        // FIXME: fix soon
+        if (elemType.kind !== typeKind.BASIC) {
+            throw new RuntimeError("not implemented");
+        }
+        const basicType = (elemType as BasicType).type;
+        const ptr = this.indexExpression(node);
+        if (basicType === basicKind.INTEGER ||
+            basicType === basicKind.CHAR||
+            basicType === basicKind.BOOLEAN) {
+            return this.module.i32.load(0, 2, ptr);
+        }
+        else if (basicType === basicKind.REAL) {
+            return this.module.f64.load(0, 2, ptr);
+        }
+        return -1;
+    }
+
+    // obtain the pointer of the value but not setting or loading it
+    public indexExpression(node: IndexExprNode): ExpressionRef {
+        // check whether the expr exists and whether it is an ARRAY
+        const rVal = this.resolveType(node.expr);
+        if (rVal.kind !== typeKind.ARRAY) {
+            throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
+        }
+        const elemType = this.resolveType(node);
+        // if it comes to here possibilities such as 1[1] are prevented
+        const expr = this.generateExpression(node.expr);
+        const index = this.generateExpression(node.index);
+        return this.module.i32.add(expr, this.module.i32.mul(index, this.generateConstant(binaryen.i32, elemType.size())));
+    }
+
+    public selectExpression(node: SelectExprNode): ExpressionRef {
+        // check whether the expr exists and whether it is an ARRAY
+        const rVal = this.resolveType(node.expr);
+        if (rVal.kind !== typeKind.RECORD) {
+            throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
+        }
+        // if it comes to here possibilities such as 1[1] are prevented
+        const expr = this.generateExpression(node.expr);
+        return this.module.i32.add(expr, this.generateConstant(binaryen.i32, (rVal as RecordType).offset(node.ident.lexeme)));
     }
 
     private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
@@ -783,9 +846,10 @@ export class Generator {
         const upper = node.upper.literal;
         // pointer to head
         const wasmType = binaryen.i32;
-        this.globals.set(arrName, new ArrayType(elemType, lower, upper), wasmType);
+        const arrType = new ArrayType(elemType, lower, upper);
+        this.globals.set(arrName, arrType, wasmType);
         // FIXME: set to init pointer
-        return this.module.global.set(arrName, this.generateConstant(wasmType, 0));
+        return this.module.global.set(arrName, this.generateConstant(wasmType, this.getOffset(arrType)));
     }
 
     private pointerDeclStatement(node: PointerDeclNode): ExpressionRef {

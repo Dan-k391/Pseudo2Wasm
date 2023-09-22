@@ -66,8 +66,10 @@ export class Compiler {
 
         // module.optimize();
 
-        console.log(module.emitText());
+        const text = module.emitText();
+        console.log(text);
         const wasm = module.emitBinary();
+        console.log(wasm);
 
         // initialize import objects
         const memory = new WebAssembly.Memory({ initial: 1, maximum: 2 });
@@ -96,6 +98,10 @@ export class Compiler {
         }
 
         const { instance } = await WebAssembly.instantiate(wasm, importObect);
+
+        // for debug
+        // const main = instance.exports.main as CallableFunction;
+        // main();
 
         return correct;
     }

@@ -203,7 +203,7 @@ export class Scanner {
         this.advance();
 
         const value: string = this.source.substring(this.start + 1, this.current - 1);
-        this.addToken(tokenType.CHAR, value);
+        this.addToken(tokenType.CHAR_CONST, value);
     }
 
     private string(): void {
@@ -219,7 +219,7 @@ export class Scanner {
         this.advance();
 
         const value: string = this.source.substring(this.start + 1, this.current - 1);
-        this.addToken(tokenType.STRING, value);
+        this.addToken(tokenType.STRING_CONST, value);
     }
 
     private number(): void {
@@ -235,7 +235,7 @@ export class Scanner {
         }
 
         const value: number = parseFloat(this.source.substring(this.start, this.current));
-        this.addToken(isReal ? tokenType.REAL : tokenType.INTEGER, value);
+        this.addToken(isReal ? tokenType.REAL_CONST : tokenType.INT_CONST, value);
     }
     
     private identifier(): void {

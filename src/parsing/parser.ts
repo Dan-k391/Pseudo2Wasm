@@ -216,10 +216,10 @@ export class Parser {
     private primary(): Expr {
         if (this.match(tokenType.FALSE)) return new BoolExprNode(false);
         if (this.match(tokenType.TRUE)) return new BoolExprNode(true);
-        if (this.match(tokenType.INTEGER)) return new IntegerExprNode(this.previous().literal);
-        if (this.match(tokenType.REAL)) return new RealExprNode(this.previous().literal);
-        if (this.match(tokenType.CHAR)) return new CharExprNode(this.previous().literal);
-        if (this.match(tokenType.STRING)) return new StringExprNode(this.previous().literal);
+        if (this.match(tokenType.INT_CONST)) return new IntegerExprNode(this.previous().literal);
+        if (this.match(tokenType.REAL_CONST)) return new RealExprNode(this.previous().literal);
+        if (this.match(tokenType.CHAR_CONST)) return new CharExprNode(this.previous().literal);
+        if (this.match(tokenType.STRING_CONST)) return new StringExprNode(this.previous().literal);
         if (this.match(tokenType.IDENTIFIER)) return new VarExprNode(this.previous());
         if (this.match(tokenType.LEFT_PAREN)) {
             const expr: Expr = this.expression();
@@ -234,7 +234,7 @@ export class Parser {
         if (this.match(tokenType.OUTPUT)) return this.outputStatement();
         if (this.match(tokenType.RETURN)) return this.returnStatement();
         // FIXME: declaration only supports variable
-        if (this.match(tokenType.DECLARE)) return this.varDeclaration();
+        if (this.match(tokenType.DECLARE)) return this.declaration();
         // FIXME: type declaration only supports pointer
         if (this.match(tokenType.TYPE)) return this.typeDeclaration();
 
@@ -251,14 +251,24 @@ export class Parser {
         return new OutputNode(expr);
     }
 
-    private returnStatement(): Stmt {
+    private returnStatement(): ReturnNode {
         const expr = this.expression();
         return new ReturnNode(expr);
     }
 
-    private varDeclaration(): VarDeclNode {
+    private declaration(): Stmt {
         const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
         this.consume("Expected colon", tokenType.COLON);
+        if (this.match(tokenType.ARRAY)) {
+            this.consume("Expected '['", tokenType.LEFT_BRACKET);
+            const lower: Token = this.consume("Expected INTEGER for ARRAY lower bound", tokenType.INT_CONST);
+            this.consume("Expected colon", tokenType.COLON);
+            const upper: Token = this.consume("Expected INTEGER for ARRAY upper bound", tokenType.INT_CONST);
+            this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
+            this.consume("Expected 'OF'", tokenType.OF);
+            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+            return new ArrDeclNode(ident, type, lower, upper);
+        }
         const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
         return new VarDeclNode(ident, type);
     }
@@ -270,10 +280,10 @@ export class Parser {
             const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
             return new PointerDeclNode(ident, type);
         }
-        const component: Array<VarDeclNode> = new Array<VarDeclNode>();
+        const component: Array<Stmt> = new Array<VarDeclNode>();
         while (!this.check(tokenType.ENDTYPE) && !this.isAtEnd()) {
             this.consume("Expected Declaration", tokenType.DECLARE);
-            component.push(this.varDeclaration());
+            component.push(this.declaration());
         }
         return new TypeDefNode(ident, component);
     }
