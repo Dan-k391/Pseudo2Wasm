@@ -275,6 +275,43 @@ OUTPUT sum
 
 const code25 = `OUTPUT "Hello World"`
 
+const code26 = `DECLARE i: ARRAY[0: 1] OF INTEGER
+
+i[0] <- 2147483647
+OUTPUT i[0]
+`
+
+const code27 = `DECLARE i: ARRAY[0: 2] OF INTEGER
+
+i[0] <- 2147483647
+i[1] <- -2147483648
+OUTPUT i[0] + i[1]
+`
+
+// ARRAY OF CHAR "Hello World"
+const code28 = `DECLARE i: ARRAY[0: 12] OF CHAR
+
+i[0] <- 'H'
+i[1] <- 'e'
+i[2] <- 'l'
+i[3] <- 'l'
+i[4] <- 'l'
+i[5] <- ' '
+i[6] <- 'W'
+i[7] <- 'o'
+i[8] <- 'r'
+i[9] <- 'l'
+i[10] <- 'd'
+i[11] <- 0
+
+OUTPUT i
+`
+
+const code29 = `IF 3 THEN
+    OUTPUT 2
+ENDIF
+`
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
 
@@ -317,10 +354,14 @@ const codes = [
     code22,
     code23,
     code24,
-    code25
+    code25,
+    code26,
+    code27,
+    code28,
+    code29
 ];
 const expected = [10, 7.28, 2, "Hi", 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
-    , 'a', 'v', -1, -1, 6, 55, 55, 1210, 1210, "Hello World"];
+    , 'a', 'v', -1, -1, 6, 55, 55, 1210, 1210, "Hello World", 2147483647, -1, "Hello World", 2];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;

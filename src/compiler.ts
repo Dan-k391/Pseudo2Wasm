@@ -100,6 +100,7 @@ export class Compiler {
         const { instance } = await WebAssembly.instantiate(wasm, importObect);
 
         // for debug
+        // debugger;
         // const main = instance.exports.main as CallableFunction;
         // main();
 
