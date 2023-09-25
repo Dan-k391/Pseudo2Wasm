@@ -66,10 +66,14 @@ export class Compiler {
 
         // module.optimize();
 
+        if (!module.validate()) {
+            throw new Error("Module validation error");
+        }
+
         const text = module.emitText();
         console.log(text);
         const wasm = module.emitBinary();
-        console.log(wasm);
+        // console.log(wasm);
 
         // initialize import objects
         const memory = new WebAssembly.Memory({ initial: 1, maximum: 2 });
@@ -90,8 +94,10 @@ export class Compiler {
                     console.log(String.fromCharCode(output));
                 },
                 logString: (output: number) => {
-                    const bytes = new Uint8Array(memory.buffer, output);
-                    const str = bytes.toString();
+                    const bytes = new Uint8Array(memory.buffer, output, 65535 - output);
+                    let str = new TextDecoder("utf8").decode(bytes);
+                    str = str.split('\0')[0];
+                    correct = (str == expected);
                     console.log(str);
                 }
             },

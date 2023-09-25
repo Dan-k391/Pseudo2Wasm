@@ -96,7 +96,6 @@ export class Generator {
         this.module.addFunctionImport("logReal", "env", "logReal", binaryen.createType([binaryen.f64]), binaryen.none);
         this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
-        this.module.addMemoryImport("buffer", "env", "buffer");
 
         this.module.setStart(this.generateBody(this.ast.body));
 
@@ -106,6 +105,7 @@ export class Generator {
             this.module.addGlobal(name, wasmType, true, this.generateConstant(wasmType, 0));
         }
 
+        this.module.addMemoryImport("0", "env", "buffer");
         return this.module;
     }
 
@@ -123,7 +123,7 @@ export class Generator {
     public getOffset(type: Type): ExpressionRef {
         console.log(this.offset);
         const old = this.offset;
-        this.offset += type.size()
+        this.offset += type.size();
         return old;
     }
 
@@ -171,13 +171,15 @@ export class Generator {
         switch (currentBasic) {
             case basicKind.INTEGER:
                 // no need to convert for INTEGER, CHAR and BOOLEAN
-                if (targetBasic == basicKind.INTEGER || targetBasic == basicKind.CHAR || targetBasic == basicKind.BOOLEAN) {
+                if (targetBasic == basicKind.INTEGER ||
+                    targetBasic == basicKind.CHAR ||
+                    targetBasic == basicKind.BOOLEAN) {
                     return expression;
                 }
                 else if (targetBasic == basicKind.REAL) {
                     return this.module.f64.convert_s.i32(expression);
                 }
-                throw new RuntimeError("Cannot convert" + currentBasic + "to" + targetBasic);
+                throw new RuntimeError("Cannot convert " + currentBasic + " to " + targetBasic);
             case basicKind.REAL:
                 if (targetBasic == basicKind.INTEGER) {
                     return this.module.i32.trunc_s.f64(expression);
@@ -185,19 +187,26 @@ export class Generator {
                 else if (targetBasic == basicKind.REAL) {
                     return expression;
                 }
-                throw new RuntimeError("Cannot convert" + currentBasic + "to" + targetBasic);
+                throw new RuntimeError("Cannot convert " + currentBasic + " to " + targetBasic);
             case basicKind.CHAR:
-                if (targetBasic == basicKind.INTEGER || targetBasic == basicKind.CHAR || targetBasic == basicKind.BOOLEAN) {
+                if (targetBasic == basicKind.INTEGER ||
+                    targetBasic == basicKind.CHAR ||
+                    targetBasic == basicKind.BOOLEAN) {
                     return expression;
                 }
-                throw new RuntimeError("Cannot convert" + currentBasic + "to" + targetBasic);
+                throw new RuntimeError("Cannot convert " + currentBasic + " to " + targetBasic);
             case basicKind.STRING:
-                throw new RuntimeError("Cannot convert" + currentBasic + "to" + targetBasic);
-            case basicKind.BOOLEAN:
-                if (targetBasic == basicKind.INTEGER || targetBasic == basicKind.CHAR || targetBasic == basicKind.BOOLEAN) {
+                if (targetBasic == basicKind.STRING) {
                     return expression;
                 }
-                throw new RuntimeError("Cannot convert" + currentBasic + "to" + targetBasic);
+                throw new RuntimeError("Cannot convert " + currentBasic + " to " + targetBasic);
+            case basicKind.BOOLEAN:
+                if (targetBasic == basicKind.INTEGER ||
+                    targetBasic == basicKind.CHAR ||
+                    targetBasic == basicKind.BOOLEAN) {
+                    return expression;
+                }
+                throw new RuntimeError("Cannot convert " + currentBasic + " to " + targetBasic);
             default:
                 return expression;
         }
@@ -265,8 +274,8 @@ export class Generator {
                 return new BasicType(basicKind.REAL);
             case nodeKind.CharExprNode:
                 return new BasicType(basicKind.CHAR);
-            // case nodeKind.StringExprNode:
-            //     return VarType.STRING;
+            case nodeKind.StringExprNode:
+                return new BasicType(basicKind.STRING);
             default:
                 unreachable();
         }
@@ -479,8 +488,8 @@ export class Generator {
                 return this.realExpression(expression as RealExprNode);
             case nodeKind.CharExprNode:
                 return this.charExpression(expression as CharExprNode);
-            // case nodeKind.StringExprNode:
-            //     return this.stringExpression(expression as StringExprNode);
+            case nodeKind.StringExprNode:
+                return this.stringExpression(expression as StringExprNode);
             default:
                 return -1;
         }
@@ -501,7 +510,7 @@ export class Generator {
 
     public assignExpression(node: AssignNode): ExpressionRef {
         // FIXME: resolve left value
-        // Guess what? VarExpr has to be a sqecial case
+        // Guess what? VarExpr has to be a special case
         // Because this is wasm!
         if (node.left.kind === nodeKind.VarExprNode) {
             const varName = (node.left as VarExprNode).ident.lexeme;
@@ -521,10 +530,10 @@ export class Generator {
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
             basicType === basicKind.BOOLEAN) {
-            return this.module.i32.store(0, 2, ptr, this.generateExpression(node.right));
+            return this.module.i32.store(0, 2, ptr, this.generateExpression(node.right), "0");
         }
         else if (basicType === basicKind.REAL) {
-            return this.module.f64.store(0, 2, ptr, this.generateExpression(node.right));
+            return this.module.f64.store(0, 2, ptr, this.generateExpression(node.right), "0");
         }
 
         return -1;
@@ -548,10 +557,10 @@ export class Generator {
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
             basicType === basicKind.BOOLEAN) {
-            return this.module.i32.load(0, 2, ptr);
+            return this.module.i32.load(0, 2, ptr, "0");
         }
         else if (basicType === basicKind.REAL) {
-            return this.module.f64.load(0, 2, ptr);
+            return this.module.f64.load(0, 2, ptr, "0");
         }
         return -1;
     }
@@ -752,8 +761,8 @@ export class Generator {
         const stringIndex = this.offset;
         this.offset += node.value.length + 1;
         console.log(new TextEncoder().encode(node.value + '\0'));
-        this.module.setMemory(node.value.length + 1, node.value.length + 1, null, [{
-            offset: stringIndex,
+        this.module.setMemory(0, 65536, null, [{
+            offset: this.generateConstant(binaryen.i32, stringIndex),
             data: new TextEncoder().encode(node.value + '\0'),
             passive: false,
         }], false);
@@ -824,6 +833,9 @@ export class Generator {
         }
         else if (basicType == basicKind.CHAR) {
             return this.module.call("logChar", [this.generateExpression(node.expr)], binaryen.none);
+        }
+        else if (basicType == basicKind.STRING) {
+            return this.module.call("logString", [this.generateExpression(node.expr)], binaryen.none);
         }
         return -1;
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);

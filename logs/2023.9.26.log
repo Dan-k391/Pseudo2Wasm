@@ -1,0 +1,2389 @@
+content_scripts.js:1 今天您打开了 10 次 localhost:8080，花费了 8 分 45 秒 来浏览它。
+content_scripts.js:1 你可以在【网费很贵】的选项中关闭以上提示！
+index.js:551 [webpack-dev-server] Server started: Hot Module Replacement enabled, Live Reloading enabled, Progress disabled, Overlay enabled.
+log.js:24 [HMR] Waiting for update signal from WDS...
+index.js:561  [webpack-dev-server] Errors while compiling. Reload prevented.
+logger @ index.js:561
+(anonymous) @ index.js:730
+error @ index.js:180
+errors @ index.js:268
+(anonymous) @ socket.js:60
+client.onmessage @ WebSocketClient.js:50
+index.js:561  [webpack-dev-server] ERROR in ./node_modules/binaryen/index.js 6:1269-1285
+Module not found: Error: Can't resolve 'module' in 'D:\web\Pseudo2Wasm\node_modules\binaryen'
+logger @ index.js:561
+(anonymous) @ index.js:730
+error @ index.js:180
+errors @ index.js:281
+(anonymous) @ socket.js:60
+client.onmessage @ WebSocketClient.js:50
+index.ts:373 0
+index.ts:374 OUTPUT 1 + 9
+
+compiler.ts:18 (5) [Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+compiler.ts:18 (5) [Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (call $logInteger
+   (i32.add
+    (i32.const 1)
+    (i32.const 9)
+   )
+  )
+ )
+)
+
+compiler.ts:86 10
+index.ts:373 1
+index.ts:374 DECLARE i:INTEGER
+DECLARE j:INTEGER
+DECLARE k:REAL
+
+i <- 1
+j <- 2
+k <- 3.14
+OUTPUT i + j * k
+
+compiler.ts:18 (28) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(7)}
+compiler.ts:18 (28) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(7)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (global $j (mut i32) (i32.const 0))
+ (global $k (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $j
+   (i32.const 0)
+  )
+  (global.set $k
+   (f64.const 0)
+  )
+  (global.set $i
+   (i32.const 1)
+  )
+  (global.set $j
+   (i32.const 2)
+  )
+  (global.set $k
+   (f64.const 3.14)
+  )
+  (call $logReal
+   (f64.add
+    (f64.convert_i32_s
+     (global.get $i)
+    )
+    (f64.mul
+     (f64.convert_i32_s
+      (global.get $j)
+     )
+     (global.get $k)
+    )
+   )
+  )
+ )
+)
+
+compiler.ts:90 7.28
+index.ts:373 2
+index.ts:374 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- -1.99
+j <- 2.99
+IF i = j + i THEN
+    OUTPUT 1
+ELSE
+    OUTPUT 2
+ENDIF
+
+compiler.ts:18 (29) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:18 (29) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (global $j (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $j
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.trunc_f64_s
+    (f64.neg
+     (f64.const 1.99)
+    )
+   )
+  )
+  (global.set $j
+   (i32.trunc_f64_s
+    (f64.const 2.99)
+   )
+  )
+  (if
+   (i32.eq
+    (global.get $i)
+    (i32.add
+     (global.get $j)
+     (global.get $i)
+    )
+   )
+   (call $logInteger
+    (i32.const 1)
+   )
+   (call $logInteger
+    (i32.const 2)
+   )
+  )
+ )
+)
+
+compiler.ts:86 2
+index.ts:373 3
+index.ts:374 DECLARE i:STRING
+i <- "Hi"
+OUTPUT i
+
+compiler.ts:18 (10) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+generator.ts:763 Uint8Array(3) [72, 105, 0, buffer: ArrayBuffer(3), byteLength: 3, byteOffset: 0, length: 3, Symbol(Symbol.toStringTag): 'Uint8Array']
+compiler.ts:18 (10) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+generator.ts:763 Uint8Array(3) [72, 105, 0, buffer: ArrayBuffer(3), byteLength: 3, byteOffset: 0, length: 3, Symbol(Symbol.toStringTag): 'Uint8Array']
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (data $0 (i32.const 0) "Hi\00")
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 0)
+  )
+  (call $logString
+   (global.get $i)
+  )
+ )
+)
+
+compiler.ts:101 Hi
+index.ts:373 4
+index.ts:374 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- 1
+WHILE i < 10
+    i <- i + 1
+    j <- i
+ENDWHILE
+
+OUTPUT j
+
+compiler.ts:18 (27) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:18 (27) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (global $j (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $j
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 1)
+  )
+  (loop $1
+   (if
+    (i32.lt_s
+     (global.get $i)
+     (i32.const 10)
+    )
+    (block
+     (global.set $i
+      (i32.add
+       (global.get $i)
+       (i32.const 1)
+      )
+     )
+     (global.set $j
+      (global.get $i)
+     )
+     (br $1)
+    )
+   )
+  )
+  (call $logInteger
+   (global.get $j)
+  )
+ )
+)
+
+compiler.ts:86 10
+index.ts:373 5
+index.ts:374 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- 1
+REPEAT
+    i <- i + 1
+    j <- i
+UNTIL i = 10
+
+OUTPUT j
+
+compiler.ts:18 (27) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:18 (27) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (global $j (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $j
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 1)
+  )
+  (loop $1
+   (global.set $i
+    (i32.add
+     (global.get $i)
+     (i32.const 1)
+    )
+   )
+   (global.set $j
+    (global.get $i)
+   )
+   (if
+    (i32.eqz
+     (i32.eq
+      (global.get $i)
+      (i32.const 10)
+     )
+    )
+    (br $1)
+   )
+  )
+  (call $logInteger
+   (global.get $j)
+  )
+ )
+)
+
+compiler.ts:86 10
+index.ts:373 6
+index.ts:374 DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+FOR i <- 1 TO 11
+    j <- i
+NEXT i
+
+OUTPUT j
+
+compiler.ts:18 (22) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(4)}
+compiler.ts:18 (22) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(4)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (global $j (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $j
+   (i32.const 0)
+  )
+  (block
+   (global.set $i
+    (i32.const 1)
+   )
+   (loop $1
+    (if
+     (i32.ge_s
+      (i32.const 11)
+      (global.get $i)
+     )
+     (block
+      (global.set $j
+       (global.get $i)
+      )
+      (global.set $i
+       (i32.add
+        (global.get $i)
+        (i32.const 1)
+       )
+      )
+      (br $1)
+     )
+    )
+   )
+  )
+  (call $logInteger
+   (global.get $j)
+  )
+ )
+)
+
+compiler.ts:86 11
+index.ts:373 7
+index.ts:374 FUNCTION add(a:INTEGER, b:INTEGER) RETURNS INTEGER
+    RETURN a + b
+ENDFUNCTION
+
+DECLARE i:INTEGER
+DECLARE j:INTEGER
+
+i <- 1
+j <- 2
+OUTPUT add(i, j)
+
+compiler.ts:18 (40) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(6)}
+compiler.ts:18 (40) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(6)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_i32_=>_i32 (func (param i32 i32) (result i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (global $j (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $add (param $0 i32) (param $1 i32) (result i32)
+  (return
+   (i32.add
+    (local.get $0)
+    (local.get $1)
+   )
+  )
+ )
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $j
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 1)
+  )
+  (global.set $j
+   (i32.const 2)
+  )
+  (call $logInteger
+   (call $add
+    (global.get $i)
+    (global.get $j)
+   )
+  )
+ )
+)
+
+compiler.ts:86 3
+index.ts:373 8
+index.ts:374 FUNCTION for(a:INTEGER) RETURNS INTEGER
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    FOR b <- 1 TO a
+        c <- b
+    NEXT b
+    RETURN c
+ENDFUNCTION
+
+OUTPUT for(10)
+
+compiler.ts:18 (37) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:18 (37) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_i32 (func (param i32) (result i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $for (param $0 i32) (result i32)
+  (local $1 i32)
+  (local $2 i32)
+  (local.set $1
+   (i32.const 0)
+  )
+  (local.set $2
+   (i32.const 0)
+  )
+  (block
+   (local.set $1
+    (i32.const 1)
+   )
+   (loop $1
+    (if
+     (i32.ge_s
+      (local.get $0)
+      (local.get $1)
+     )
+     (block
+      (local.set $2
+       (local.get $1)
+      )
+      (local.set $1
+       (i32.add
+        (local.get $1)
+        (i32.const 1)
+       )
+      )
+      (br $1)
+     )
+    )
+   )
+  )
+  (return
+   (local.get $2)
+  )
+ )
+ (func $main
+  (call $logInteger
+   (call $for
+    (i32.const 10)
+   )
+  )
+ )
+)
+
+compiler.ts:86 10
+index.ts:373 9
+index.ts:374 FUNCTION for(a:INTEGER) RETURNS INTEGER
+    DECLARE b:INTEGER
+
+    FOR a <- 1 TO 11
+        b <- a
+    NEXT a
+    RETURN b
+ENDFUNCTION
+
+OUTPUT for(1)
+
+compiler.ts:18 (33) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:18 (33) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_i32 (func (param i32) (result i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $for (param $0 i32) (result i32)
+  (local $1 i32)
+  (local.set $1
+   (i32.const 0)
+  )
+  (block
+   (local.set $0
+    (i32.const 1)
+   )
+   (loop $1
+    (if
+     (i32.ge_s
+      (i32.const 11)
+      (local.get $0)
+     )
+     (block
+      (local.set $1
+       (local.get $0)
+      )
+      (local.set $0
+       (i32.add
+        (local.get $0)
+        (i32.const 1)
+       )
+      )
+      (br $1)
+     )
+    )
+   )
+  )
+  (return
+   (local.get $1)
+  )
+ )
+ (func $main
+  (call $logInteger
+   (call $for
+    (i32.const 1)
+   )
+  )
+ )
+)
+
+compiler.ts:86 11
+index.ts:373 10
+index.ts:374 FUNCTION recur(a:INTEGER) RETURNS INTEGER
+    IF a = 10 THEN
+        RETURN a
+    ENDIF
+    RETURN recur(a + 1)
+ENDFUNCTION
+
+OUTPUT recur(1)
+
+compiler.ts:18 (31) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:18 (31) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $i32_=>_i32 (func (param i32) (result i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $recur (param $0 i32) (result i32)
+  (if
+   (i32.eq
+    (local.get $0)
+    (i32.const 10)
+   )
+   (return
+    (local.get $0)
+   )
+  )
+  (return
+   (call $recur
+    (i32.add
+     (local.get $0)
+     (i32.const 1)
+    )
+   )
+  )
+ )
+ (func $main
+  (call $logInteger
+   (call $recur
+    (i32.const 1)
+   )
+  )
+ )
+)
+
+compiler.ts:86 10
+index.ts:373 11
+index.ts:374 DECLARE a:INTEGER
+a <- 1
+
+FUNCTION scope() RETURNS INTEGER
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    b <- 1
+    c <- 2
+    RETURN a + b + c
+ENDFUNCTION
+
+OUTPUT scope()
+
+compiler.ts:18 (39) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(4)}
+compiler.ts:18 (39) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(4)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_i32 (func (result i32)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $a (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $scope (result i32)
+  (local $0 i32)
+  (local $1 i32)
+  (local.set $0
+   (i32.const 0)
+  )
+  (local.set $1
+   (i32.const 0)
+  )
+  (local.set $0
+   (i32.const 1)
+  )
+  (local.set $1
+   (i32.const 2)
+  )
+  (return
+   (i32.add
+    (i32.add
+     (global.get $a)
+     (local.get $0)
+    )
+    (local.get $1)
+   )
+  )
+ )
+ (func $main
+  (global.set $a
+   (i32.const 0)
+  )
+  (global.set $a
+   (i32.const 1)
+  )
+  (call $logInteger
+   (call $scope)
+  )
+ )
+)
+
+compiler.ts:86 4
+index.ts:373 12
+index.ts:374 PROCEDURE print(a:INTEGER)
+    DECLARE b:INTEGER
+    DECLARE c:INTEGER
+
+    b <- 2
+    c <- 2
+    OUTPUT a + b + c
+ENDPROCEDURE
+
+CALL print(1)
+
+compiler.ts:18 (34) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:18 (34) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(2)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $print (param $0 i32)
+  (local $1 i32)
+  (local $2 i32)
+  (local.set $1
+   (i32.const 0)
+  )
+  (local.set $2
+   (i32.const 0)
+  )
+  (local.set $1
+   (i32.const 2)
+  )
+  (local.set $2
+   (i32.const 2)
+  )
+  (call $logInteger
+   (i32.add
+    (i32.add
+     (local.get $0)
+     (local.get $1)
+    )
+    (local.get $2)
+   )
+  )
+  (return)
+ )
+ (func $main
+  (call $print
+   (i32.const 1)
+  )
+ )
+)
+
+compiler.ts:86 5
+index.ts:373 13
+index.ts:374 DECLARE i: INTEGER
+i <- 1
+
+PROCEDURE increment(BYREF a:INTEGER)
+    a <- a + 1
+ENDPROCEDURE
+
+CALL increment(i)
+OUTPUT i
+
+compiler.ts:18 (29) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+index.ts:381  Error: Unknown variable 'a'
+    at GlobalTable.getType (global.ts:38:19)
+    at Generator.assignExpression (generator.ts:517:42)
+    at Procedure.assignExpression (procedure.ts:374:35)
+    at Procedure.generateExpression (procedure.ts:332:29)
+    at Procedure.generateStatement (procedure.ts:581:29)
+    at Procedure.generateStatements (procedure.ts:571:29)
+    at Procedure.generateBlock (procedure.ts:565:45)
+    at Procedure.generate (procedure.ts:94:32)
+    at Generator.generateProcedureDefinition (generator.ts:462:37)
+    at Generator.generateStatements (generator.ts:784:22)
+(anonymous) @ index.ts:381
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+(anonymous) @ index.ts:1
+__awaiter @ index.ts:1
+compileTest @ index.ts:371
+(anonymous) @ index.ts:402
+await in (anonymous)(异步)
+__webpack_require__.a @ async module:49
+./src/index.ts @ error.ts:32
+__webpack_require__ @ bootstrap:24
+(anonymous) @ startup:6
+(anonymous) @ startup:6
+compiler.ts:18 (29) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+index.ts:393  Error: Unknown variable 'a'
+    at GlobalTable.getType (global.ts:38:19)
+    at Generator.assignExpression (generator.ts:517:42)
+    at Procedure.assignExpression (procedure.ts:374:35)
+    at Procedure.generateExpression (procedure.ts:332:29)
+    at Procedure.generateStatement (procedure.ts:581:29)
+    at Procedure.generateStatements (procedure.ts:571:29)
+    at Procedure.generateBlock (procedure.ts:565:45)
+    at Procedure.generate (procedure.ts:94:32)
+    at Generator.generateProcedureDefinition (generator.ts:462:37)
+    at Generator.generateStatements (generator.ts:784:22)
+(anonymous) @ index.ts:393
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+(anonymous) @ index.ts:1
+__awaiter @ index.ts:1
+compileTest @ index.ts:371
+(anonymous) @ index.ts:402
+await in (anonymous)(异步)
+__webpack_require__.a @ async module:49
+./src/index.ts @ error.ts:32
+__webpack_require__ @ bootstrap:24
+(anonymous) @ startup:6
+(anonymous) @ startup:6
+index.ts:373 14
+index.ts:374 DECLARE i: INTEGER
+i <- 1
+
+PROCEDURE increment()
+    i <- i + 1
+ENDPROCEDURE
+
+CALL increment()
+OUTPUT i
+
+compiler.ts:18 (24) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:18 (24) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_none (func))
+ (type $f64_=>_none (func (param f64)))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $increment
+  (global.set $i
+   (i32.add
+    (global.get $i)
+    (i32.const 1)
+   )
+  )
+  (return)
+ )
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 1)
+  )
+  (call $increment)
+  (call $logInteger
+   (global.get $i)
+  )
+ )
+)
+
+compiler.ts:86 2
+index.ts:373 15
+index.ts:374 FUNCTION add(a:REAL, b:REAL) RETURNS REAL
+    DECLARE c: REAL
+    c <- a + b
+    RETURN c
+ENDFUNCTION
+
+DECLARE i: REAL
+DECLARE j: REAL
+
+i <- 1.1
+j <- 2.2
+OUTPUT add(i, j)
+
+compiler.ts:18 (47) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(6)}
+compiler.ts:18 (47) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(6)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $f64_f64_=>_f64 (func (param f64 f64) (result f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (global $j (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $add (param $0 f64) (param $1 f64) (result f64)
+  (local $2 f64)
+  (local.set $2
+   (f64.const 0)
+  )
+  (local.set $2
+   (f64.add
+    (local.get $0)
+    (local.get $1)
+   )
+  )
+  (return
+   (local.get $2)
+  )
+ )
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $j
+   (f64.const 0)
+  )
+  (global.set $i
+   (f64.const 1.1)
+  )
+  (global.set $j
+   (f64.const 2.2)
+  )
+  (call $logReal
+   (call $add
+    (global.get $i)
+    (global.get $j)
+   )
+  )
+ )
+)
+
+compiler.ts:90 3.3000000000000003
+index.ts:373 16
+index.ts:374 OUTPUT 'a'
+compiler.ts:18 (3) [Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+compiler.ts:18 (3) [Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (call $logChar
+   (i32.const 97)
+  )
+ )
+)
+
+compiler.ts:94 a
+index.ts:373 17
+index.ts:374 DECLARE i: CHAR
+i <- 'v'
+
+OUTPUT i
+
+compiler.ts:18 (10) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+compiler.ts:18 (10) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 118)
+  )
+  (call $logChar
+   (global.get $i)
+  )
+ )
+)
+
+compiler.ts:94 v
+index.ts:373 18
+index.ts:374 DECLARE i: INTEGER
+
+i <- 1
+OUTPUT -i
+
+compiler.ts:18 (11) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+compiler.ts:18 (11) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 1)
+  )
+  (call $logInteger
+   (i32.sub
+    (i32.const 0)
+    (global.get $i)
+   )
+  )
+ )
+)
+
+compiler.ts:86 -1
+index.ts:373 19
+index.ts:374 DECLARE i: REAL
+
+i <- 1
+OUTPUT -i
+
+compiler.ts:18 (11) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+compiler.ts:18 (11) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut f64) (f64.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (f64.const 0)
+  )
+  (global.set $i
+   (f64.convert_i32_s
+    (i32.const 1)
+   )
+  )
+  (call $logReal
+   (f64.neg
+    (global.get $i)
+   )
+  )
+ )
+)
+
+compiler.ts:90 -1
+index.ts:373 20
+index.ts:374 DECLARE arr: ARRAY[0: 3] OF INTEGER
+
+arr[0] <- 1
+arr[1] <- 2
+arr[2] <- 3
+
+OUTPUT arr[0] + arr[1] + arr[2]
+compiler.ts:18 (45) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+generator.ts:124 0
+compiler.ts:18 (45) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+generator.ts:124 0
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $arr (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $arr
+   (i32.const 0)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 0)
+     (i32.const 4)
+    )
+   )
+   (i32.const 1)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 1)
+     (i32.const 4)
+    )
+   )
+   (i32.const 2)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 2)
+     (i32.const 4)
+    )
+   )
+   (i32.const 3)
+  )
+  (call $logInteger
+   (i32.add
+    (i32.add
+     (i32.load align=2
+      (i32.add
+       (global.get $arr)
+       (i32.mul
+        (i32.const 0)
+        (i32.const 4)
+       )
+      )
+     )
+     (i32.load align=2
+      (i32.add
+       (global.get $arr)
+       (i32.mul
+        (i32.const 1)
+        (i32.const 4)
+       )
+      )
+     )
+    )
+    (i32.load align=2
+     (i32.add
+      (global.get $arr)
+      (i32.mul
+       (i32.const 2)
+       (i32.const 4)
+      )
+     )
+    )
+   )
+  )
+ )
+)
+
+compiler.ts:86 6
+index.ts:373 21
+index.ts:374 DECLARE arr: ARRAY[0: 10] OF INTEGER
+
+arr[0] <- 1
+arr[1] <- 2
+arr[2] <- 3
+arr[3] <- 4
+arr[4] <- 5
+arr[5] <- 6
+arr[6] <- 7
+arr[7] <- 8
+arr[8] <- 9
+arr[9] <- 10
+
+OUTPUT arr[0] + arr[1] + arr[2] + arr[3] + arr[4] + arr[5] + arr[6] + arr[7] + arr[8] + arr[9]
+
+compiler.ts:18 (122) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, …]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(12)}
+generator.ts:124 0
+compiler.ts:18 (122) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, …]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(12)}
+generator.ts:124 0
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $arr (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $arr
+   (i32.const 0)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 0)
+     (i32.const 4)
+    )
+   )
+   (i32.const 1)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 1)
+     (i32.const 4)
+    )
+   )
+   (i32.const 2)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 2)
+     (i32.const 4)
+    )
+   )
+   (i32.const 3)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 3)
+     (i32.const 4)
+    )
+   )
+   (i32.const 4)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 4)
+     (i32.const 4)
+    )
+   )
+   (i32.const 5)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 5)
+     (i32.const 4)
+    )
+   )
+   (i32.const 6)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 6)
+     (i32.const 4)
+    )
+   )
+   (i32.const 7)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 7)
+     (i32.const 4)
+    )
+   )
+   (i32.const 8)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 8)
+     (i32.const 4)
+    )
+   )
+   (i32.const 9)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $arr)
+    (i32.mul
+     (i32.const 9)
+     (i32.const 4)
+    )
+   )
+   (i32.const 10)
+  )
+  (call $logInteger
+   (i32.add
+    (i32.add
+     (i32.add
+      (i32.add
+       (i32.add
+        (i32.add
+         (i32.add
+          (i32.add
+           (i32.add
+            (i32.load align=2
+             (i32.add
+              (global.get $arr)
+              (i32.mul
+               (i32.const 0)
+               (i32.const 4)
+              )
+             )
+            )
+            (i32.load align=2
+             (i32.add
+              (global.get $arr)
+              (i32.mul
+               (i32.const 1)
+               (i32.const 4)
+              )
+             )
+            )
+           )
+           (i32.load align=2
+            (i32.add
+             (global.get $arr)
+             (i32.mul
+              (i32.const 2)
+              (i32.const 4)
+             )
+            )
+           )
+          )
+          (i32.load align=2
+           (i32.add
+            (global.get $arr)
+            (i32.mul
+             (i32.const 3)
+             (i32.const 4)
+            )
+           )
+          )
+         )
+         (i32.load align=2
+          (i32.add
+           (global.get $arr)
+           (i32.mul
+            (i32.const 4)
+            (i32.const 4)
+           )
+          )
+         )
+        )
+        (i32.load align=2
+         (i32.add
+          (global.get $arr)
+          (i32.mul
+           (i32.const 5)
+           (i32.const 4)
+          )
+         )
+        )
+       )
+       (i32.load align=2
+        (i32.add
+         (global.get $arr)
+         (i32.mul
+          (i32.const 6)
+          (i32.const 4)
+         )
+        )
+       )
+      )
+      (i32.load align=2
+       (i32.add
+        (global.get $arr)
+        (i32.mul
+         (i32.const 7)
+         (i32.const 4)
+        )
+       )
+      )
+     )
+     (i32.load align=2
+      (i32.add
+       (global.get $arr)
+       (i32.mul
+        (i32.const 8)
+        (i32.const 4)
+       )
+      )
+     )
+    )
+    (i32.load align=2
+     (i32.add
+      (global.get $arr)
+      (i32.mul
+       (i32.const 9)
+       (i32.const 4)
+      )
+     )
+    )
+   )
+  )
+ )
+)
+
+compiler.ts:86 55
+index.ts:373 22
+index.ts:374 DECLARE arr: ARRAY[0: 10] OF INTEGER
+DECLARE i: INTEGER
+
+FOR i <- 0 TO 10
+    arr[i] <- i
+NEXT i
+
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 0 TO 10
+    sum <- sum + arr[i]
+NEXT i
+
+OUTPUT sum
+
+compiler.ts:18 (55) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(7)}
+generator.ts:124 0
+compiler.ts:18 (55) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(7)}
+generator.ts:124 0
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $arr (mut i32) (i32.const 0))
+ (global $i (mut i32) (i32.const 0))
+ (global $sum (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $arr
+   (i32.const 0)
+  )
+  (global.set $i
+   (i32.const 0)
+  )
+  (block
+   (global.set $i
+    (i32.const 0)
+   )
+   (loop $1
+    (if
+     (i32.ge_s
+      (i32.const 10)
+      (global.get $i)
+     )
+     (block
+      (i32.store align=2
+       (i32.add
+        (global.get $arr)
+        (i32.mul
+         (global.get $i)
+         (i32.const 4)
+        )
+       )
+       (global.get $i)
+      )
+      (global.set $i
+       (i32.add
+        (global.get $i)
+        (i32.const 1)
+       )
+      )
+      (br $1)
+     )
+    )
+   )
+  )
+  (global.set $sum
+   (i32.const 0)
+  )
+  (global.set $sum
+   (i32.const 0)
+  )
+  (block
+   (global.set $i
+    (i32.const 0)
+   )
+   (loop $2
+    (if
+     (i32.ge_s
+      (i32.const 10)
+      (global.get $i)
+     )
+     (block
+      (global.set $sum
+       (i32.add
+        (global.get $sum)
+        (i32.load align=2
+         (i32.add
+          (global.get $arr)
+          (i32.mul
+           (global.get $i)
+           (i32.const 4)
+          )
+         )
+        )
+       )
+      )
+      (global.set $i
+       (i32.add
+        (global.get $i)
+        (i32.const 1)
+       )
+      )
+      (br $2)
+     )
+    )
+   )
+  )
+  (call $logInteger
+   (global.get $sum)
+  )
+ )
+)
+
+compiler.ts:86 55
+index.ts:373 23
+index.ts:374 DECLARE arr: ARRAY[0: 10, 0: 10] OF INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
+
+FOR i <- 0 TO 10
+    FOR j <- 0 TO 10
+        arr[i, j] <- i + j
+    NEXT j
+NEXT i
+
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 0 TO 10
+    FOR j <- 0 TO 10
+        sum <- sum + arr[i, j]
+    NEXT j
+NEXT i
+
+OUTPUT sum
+
+compiler.ts:18 (85) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+index.ts:381  SyntaxError {message: "Expected ']'", line: 1, startColumn: 24, endColumn: 25}
+(anonymous) @ index.ts:381
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+(anonymous) @ index.ts:1
+__awaiter @ index.ts:1
+compileTest @ index.ts:371
+(anonymous) @ index.ts:402
+await in (anonymous)(异步)
+__webpack_require__.a @ async module:49
+./src/index.ts @ error.ts:32
+__webpack_require__ @ bootstrap:24
+(anonymous) @ startup:6
+(anonymous) @ startup:6
+compiler.ts:18 (85) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+index.ts:393  SyntaxError {message: "Expected ']'", line: 1, startColumn: 24, endColumn: 25}
+(anonymous) @ index.ts:393
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+(anonymous) @ index.ts:1
+__awaiter @ index.ts:1
+compileTest @ index.ts:371
+(anonymous) @ index.ts:402
+await in (anonymous)(异步)
+__webpack_require__.a @ async module:49
+./src/index.ts @ error.ts:32
+__webpack_require__ @ bootstrap:24
+(anonymous) @ startup:6
+(anonymous) @ startup:6
+index.ts:373 24
+index.ts:374 DECLARE i: INTEGER
+DECLARE j: INTEGER
+
+DECLARE sum: INTEGER
+
+FOR i <- 0 TO 10
+    FOR j <- 0 TO 10
+        sum <- sum + i + j
+    NEXT j
+NEXT i
+
+OUTPUT sum
+
+compiler.ts:18 (38) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:18 (38) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(5)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (global $j (mut i32) (i32.const 0))
+ (global $sum (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (global.set $j
+   (i32.const 0)
+  )
+  (global.set $sum
+   (i32.const 0)
+  )
+  (block
+   (global.set $i
+    (i32.const 0)
+   )
+   (loop $2
+    (if
+     (i32.ge_s
+      (i32.const 10)
+      (global.get $i)
+     )
+     (block
+      (block
+       (global.set $j
+        (i32.const 0)
+       )
+       (loop $1
+        (if
+         (i32.ge_s
+          (i32.const 10)
+          (global.get $j)
+         )
+         (block
+          (global.set $sum
+           (i32.add
+            (i32.add
+             (global.get $sum)
+             (global.get $i)
+            )
+            (global.get $j)
+           )
+          )
+          (global.set $j
+           (i32.add
+            (global.get $j)
+            (i32.const 1)
+           )
+          )
+          (br $1)
+         )
+        )
+       )
+      )
+      (global.set $i
+       (i32.add
+        (global.get $i)
+        (i32.const 1)
+       )
+      )
+      (br $2)
+     )
+    )
+   )
+  )
+  (call $logInteger
+   (global.get $sum)
+  )
+ )
+)
+
+compiler.ts:86 1210
+index.ts:373 25
+index.ts:374 OUTPUT "Hello World"
+compiler.ts:18 (3) [Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+generator.ts:763 Uint8Array(12) [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 0, buffer: ArrayBuffer(12), byteLength: 12, byteOffset: 0, length: 12, Symbol(Symbol.toStringTag): 'Uint8Array']
+compiler.ts:18 (3) [Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+generator.ts:763 Uint8Array(12) [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 0, buffer: ArrayBuffer(12), byteLength: 12, byteOffset: 0, length: 12, Symbol(Symbol.toStringTag): 'Uint8Array']
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (data $0 (i32.const 0) "Hello World\00")
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (call $logString
+   (i32.const 0)
+  )
+ )
+)
+
+compiler.ts:101 Hello World
+index.ts:373 26
+index.ts:374 DECLARE i: ARRAY[0: 1] OF INTEGER
+
+i[0] <- 2147483647
+OUTPUT i[0]
+
+compiler.ts:18 (23) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+generator.ts:124 0
+compiler.ts:18 (23) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(3)}
+generator.ts:124 0
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $i)
+    (i32.mul
+     (i32.const 0)
+     (i32.const 4)
+    )
+   )
+   (i32.const 2147483647)
+  )
+  (call $logInteger
+   (i32.load align=2
+    (i32.add
+     (global.get $i)
+     (i32.mul
+      (i32.const 0)
+      (i32.const 4)
+     )
+    )
+   )
+  )
+ )
+)
+
+compiler.ts:86 2147483647
+index.ts:373 27
+index.ts:374 DECLARE i: ARRAY[0: 2] OF INTEGER
+
+i[0] <- 2147483647
+i[1] <- -2147483648
+OUTPUT i[0] + i[1]
+
+compiler.ts:18 (35) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(4)}
+generator.ts:124 0
+compiler.ts:18 (35) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(4)}
+generator.ts:124 0
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (global $i (mut i32) (i32.const 0))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (global.set $i
+   (i32.const 0)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $i)
+    (i32.mul
+     (i32.const 0)
+     (i32.const 4)
+    )
+   )
+   (i32.const 2147483647)
+  )
+  (i32.store align=2
+   (i32.add
+    (global.get $i)
+    (i32.mul
+     (i32.const 1)
+     (i32.const 4)
+    )
+   )
+   (i32.sub
+    (i32.const 0)
+    (i32.const -2147483648)
+   )
+  )
+  (call $logInteger
+   (i32.add
+    (i32.load align=2
+     (i32.add
+      (global.get $i)
+      (i32.mul
+       (i32.const 0)
+       (i32.const 4)
+      )
+     )
+    )
+    (i32.load align=2
+     (i32.add
+      (global.get $i)
+      (i32.mul
+       (i32.const 1)
+       (i32.const 4)
+      )
+     )
+    )
+   )
+  )
+ )
+)
+
+compiler.ts:86 -1
+index.ts:373 28
+index.ts:374 DECLARE i: ARRAY[0: 12] OF CHAR
+
+i[0] <- 'H'
+i[1] <- 'e'
+i[2] <- 'l'
+i[3] <- 'l'
+i[4] <- 'l'
+i[5] <- ' '
+i[6] <- 'W'
+i[7] <- 'o'
+i[8] <- 'r'
+i[9] <- 'l'
+i[10] <- 'd'
+i[11] <- 0
+
+OUTPUT i
+
+compiler.ts:18 (86) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(14)}
+generator.ts:124 0
+index.ts:381  RuntimeError {msg: 'Output can only be performed on basic types'}
+(anonymous) @ index.ts:381
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+(anonymous) @ index.ts:1
+__awaiter @ index.ts:1
+compileTest @ index.ts:371
+(anonymous) @ index.ts:402
+await in (anonymous)(异步)
+__webpack_require__.a @ async module:49
+./src/index.ts @ error.ts:32
+__webpack_require__ @ bootstrap:24
+(anonymous) @ startup:6
+(anonymous) @ startup:6
+compiler.ts:18 (86) [Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(14)}
+generator.ts:124 0
+index.ts:393  RuntimeError {msg: 'Output can only be performed on basic types'}
+(anonymous) @ index.ts:393
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+rejected @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+fulfilled @ index.ts:1
+Promise.then(异步)
+step @ index.ts:1
+(anonymous) @ index.ts:1
+__awaiter @ index.ts:1
+compileTest @ index.ts:371
+(anonymous) @ index.ts:402
+await in (anonymous)(异步)
+__webpack_require__.a @ async module:49
+./src/index.ts @ error.ts:32
+__webpack_require__ @ bootstrap:24
+(anonymous) @ startup:6
+(anonymous) @ startup:6
+index.ts:373 29
+index.ts:374 IF 3 THEN
+    OUTPUT 2
+ENDIF
+
+compiler.ts:18 (7) [Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+compiler.ts:18 (7) [Token, Token, Token, Token, Token, Token, Token]
+compiler.ts:21 ProgramNode {kind: 0, body: Array(1)}
+compiler.ts:74 (module
+ (type $i32_=>_none (func (param i32)))
+ (type $f64_=>_none (func (param f64)))
+ (type $none_=>_none (func))
+ (import "env" "buffer" (memory $0 0 65536))
+ (import "env" "logInteger" (func $logInteger (param i32)))
+ (import "env" "logReal" (func $logReal (param f64)))
+ (import "env" "logChar" (func $logChar (param i32)))
+ (import "env" "logString" (func $logString (param i32)))
+ (export "main" (func $main))
+ (start $main)
+ (func $main
+  (if
+   (i32.const 3)
+   (call $logInteger
+    (i32.const 2)
+   )
+  )
+ )
+)
+
+compiler.ts:86 2
+index.ts:410 compileCount: 27/30
+index.ts:411 compileFailed: 13,23,28
+index.ts:412 runCount: 27/30
+index.ts:413 runFailed: 13,23,28

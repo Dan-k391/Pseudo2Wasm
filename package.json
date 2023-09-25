@@ -15,7 +15,7 @@
     "@babel/core": "^7.20.12",
     "@babel/preset-env": "^7.20.2",
     "babel-loader": "^9.1.2",
-    "binaryen": "^110.0.0-nightly.20221105",
+    "binaryen": "^114.0.0",
     "clean-webpack-plugin": "^4.0.0",
     "core-js": "^3.27.1",
     "html-webpack-plugin": "^5.5.0",

@@ -60,6 +60,7 @@ DECLARE <Identifier>: <Type>
 // Array declaration
 DECLARE <Identifier>: ARRAY[<Upper>: <Lower>] OF <Type>
 ```
+Only supports static length arrays.
 
 #### Assignments
 ```
