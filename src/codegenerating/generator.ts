@@ -57,6 +57,7 @@ import {
     RecordType
 } from "../type/type";
 import { minimalCompatableBasicType } from "../type/type";
+import { String } from "./string";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -73,6 +74,7 @@ export class Generator {
     private offset: number;
     private size: number;
     private label: number;
+    public strings: Array<String>;
 
     constructor(ast: ProgramNode) {
         this.ast = ast;
@@ -87,6 +89,9 @@ export class Generator {
         this.size = 65536;
         this.offset = 0;
 
+        // all the strings are set together so record them
+        this.strings = new Array<String>();
+        
         this.label = 0;
     }
 
@@ -104,6 +109,15 @@ export class Generator {
             const wasmType = this.globals.getWasmType(name);
             this.module.addGlobal(name, wasmType, true, this.generateConstant(wasmType, 0));
         }
+
+        const encoder = new TextEncoder();
+        this.module.setMemory(0, 65536, null, 
+            this.strings.map(str => ({
+                offset: str.offset,
+                data: encoder.encode(str.value + '\0'),
+                passive: false
+            })), 
+        false);
 
         this.module.addMemoryImport("0", "env", "buffer");
         return this.module;
@@ -760,12 +774,8 @@ export class Generator {
     private stringExpression(node: StringExprNode): ExpressionRef {
         const stringIndex = this.offset;
         this.offset += node.value.length + 1;
-        console.log(new TextEncoder().encode(node.value + '\0'));
-        this.module.setMemory(0, 65536, null, [{
-            offset: this.generateConstant(binaryen.i32, stringIndex),
-            data: new TextEncoder().encode(node.value + '\0'),
-            passive: false,
-        }], false);
+        // add this string to strings with type interface String Lol
+        this.strings.push({offset: this.generateConstant(binaryen.i32, stringIndex), value: node.value});
         return this.module.i32.const(stringIndex);
     }
 

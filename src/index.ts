@@ -289,22 +289,14 @@ OUTPUT i[0] + i[1]
 `
 
 // ARRAY OF CHAR "Hello World"
-const code28 = `DECLARE i: ARRAY[0: 12] OF CHAR
+const code28 = `DECLARE i: STRING
+DECLARE j: STRING
 
-i[0] <- 'H'
-i[1] <- 'e'
-i[2] <- 'l'
-i[3] <- 'l'
-i[4] <- 'l'
-i[5] <- ' '
-i[6] <- 'W'
-i[7] <- 'o'
-i[8] <- 'r'
-i[9] <- 'l'
-i[10] <- 'd'
-i[11] <- 0
+i <- "Hello"
+j <- "World"
 
 OUTPUT i
+OUTPUT j
 `
 
 const code29 = `IF 3 THEN
