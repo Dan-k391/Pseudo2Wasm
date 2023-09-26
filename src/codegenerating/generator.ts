@@ -543,7 +543,8 @@ export class Generator {
         const ptr = this.generateLeftValue(node.left);
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
-            basicType === basicKind.BOOLEAN) {
+            basicType === basicKind.BOOLEAN||
+            basicType === basicKind.STRING) {
             return this.module.i32.store(0, 2, ptr, this.generateExpression(node.right), "0");
         }
         else if (basicType === basicKind.REAL) {
@@ -568,9 +569,11 @@ export class Generator {
         }
         const basicType = (elemType as BasicType).type;
         const ptr = this.indexExpression(node);
+        console.log(basicType, node);
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
-            basicType === basicKind.BOOLEAN) {
+            basicType === basicKind.BOOLEAN||
+            basicType === basicKind.STRING) {
             return this.module.i32.load(0, 2, ptr, "0");
         }
         else if (basicType === basicKind.REAL) {
@@ -834,18 +837,19 @@ export class Generator {
         }
 
         const basicType: basicKind = (type as BasicType).type;
+        const expr = this.generateExpression(node.expr);
 
         if (basicType == basicKind.INTEGER) {
-            return this.module.call("logInteger", [this.generateExpression(node.expr)], binaryen.none);
+            return this.module.call("logInteger", [expr], binaryen.none);
         }
         else if (basicType == basicKind.REAL) {
-            return this.module.call("logReal", [this.generateExpression(node.expr)], binaryen.none);
+            return this.module.call("logReal", [expr], binaryen.none);
         }
         else if (basicType == basicKind.CHAR) {
-            return this.module.call("logChar", [this.generateExpression(node.expr)], binaryen.none);
+            return this.module.call("logChar", [expr], binaryen.none);
         }
         else if (basicType == basicKind.STRING) {
-            return this.module.call("logString", [this.generateExpression(node.expr)], binaryen.none);
+            return this.module.call("logString", [expr], binaryen.none);
         }
         return -1;
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);

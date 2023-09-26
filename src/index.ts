@@ -295,13 +295,22 @@ DECLARE j: STRING
 i <- "Hello"
 j <- "World"
 
-OUTPUT i
-OUTPUT j
+OUTPUT i & j
 `
 
 const code29 = `IF 3 THEN
     OUTPUT 2
 ENDIF
+`
+
+const code30 = `DECLARE i: ARRAY[0:10] OF STRING
+
+i[0] <- "nihao"
+
+OUTPUT i[0]
+`
+
+const code31 = `OUTPUT "编码测试"
 `
 
 // const code11 = `TYPE a = ^INTEGER
@@ -350,10 +359,13 @@ const codes = [
     code26,
     code27,
     code28,
-    code29
+    code29,
+    code30,
+    code31
 ];
 const expected = [10, 7.28, 2, "Hi", 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
-    , 'a', 'v', -1, -1, 6, 55, 55, 1210, 1210, "Hello World", 2147483647, -1, "Hello World", 2];
+    , 'a', 'v', -1, -1, 6, 55, 55, 1210, 1210, "Hello World", 2147483647, -1, "Hello World", 2, "nihao",
+    "编码测试"];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
