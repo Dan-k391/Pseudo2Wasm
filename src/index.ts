@@ -303,15 +303,34 @@ const code29 = `IF 3 THEN
 ENDIF
 `
 
-const code30 = `DECLARE i: ARRAY[0:10] OF STRING
+const code30 = `DECLARE i: ARRAY[0: 10] OF STRING
 
 i[0] <- "nihao"
 
 OUTPUT i[0]
 `
 
-const code31 = `OUTPUT "编码测试"
+const code31 = `OUTPUT "编码测试"`
+
+const code32 = `DECLARE arr: ARRAY[0: 9] OF REAL
+DECLARE i: INTEGER
+
+FOR i <- 0 TO 9
+    arr[i] <- i + i / 10
+NEXT i
+
+DECLARE sum: REAL
+
+FOR i <- 0 TO 9
+    sum <- sum + arr[i]
+NEXT i
+
+OUTPUT sum
 `
+
+const code33 = `OUTPUT 1.0 / 20`
+
+const code34 = `OUTPUT 1 / 20`
 
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
@@ -361,11 +380,14 @@ const codes = [
     code28,
     code29,
     code30,
-    code31
+    code31,
+    code32,
+    code33,
+    code34
 ];
 const expected = [10, 7.28, 2, "Hi", 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
     , 'a', 'v', -1, -1, 6, 55, 55, 1210, 1210, "Hello World", 2147483647, -1, "Hello World", 2, "nihao",
-    "编码测试"];
+    "编码测试", 45, 0.05, 0];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;

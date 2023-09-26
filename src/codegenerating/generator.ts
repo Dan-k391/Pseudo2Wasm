@@ -534,21 +534,24 @@ export class Generator {
             return this.module.global.set(varName, this.convertType(rightType, varType, rhs));   
         }
 
-        const type = this.resolveType(node.left);
+        const leftType = this.resolveType(node.left);
+        const rightType = this.resolveType(node.right);
         // FIXME: fix soon
-        if (type.kind !== typeKind.BASIC) {
+        if (leftType.kind !== typeKind.BASIC) {
             throw new RuntimeError("not implemented");
         }
-        const basicType = (type as BasicType).type;
+        const leftBasicType = (leftType as BasicType).type;
+        const rightBasicType = (rightType as BasicType).type;
+        const rhs = this.generateExpression(node.right);
         const ptr = this.generateLeftValue(node.left);
-        if (basicType === basicKind.INTEGER ||
-            basicType === basicKind.CHAR||
-            basicType === basicKind.BOOLEAN||
-            basicType === basicKind.STRING) {
-            return this.module.i32.store(0, 2, ptr, this.generateExpression(node.right), "0");
-        }
-        else if (basicType === basicKind.REAL) {
-            return this.module.f64.store(0, 2, ptr, this.generateExpression(node.right), "0");
+        switch (leftBasicType) {
+            case basicKind.INTEGER:
+            case basicKind.CHAR:
+            case basicKind.BOOLEAN:
+            case basicKind.STRING:
+                return this.module.i32.store(0, 1, ptr, this.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
+            case basicKind.REAL:
+                return this.module.f64.store(0, 1, ptr, this.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
         }
 
         return -1;
@@ -569,15 +572,14 @@ export class Generator {
         }
         const basicType = (elemType as BasicType).type;
         const ptr = this.indexExpression(node);
-        console.log(basicType, node);
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
             basicType === basicKind.BOOLEAN||
             basicType === basicKind.STRING) {
-            return this.module.i32.load(0, 2, ptr, "0");
+            return this.module.i32.load(0, 1, ptr, "0");
         }
         else if (basicType === basicKind.REAL) {
-            return this.module.f64.load(0, 2, ptr, "0");
+            return this.module.f64.load(0, 1, ptr, "0");
         }
         return -1;
     }
