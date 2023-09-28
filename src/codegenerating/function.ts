@@ -666,16 +666,16 @@ export class Function {
         const basicType: basicKind = (type as BasicType).type;
         const expr = this.generateExpression(node.expr);
 
-        if (basicType == basicKind.INTEGER) {
+        if (basicType === basicKind.INTEGER) {
             return this.module.call("logInteger", [expr], binaryen.none);
         }
-        else if (basicType == basicKind.REAL) {
+        else if (basicType === basicKind.REAL) {
             return this.module.call("logReal", [expr], binaryen.none);
         }
-        else if (basicType == basicKind.CHAR) {
+        else if (basicType === basicKind.CHAR) {
             return this.module.call("logChar", [expr], binaryen.none);
         }
-        else if (basicType == basicKind.STRING) {
+        else if (basicType === basicKind.STRING) {
             return this.module.call("logString", [expr], binaryen.none);
         }
         throw new RuntimeError("Not implemented yet");
