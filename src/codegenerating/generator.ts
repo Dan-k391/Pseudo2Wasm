@@ -9,7 +9,6 @@ import { tokenType } from "../scanning/token";
 import {
     nodeKind,
 
-    ASTNode,
     Expr,
     Stmt,
     Param,
@@ -270,19 +269,19 @@ export class Generator {
             // FIXME: some cases such as assignment are not considered
             // maybe not need to be fixed, keep this FIXME though
             case nodeKind.VarExprNode:
-                return this.resolveVarExprNodeType(expression as VarExprNode);
+                return this.resolveVarExprNodeType(expression);
             case nodeKind.IndexExprNode:
-                return this.resolveIndexExprNodeType(expression as IndexExprNode);
+                return this.resolveIndexExprNodeType(expression);
             case nodeKind.SelectExprNode:
-                return this.resolveSelectExprNodeType(expression as SelectExprNode);
+                return this.resolveSelectExprNodeType(expression);
             case nodeKind.CallFunctionExprNode:
-                return this.resolveCallFunctionExprNodeType(expression as CallFunctionExprNode);
+                return this.resolveCallFunctionExprNodeType(expression);
             case nodeKind.UnaryExprNode:
                 // The type of a expression remains the same after a unary operation 
                 // (as far as I can think)
-                return this.resolveType((expression as UnaryExprNode).expr);
+                return this.resolveType(expression.expr);
             case nodeKind.BinaryExprNode:
-                return this.resolveBasicBinaryExprNodeType(expression as BinaryExprNode);
+                return this.resolveBasicBinaryExprNodeType(expression);
             case nodeKind.IntegerExprNode:
                 return new BasicType(basicKind.INTEGER);
             case nodeKind.RealExprNode:
@@ -305,7 +304,7 @@ export class Generator {
         if (rVal.kind !== typeKind.ARRAY) {
             throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
         }
-        return (rVal as ArrayType).elem;
+        return rVal.elem;
     }
 
     public resolveSelectExprNodeType(node: SelectExprNode): Type {
@@ -319,7 +318,7 @@ export class Generator {
     private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): Type {
         // FIXME: complicated expression calls are not implemented
         if (node.callee.kind === nodeKind.VarExprNode) {
-            const funcName = (node.callee as VarExprNode).ident.lexeme;
+            const funcName = node.callee.ident.lexeme;
             return this.getFunction(funcName).returnType;
         }
         throw new RuntimeError("Not implemented yet");
@@ -482,29 +481,29 @@ export class Generator {
     private generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.AssignNode:
-                return this.assignExpression(expression as AssignNode);
+                return this.assignExpression(expression);
             case nodeKind.VarExprNode:
-                return this.varExpression(expression as VarExprNode);
+                return this.varExpression(expression);
             case nodeKind.IndexExprNode:
-                return this.loadIndexExpression(expression as IndexExprNode);
+                return this.loadIndexExpression(expression);
             case nodeKind.SelectExprNode:
-                return this.selectExpression(expression as SelectExprNode);
+                return this.selectExpression(expression);
             case nodeKind.CallFunctionExprNode:
-                return this.callFunctionExpression(expression as CallFunctionExprNode);
+                return this.callFunctionExpression(expression);
             case nodeKind.CallProcedureExprNode:
-                return this.callProcedureExpression(expression as CallProcedureExprNode);
+                return this.callProcedureExpression(expression);
             case nodeKind.UnaryExprNode:
-                return this.unaryExpression(expression as UnaryExprNode);
+                return this.unaryExpression(expression);
             case nodeKind.BinaryExprNode:
-                return this.binaryExpression(expression as BinaryExprNode);
+                return this.binaryExpression(expression);
             case nodeKind.IntegerExprNode:
-                return this.integerExpression(expression as IntegerExprNode);
+                return this.integerExpression(expression);
             case nodeKind.RealExprNode:
-                return this.realExpression(expression as RealExprNode);
+                return this.realExpression(expression);
             case nodeKind.CharExprNode:
-                return this.charExpression(expression as CharExprNode);
+                return this.charExpression(expression);
             case nodeKind.StringExprNode:
-                return this.stringExpression(expression as StringExprNode);
+                return this.stringExpression(expression);
             default:
                 throw new RuntimeError("Not implemented yet");
         }
@@ -513,11 +512,11 @@ export class Generator {
     private generateLeftValue(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.VarExprNode:
-                return this.varExpression(expression as VarExprNode);
+                return this.varExpression(expression);
             case nodeKind.IndexExprNode:
-                return this.indexExpression(expression as IndexExprNode);
+                return this.indexExpression(expression);
             case nodeKind.SelectExprNode:
-                return this.selectExpression(expression as SelectExprNode);
+                return this.selectExpression(expression);
             default:
                 throw new RuntimeError(expression.toString() + "cannot be a left value");
         }
@@ -528,7 +527,7 @@ export class Generator {
         // Guess what? VarExpr has to be a special case
         // Because this is wasm!
         if (node.left.kind === nodeKind.VarExprNode) {
-            const varName = (node.left as VarExprNode).ident.lexeme;
+            const varName = node.left.ident.lexeme;
             const varType = this.globals.getType(varName);
             const rhs = this.generateExpression(node.right);
             const rightType = this.resolveType(node.right);
@@ -611,7 +610,7 @@ export class Generator {
 
     private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
-            const funcName = (node.callee as VarExprNode).ident.lexeme;
+            const funcName = node.callee.ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
             const func = this.getFunction(funcName);
             if (func.params.size() !== node.args.length) {
@@ -633,7 +632,7 @@ export class Generator {
 
     private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
-            const procName = (node.callee as VarExprNode).ident.lexeme;
+            const procName = node.callee.ident.lexeme;
             const procArgs = new Array<ExpressionRef>();
             const proc = this.getProcedure(procName);
             if (proc.params.size() !== node.args.length) {
@@ -793,10 +792,10 @@ export class Generator {
         const stmts = new Array<binaryen.ExpressionRef>();
         for (const statement of statements) {
             if (statement.kind == nodeKind.FuncDefNode) {
-                this.generateFunctionDefinition(statement as FuncDefNode);
+                this.generateFunctionDefinition(statement);
             }
             else if (statement.kind == nodeKind.ProcDefNode) {
-                this.generateProcedureDefinition(statement as ProcDefNode);
+                this.generateProcedureDefinition(statement);
             }
             else {
                 stmts.push(this.generateStatement(statement));
@@ -808,25 +807,25 @@ export class Generator {
     protected generateStatement(statement: Stmt): ExpressionRef {
         switch (statement.kind) {
             case nodeKind.ExprStmtNode:
-                return this.generateExpression((statement as ExprStmtNode).expr);
+                return this.generateExpression(statement.expr);
             case nodeKind.ReturnNode:
                 throw new RuntimeError("Really? What were you expecting it to return?");
             case nodeKind.OutputNode:
-                return this.outputStatement(statement as OutputNode);
+                return this.outputStatement(statement);
             case nodeKind.VarDeclNode:
-                return this.varDeclStatement(statement as VarDeclNode);
+                return this.varDeclStatement(statement);
             case nodeKind.ArrDeclNode:
-                return this.arrDeclStatement(statement as ArrDeclNode);
+                return this.arrDeclStatement(statement);
             case nodeKind.PointerDeclNode:
-                return this.pointerDeclStatement(statement as PointerDeclNode);
+                return this.pointerDeclStatement(statement);
             case nodeKind.IfNode:
-                return this.ifStatement(statement as IfNode);
+                return this.ifStatement(statement);
             case nodeKind.WhileNode:
-                return this.whileStatement(statement as WhileNode);
+                return this.whileStatement(statement);
             case nodeKind.RepeatNode:
-                return this.repeatStatement(statement as RepeatNode);
+                return this.repeatStatement(statement);
             case nodeKind.ForNode:
-                return this.forStatement(statement as ForNode);
+                return this.forStatement(statement);
             default:
                 throw new RuntimeError("Not implemented yet");
         }

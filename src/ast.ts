@@ -5,7 +5,6 @@
 import { Token, tokenType } from "./scanning/token";
 
 import { passType } from "./passtype";
-import { Return } from "./return";
 
 
 export const enum nodeKind {
@@ -43,17 +42,51 @@ export const enum nodeKind {
     InputNode
 }
 
-export abstract class ASTNode {
-    constructor(public kind: nodeKind) { }
+export abstract class BaseNode {
+    public abstract readonly kind: nodeKind;
 }
 
-export abstract class Expr extends ASTNode {
-    public abstract toString(): string;
-}
+export type Expr = AssignNode |
+    VarExprNode |
+    IndexExprNode |
+    SelectExprNode |
+    CallFunctionExprNode |
+    CallProcedureExprNode |
+    UnaryExprNode |
+    BinaryExprNode |
+    PointerExprNode |
+    LocationExprNode |
+    IntegerExprNode |
+    RealExprNode |
+    CharExprNode |
+    StringExprNode |
+    BoolExprNode;
 
-export abstract class Stmt extends ASTNode {
-    public abstract toString(): string;
-}
+export type Stmt = ProgramNode |
+    FuncDefNode |
+    ProcDefNode |
+    ReturnNode |
+    VarDeclNode |
+    ArrDeclNode |
+    PointerDeclNode |
+    TypeDefNode |
+    VarAssignNode |
+    ArrAssignNode |
+    IfNode |
+    WhileNode |
+    RepeatNode |
+    ForNode |
+    ExprStmtNode |
+    OutputNode |
+    InputNode;
+
+// export abstract class Expr extends BaseNode {
+//     public abstract toString(): string;
+// }
+
+// export abstract class Stmt extends BaseNode {
+//     public abstract toString(): string;
+// }
 
 // fix it
 export class Param {
@@ -69,16 +102,18 @@ export class Param {
     }
 }
 
-export class ProgramNode extends ASTNode {
+export class ProgramNode extends BaseNode {
+    public readonly kind = nodeKind.ProgramNode;
     public body: Array<Stmt>;
 
     constructor(body: Array<Stmt>) {
-        super(nodeKind.ProgramNode);
+        super();
         this.body = body;
     }
 }
 
-export class FuncDefNode extends Stmt {
+export class FuncDefNode extends BaseNode {
+    public readonly kind = nodeKind.FuncDefNode;
     public ident: Token;
     public params: Array<Param>;
     // change type
@@ -86,7 +121,7 @@ export class FuncDefNode extends Stmt {
     public body: Array<Stmt>;
 
     constructor(ident: Token, params: Array<Param>, type: Token, body: Array<Stmt>) {
-        super(nodeKind.FuncDefNode);
+        super();
         this.ident = ident;
         this.params = params;
         this.type = type;
@@ -98,13 +133,14 @@ export class FuncDefNode extends Stmt {
     }
 }
 
-export class ProcDefNode extends Stmt {
+export class ProcDefNode extends BaseNode {
+    public readonly kind = nodeKind.ProcDefNode;
     public ident: Token;
     public params: Array<Param>;
     public body: Array<Stmt>;
 
     constructor(ident: Token, params: Array<Param>, body: Array<Stmt>) {
-        super(nodeKind.ProcDefNode);
+        super();
         this.ident = ident;
         this.params = params;
         this.body = body;
@@ -115,11 +151,12 @@ export class ProcDefNode extends Stmt {
     }
 }
 
-export class ReturnNode extends Stmt {
+export class ReturnNode extends BaseNode {
+    public readonly kind = nodeKind.ReturnNode;
     public expr: Expr;
 
     constructor(expr: Expr) {
-        super(nodeKind.ReturnNode);
+        super();
         this.expr = expr;
     }
 
@@ -129,11 +166,12 @@ export class ReturnNode extends Stmt {
 }
 
 
-export class VarExprNode extends Expr {
+export class VarExprNode extends BaseNode {
+    public readonly kind = nodeKind.VarExprNode;
     public ident: Token;
 
     constructor(ident: Token) {
-        super(nodeKind.VarExprNode);
+        super();
         this.ident = ident;
     }
 
@@ -142,12 +180,13 @@ export class VarExprNode extends Expr {
     }
 }
 
-export class IndexExprNode extends Expr {
+export class IndexExprNode extends BaseNode {
+    public readonly kind = nodeKind.IndexExprNode;
     public expr: Expr;
     public index: Expr;
 
     constructor(expr: Expr, index: Expr) {
-        super(nodeKind.IndexExprNode);
+        super();
         this.expr = expr;
         this.index = index;
     }
@@ -157,12 +196,13 @@ export class IndexExprNode extends Expr {
     }
 }
 
-export class SelectExprNode extends Expr {
+export class SelectExprNode extends BaseNode {
+    public readonly kind = nodeKind.SelectExprNode;
     public expr: Expr;
     public ident: Token;
 
     constructor(expr: Expr, ident: Token) {
-        super(nodeKind.SelectExprNode);
+        super();
         this.expr = expr;
         this.ident = ident;
     }
@@ -173,12 +213,13 @@ export class SelectExprNode extends Expr {
 }
 
 // seperate the function and procedure calls
-export class CallFunctionExprNode extends Expr {
+export class CallFunctionExprNode extends BaseNode {
+    public readonly kind = nodeKind.CallFunctionExprNode;
     public callee: Expr;
     public args: Array<Expr>;
 
     constructor(ident: Expr, args: Array<Expr>) {
-        super(nodeKind.CallFunctionExprNode);
+        super();
         this.callee = ident;
         this.args = args;
     }
@@ -188,12 +229,13 @@ export class CallFunctionExprNode extends Expr {
     }
 }
 
-export class CallProcedureExprNode extends Expr {
+export class CallProcedureExprNode extends BaseNode {
+    public readonly kind = nodeKind.CallProcedureExprNode;
     public callee: Expr;
     public args: Array<Expr>;
 
     constructor(ident: Expr, args: Array<Expr>) {
-        super(nodeKind.CallProcedureExprNode);
+        super();
         this.callee = ident;
         this.args = args;
     }
@@ -203,12 +245,13 @@ export class CallProcedureExprNode extends Expr {
     }
 }
 
-export class UnaryExprNode extends Expr {
+export class UnaryExprNode extends BaseNode {
+    public readonly kind = nodeKind.UnaryExprNode;
     public operator: Token;
     public expr: Expr;
 
     constructor(operator: Token, expr: Expr) {
-        super(nodeKind.UnaryExprNode);
+        super();
         this.operator = operator;
         this.expr = expr;
     }
@@ -218,13 +261,14 @@ export class UnaryExprNode extends Expr {
     }
 }
 
-export class BinaryExprNode extends Expr {
+export class BinaryExprNode extends BaseNode {
+    public readonly kind = nodeKind.BinaryExprNode;
     public left: Expr;
     public operator: Token;
     public right: Expr;
 
     constructor(left: Expr, operator: Token, right: Expr) {
-        super(nodeKind.BinaryExprNode);
+        super();
         this.left = left;
         this.operator = operator;
         this.right = right;
@@ -235,12 +279,13 @@ export class BinaryExprNode extends Expr {
     }
 }
 
-export class PointerExprNode extends Expr {
+export class PointerExprNode extends BaseNode {
+    public readonly kind = nodeKind.PointerDeclNode;
     // FIXME: ident should be LeftValue
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
-        super(nodeKind.PointerExprNode);
+        super();
         this.leftValue = leftValue;
     }
 
@@ -249,12 +294,13 @@ export class PointerExprNode extends Expr {
     }
 }
 
-export class LocationExprNode extends Expr {
+export class LocationExprNode extends BaseNode {
+    public readonly kind = nodeKind.LocationExprNode;
     // FIXME: ident should be LeftValue
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
-        super(nodeKind.LocationExprNode);
+        super();
         this.leftValue = leftValue;
     }
 
@@ -263,11 +309,12 @@ export class LocationExprNode extends Expr {
     }
 }
 
-export class IntegerExprNode extends Expr {
+export class IntegerExprNode extends BaseNode {
+    public readonly kind = nodeKind.IntegerExprNode;
     public value: number;
 
     constructor(value: number) {
-        super(nodeKind.IntegerExprNode);
+        super();
         this.value = value;
     }
 
@@ -276,11 +323,12 @@ export class IntegerExprNode extends Expr {
     }
 }
 
-export class RealExprNode extends Expr {
+export class RealExprNode extends BaseNode {
+    public readonly kind = nodeKind.RealExprNode;
     public value: number;
 
     constructor(value: number) {
-        super(nodeKind.RealExprNode);
+        super();
         this.value = value;
     }
 
@@ -289,11 +337,12 @@ export class RealExprNode extends Expr {
     }
 }
 
-export class CharExprNode extends Expr {
+export class CharExprNode extends BaseNode {
+    public readonly kind = nodeKind.CharExprNode;
     public value: string;
 
     constructor(value: string) {
-        super(nodeKind.CharExprNode);
+        super();
         this.value = value;
     }
 
@@ -302,11 +351,12 @@ export class CharExprNode extends Expr {
     }
 }
 
-export class StringExprNode extends Expr {
+export class StringExprNode extends BaseNode {
+    public readonly kind = nodeKind.StringExprNode;
     public value: string;
 
     constructor(value: string) {
-        super(nodeKind.StringExprNode);
+        super();
         this.value = value;
     }
 
@@ -315,11 +365,12 @@ export class StringExprNode extends Expr {
     }
 }
 
-export class BoolExprNode extends Expr {
+export class BoolExprNode extends BaseNode {
+    public readonly kind = nodeKind.BoolExprNode;
     public value: boolean;
 
     constructor(value: boolean) {
-        super(nodeKind.BoolExprNode);
+        super();
         this.value = value;
     }
 
@@ -328,12 +379,13 @@ export class BoolExprNode extends Expr {
     }
 }
 
-export class VarDeclNode extends Stmt {
+export class VarDeclNode extends BaseNode {
+    public readonly kind = nodeKind.VarDeclNode;
     public ident: Token;
     public type: Token;
 
     constructor(ident: Token, type: Token) {
-        super(nodeKind.VarDeclNode);
+        super();
         this.ident = ident;
         this.type = type;
     }
@@ -343,14 +395,15 @@ export class VarDeclNode extends Stmt {
     }
 }
 
-export class ArrDeclNode extends Stmt {
+export class ArrDeclNode extends BaseNode {
+    public readonly kind = nodeKind.ArrDeclNode;
     public ident: Token;
     public type: Token;
     public lower: Token;
     public upper: Token;
 
     constructor(ident: Token, type: Token, lower: Token, upper: Token) {
-        super(nodeKind.ArrDeclNode);
+        super();
         this.ident = ident;
         this.type = type;
         this.lower = lower;
@@ -362,12 +415,13 @@ export class ArrDeclNode extends Stmt {
     }
 }
 
-export class PointerDeclNode extends Stmt {
+export class PointerDeclNode extends BaseNode {
+    public readonly kind = nodeKind.PointerDeclNode;
     public ident: Token;
     public type: Token;
 
     constructor(ident: Token, type: Token) {
-        super(nodeKind.PointerDeclNode);
+        super();
         this.ident = ident;
         this.type = type;
     }
@@ -377,12 +431,13 @@ export class PointerDeclNode extends Stmt {
     }
 }
 
-export class TypeDefNode extends Stmt {
+export class TypeDefNode extends BaseNode {
+    public readonly kind = nodeKind.TypeDefNode;
     public ident: Token;
     public body: Array<Stmt>;
 
     constructor(ident: Token, body: Array<Stmt>) {
-        super(nodeKind.TypeDefNode);
+        super();
         this.ident = ident;
         this.body = body;
     }
@@ -392,12 +447,13 @@ export class TypeDefNode extends Stmt {
     }
 }
 
-export class AssignNode extends Expr {
+export class AssignNode extends BaseNode {
+    public readonly kind = nodeKind.AssignNode;
     public left: Expr;
     public right: Expr;
 
     constructor(left: Expr, right: Expr) {
-        super(nodeKind.AssignNode);
+        super();
         this.left = left;
         this.right = right;
     }
@@ -408,12 +464,13 @@ export class AssignNode extends Expr {
 }
 
 // assignment is expr
-export class VarAssignNode extends Expr {
+export class VarAssignNode extends BaseNode {
+    public readonly kind = nodeKind.VarAssignNode;
     public ident: Token;
     public expr: Expr;
 
     constructor(ident: Token, expr: Expr) {
-        super(nodeKind.VarAssignNode);
+        super();
         this.ident = ident;
         this.expr = expr;
     }
@@ -423,13 +480,14 @@ export class VarAssignNode extends Expr {
     }
 }
 
-export class ArrAssignNode extends Expr {
+export class ArrAssignNode extends BaseNode {
+    public readonly kind = nodeKind.ArrAssignNode;
     public ident: Token;
     public index: Expr;
     public expr: Expr;
 
     constructor(ident: Token, index: Expr, expr: Expr) {
-        super(nodeKind.ArrAssignNode);
+        super();
         this.ident = ident;
         this.index = index;
         this.expr = expr;
@@ -440,13 +498,14 @@ export class ArrAssignNode extends Expr {
     }
 }
 
-export class IfNode extends Stmt {
+export class IfNode extends BaseNode {
+    public readonly kind = nodeKind.IfNode;
     public condition: Expr;
     public body: Array<Stmt>;
     public elseBody?: Array<Stmt>;
 
     constructor(condition: Expr, body: Array<Stmt>, elseBody?: Array<Stmt>) {
-        super(nodeKind.IfNode);
+        super();
         this.condition = condition;
         this.body = body;
         if (elseBody) {
@@ -459,12 +518,13 @@ export class IfNode extends Stmt {
     }
 }
 
-export class WhileNode extends Stmt {
+export class WhileNode extends BaseNode {
+    public readonly kind = nodeKind.WhileNode;
     public condition: Expr;
     public body: Array<Stmt>;
 
     constructor(condition: Expr, body: Array<Stmt>) {
-        super(nodeKind.WhileNode);
+        super();
         this.condition = condition;
         this.body = body;
     }
@@ -475,12 +535,13 @@ export class WhileNode extends Stmt {
 }
 
 // post-condition loops
-export class RepeatNode extends Stmt {
+export class RepeatNode extends BaseNode {
+    public readonly kind = nodeKind.RepeatNode;
     public body: Array<Stmt>;
     public condition: Expr;
 
     constructor(body: Array<Stmt>, condition: Expr) {
-        super(nodeKind.RepeatNode);
+        super();
         this.body = body;
         this.condition = condition;
     }
@@ -490,7 +551,8 @@ export class RepeatNode extends Stmt {
     }
 }
 
-export class ForNode extends Stmt {
+export class ForNode extends BaseNode {
+    public readonly kind = nodeKind.ForNode;
     // the identifier of the variable
     // default step has been done in the parser
     public ident: Token;
@@ -500,7 +562,7 @@ export class ForNode extends Stmt {
     public body: Array<Stmt>;
 
     constructor(ident: Token, start: Expr, end: Expr, step: Expr, body: Array<Stmt>) {
-        super(nodeKind.ForNode);
+        super();
         this.ident = ident;
         this.start = start;
         this.end = end;
@@ -514,11 +576,12 @@ export class ForNode extends Stmt {
 }
 
 // ExprStmt ::= AssignNode
-export class ExprStmtNode extends Stmt {
+export class ExprStmtNode extends BaseNode {
+    public readonly kind = nodeKind.ExprStmtNode;
     public expr: Expr;
 
     constructor(expr: Expr) {
-        super(nodeKind.ExprStmtNode);
+        super();
         this.expr = expr;
     }
 
@@ -527,11 +590,12 @@ export class ExprStmtNode extends Stmt {
     }
 }
 
-export class OutputNode extends Stmt {
+export class OutputNode extends BaseNode {
+    public readonly kind = nodeKind.OutputNode;
     public expr: Expr;
 
     constructor(expr: Expr) {
-        super(nodeKind.OutputNode);
+        super();
         this.expr = expr;
     }
 
@@ -540,11 +604,12 @@ export class OutputNode extends Stmt {
     }
 }
 
-export class InputNode extends Stmt {
+export class InputNode extends BaseNode {
+    public readonly kind = nodeKind.InputNode;
     public ident: string;
 
     constructor(ident: string) {
-        super(nodeKind.InputNode);
+        super();
         this.ident = ident;
     }
 

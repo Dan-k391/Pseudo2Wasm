@@ -366,6 +366,32 @@ ENDFUNCTION
 OUTPUT sum()
 `
 
+const code38 = `FUNCTION sum(arr: ARRAY) RETURNS INTEGER
+    DECLARE sum: INTEGER
+    DECLARE i: INTEGER
+
+    FOR i <- 0 TO 10
+        sum <- sum + arr[i]
+    NEXT i
+    RETURN sum
+ENDFUNCTION
+
+DECLARE arr: ARRAY[0: 10] OF INTEGER
+DECLARE i: INTEGER
+FOR i <- 0 TO 10
+    arr[i] <- i
+NEXT i
+
+OUTPUT sum(arr)
+`
+
+const code39 = `PROCEDURE print(str: STRING)
+    OUTPUT str
+ENDPROCEDURE
+
+CALL print("procedure")
+`
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
 
@@ -420,7 +446,9 @@ const codes = [
     code34,
     code35,
     code36,
-    code37
+    code37,
+    code38,
+    code39
 ];
 const expected = [
     10,
@@ -460,7 +488,9 @@ const expected = [
     0,
     "Hi",
     "Hi",
-    55
+    55,
+    55,
+    "procedure"
 ];
 let total = codes.length;
 let compileCount = 0;
