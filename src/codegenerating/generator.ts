@@ -124,7 +124,7 @@ export class Generator {
     }
 
     // basically, all the constant value which are generated are numbers, either i32 or f64
-    private generateConstant(type: WasmType, value: number): ExpressionRef {
+    public generateConstant(type: WasmType, value: number): ExpressionRef {
         if (type === binaryen.i32) {
             return this.module.i32.const(value);
         }
@@ -505,7 +505,7 @@ export class Generator {
             case nodeKind.StringExprNode:
                 return this.stringExpression(expression as StringExprNode);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -553,8 +553,7 @@ export class Generator {
             case basicKind.REAL:
                 return this.module.f64.store(0, 1, ptr, this.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
         }
-
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     public varExpression(node: VarExprNode): ExpressionRef {
@@ -581,7 +580,7 @@ export class Generator {
         else if (basicType === basicKind.REAL) {
             return this.module.f64.load(0, 1, ptr, "0");
         }
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -628,7 +627,7 @@ export class Generator {
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
@@ -650,7 +649,7 @@ export class Generator {
             return this.module.call(procName, procArgs, binaryen.none);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {
@@ -670,7 +669,7 @@ export class Generator {
                 case tokenType.MINUS:
                     return this.module.f64.neg(this.generateExpression(node.expr));
                 default:
-                    return -1;
+                    throw new RuntimeError("Not implemented yet");
             }
         }
         // otherwise i32
@@ -680,7 +679,7 @@ export class Generator {
             case tokenType.MINUS:
                 return this.module.i32.sub(this.module.i32.const(0), this.generateExpression(node.expr));
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -731,7 +730,7 @@ export class Generator {
                 case tokenType.GREATER_EQUAL:
                     return this.module.f64.ge(leftExpr, rightExpr);
                 default:
-                    return -1;
+                    throw new RuntimeError("Not implemented yet");
             }
         }
 
@@ -757,7 +756,7 @@ export class Generator {
             case tokenType.GREATER_EQUAL:
                 return this.module.i32.ge_s(leftExpr, rightExpr);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
         // TODO: STRING
 
@@ -776,7 +775,7 @@ export class Generator {
     }
 
     // use null-terminated strings
-    private stringExpression(node: StringExprNode): ExpressionRef {
+    public stringExpression(node: StringExprNode): ExpressionRef {
         const stringIndex = this.offset;
         this.offset += node.value.length + 1;
         // add this string to strings with type interface String Lol
@@ -828,7 +827,7 @@ export class Generator {
             case nodeKind.ForNode:
                 return this.forStatement(statement as ForNode);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -853,7 +852,7 @@ export class Generator {
         else if (basicType == basicKind.STRING) {
             return this.module.call("logString", [expr], binaryen.none);
         }
-        return -1;
+        throw new RuntimeError("Not implemented yet");
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
     }
 

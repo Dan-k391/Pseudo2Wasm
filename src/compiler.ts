@@ -12,20 +12,22 @@ export class Compiler {
         this.input = input;
     }
 
-    compile(): binaryen.Module {
+    compile(log: boolean): binaryen.Module {
         const scanner = new Scanner(this.input);
         const tokens = scanner.scan();
-        console.log(tokens);
         const parser = new Parser(tokens);
         const ast = parser.parse();
-        console.log(ast);
+        if (log) {
+            console.log(tokens);
+            console.log(ast);
+        }
         const generator = new Generator(ast);
         const module = generator.generate();
         return module;
     }
 
     async runtime(): Promise<number> {
-        const module = this.compile();
+        const module = this.compile(false);
 
         // module.optimize();
 
@@ -62,7 +64,7 @@ export class Compiler {
     async test(expected: number | string): Promise<Boolean> {
         let correct = false;
 
-        const module = this.compile();
+        const module = this.compile(false);
 
         // module.optimize();
 
@@ -77,6 +79,7 @@ export class Compiler {
 
         // initialize import objects
         const memory = new WebAssembly.Memory({ initial: 1, maximum: 2 });
+        const maxSize = 65535;
         // TODO: currently import many log functions, change to only logString later
         const importObect = {
             env: {
@@ -94,7 +97,7 @@ export class Compiler {
                     console.log(String.fromCharCode(output));
                 },
                 logString: (output: number) => {
-                    const bytes = new Uint8Array(memory.buffer, output, 65535 - output);
+                    const bytes = new Uint8Array(memory.buffer, output, maxSize - output);
                     let str = new TextDecoder("utf8").decode(bytes);
                     str = str.split('\0')[0];
                     correct = (str == expected);

@@ -107,16 +107,6 @@ export class Function {
         this.module.addFunction(this.ident, paramType, this.wasmReturnType, vars, funcBlock);
     }
 
-    private generateConstant(type: WasmType, value: number): ExpressionRef {
-        if (type === binaryen.i32) {
-            return this.module.i32.const(value);
-        }
-        else if (type === binaryen.f64) {
-            return this.module.f64.const(value);
-        }
-        throw new RuntimeError("Unknown type '" + type + "'");
-    }
-
     // returns back the index
     private setLocal(name: string, type: Type, wasmType: WasmType): number {
         const index = this.params.size() + this.locals.size();
@@ -184,15 +174,15 @@ export class Function {
                 // (as far as I can think)
                 return this.resolveType((expression as UnaryExprNode).expr);
             case nodeKind.BinaryExprNode:
-                return this.resolveBinaryExprNodeType(expression as BinaryExprNode);
+                return this.resolveBasicBinaryExprNodeType(expression as BinaryExprNode);
             case nodeKind.IntegerExprNode:
                 return new BasicType(basicKind.INTEGER);
             case nodeKind.RealExprNode:
                 return new BasicType(basicKind.REAL);
             case nodeKind.CharExprNode:
                 return new BasicType(basicKind.CHAR);
-            // case nodeKind.StringExprNode:
-            //     return VarType.STRING;
+            case nodeKind.StringExprNode:
+                return new BasicType(basicKind.STRING);
             default:
                 unreachable();
         }
@@ -201,7 +191,8 @@ export class Function {
     private resolveVarExprNodeType(node: VarExprNode): Type {
         const varName = node.ident.lexeme;
 
-        if (this.params.names.includes(varName) || this.locals.names.includes(varName)) {
+        if (this.params.names.includes(varName) ||
+            this.locals.names.includes(varName)) {
             return this.getTypeForLocal(varName);
         }
 
@@ -221,7 +212,7 @@ export class Function {
         if (rVal.kind !== typeKind.RECORD) {
             throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
         }
-        return (rVal as ArrayType).elem;
+        return (rVal as RecordType).fields.get(node.ident.lexeme) as Type;
     }
 
     private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): Type {
@@ -233,7 +224,7 @@ export class Function {
         throw new RuntimeError("Not implemented yet");
     }
 
-    private resolveBinaryExprNodeType(node: BinaryExprNode): Type {
+    private resolveBasicBinaryExprNodeType(node: BinaryExprNode): Type {
         const leftType = this.resolveType(node.left);
         const rightType = this.resolveType(node.right);
 
@@ -342,6 +333,10 @@ export class Function {
                 return this.assignExpression(expression as AssignNode);
             case nodeKind.VarExprNode:
                 return this.varExpression(expression as VarExprNode);
+            case nodeKind.IndexExprNode:
+                return this.loadIndexExpression(expression as IndexExprNode);
+            case nodeKind.SelectExprNode:
+                return this.selectExpression(expression as SelectExprNode);
             case nodeKind.CallFunctionExprNode:
                 return this.callFunctionExpression(expression as CallFunctionExprNode);
             case nodeKind.CallProcedureExprNode:
@@ -356,17 +351,24 @@ export class Function {
                 return this.enclosing.realExpression(expression as RealExprNode);
             case nodeKind.CharExprNode:
                 return this.enclosing.charExpression(expression as CharExprNode);
-            // case nodeKind.StringExprNode:
-            //     return this.stringExpression(expression as StringExprNode);
+            case nodeKind.StringExprNode:
+                return this.enclosing.stringExpression(expression as StringExprNode);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
-    private getOffset(node: Expr): ExpressionRef {
-        console.log(node);
-        // FIXME
-        return -1;
+    private generateLeftValue(expression: Expr): ExpressionRef {
+        switch (expression.kind) {
+            case nodeKind.VarExprNode:
+                return this.varExpression(expression as VarExprNode);
+            case nodeKind.IndexExprNode:
+                return this.indexExpression(expression as IndexExprNode);
+            case nodeKind.SelectExprNode:
+                return this.selectExpression(expression as SelectExprNode);
+            default:
+                throw new RuntimeError(expression.toString() + "cannot be a left value");
+        }
     }
 
     private assignExpression(node: AssignNode): ExpressionRef {
@@ -384,24 +386,26 @@ export class Function {
             return this.enclosing.assignExpression(node);
         }
 
-        const type = this.resolveType(node.left);
+        const leftType = this.resolveType(node.left);
+        const rightType = this.resolveType(node.right);
         // FIXME: fix soon
-        if (type.kind !== typeKind.BASIC) {
+        if (leftType.kind !== typeKind.BASIC) {
             throw new RuntimeError("not implemented");
         }
-        const basicType = (type as BasicType).type;
-        const ptr = this.getOffset(node.left);
-
-        if (basicType === basicKind.INTEGER ||
-            basicType === basicKind.CHAR||
-            basicType === basicKind.BOOLEAN) {
-            return this.module.i32.store(0, 2, ptr, this.generateExpression(node.right));
+        const leftBasicType = (leftType as BasicType).type;
+        const rightBasicType = (rightType as BasicType).type;
+        const rhs = this.generateExpression(node.right);
+        const ptr = this.generateLeftValue(node.left);
+        switch (leftBasicType) {
+            case basicKind.INTEGER:
+            case basicKind.CHAR:
+            case basicKind.BOOLEAN:
+            case basicKind.STRING:
+                return this.module.i32.store(0, 1, ptr, this.enclosing.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
+            case basicKind.REAL:
+                return this.module.f64.store(0, 1, ptr, this.enclosing.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
         }
-        else if (basicType === basicKind.REAL) {
-            return this.module.f64.store(0, 2, ptr, this.generateExpression(node.right));
-        }
-
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     private varExpression(node: VarExprNode): ExpressionRef {
@@ -416,6 +420,51 @@ export class Function {
         else {
             return this.enclosing.varExpression(node);
         }
+    }
+
+    private loadIndexExpression(node: IndexExprNode): ExpressionRef {
+        const elemType = this.resolveType(node);
+        // FIXME: fix soon
+        if (elemType.kind !== typeKind.BASIC) {
+            throw new RuntimeError("not implemented");
+        }
+        const basicType = (elemType as BasicType).type;
+        const ptr = this.indexExpression(node);
+        if (basicType === basicKind.INTEGER ||
+            basicType === basicKind.CHAR||
+            basicType === basicKind.BOOLEAN||
+            basicType === basicKind.STRING) {
+            return this.module.i32.load(0, 1, ptr, "0");
+        }
+        else if (basicType === basicKind.REAL) {
+            return this.module.f64.load(0, 1, ptr, "0");
+        }
+        throw new RuntimeError("Not implemented yet");
+    }
+
+    // obtain the pointer of the value but not setting or loading it
+    public indexExpression(node: IndexExprNode): ExpressionRef {
+        // check whether the expr exists and whether it is an ARRAY
+        const rVal = this.resolveType(node.expr);
+        if (rVal.kind !== typeKind.ARRAY) {
+            throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
+        }
+        const elemType = this.resolveType(node);
+        // if it comes to here possibilities such as 1[1] are prevented
+        const expr = this.generateExpression(node.expr);
+        const index = this.generateExpression(node.index);
+        return this.module.i32.add(expr, this.module.i32.mul(index, this.enclosing.generateConstant(binaryen.i32, elemType.size())));
+    }
+
+    public selectExpression(node: SelectExprNode): ExpressionRef {
+        // check whether the expr exists and whether it is an ARRAY
+        const rVal = this.resolveType(node.expr);
+        if (rVal.kind !== typeKind.RECORD) {
+            throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
+        }
+        // if it comes to here possibilities such as 1[1] are prevented
+        const expr = this.generateExpression(node.expr);
+        return this.module.i32.add(expr, this.enclosing.generateConstant(binaryen.i32, (rVal as RecordType).offset(node.ident.lexeme)));
     }
 
     private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
@@ -437,7 +486,7 @@ export class Function {
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
@@ -459,7 +508,7 @@ export class Function {
             return this.module.call(procName, procArgs, binaryen.none);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {
@@ -480,7 +529,7 @@ export class Function {
                 case tokenType.MINUS:
                     return this.module.f64.neg(this.generateExpression(node.expr));
                 default:
-                    return -1;
+                    throw new RuntimeError("Not implemented yet");
             }
         }
         // otherwise i32
@@ -490,7 +539,7 @@ export class Function {
             case tokenType.MINUS:
                 return this.module.i32.sub(this.module.i32.const(0), this.generateExpression(node.expr));
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -540,7 +589,7 @@ export class Function {
                 case tokenType.GREATER_EQUAL:
                     return this.module.f64.ge(leftExpr, rightExpr);
                 default:
-                    return -1;
+                    throw new RuntimeError("Not implemented yet");
             }
         }
 
@@ -566,7 +615,7 @@ export class Function {
             case tokenType.GREATER_EQUAL:
                 return this.module.i32.ge_s(leftExpr, rightExpr);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -604,7 +653,7 @@ export class Function {
             case nodeKind.ForNode:
                 return this.forStatement(statement as ForNode);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -615,17 +664,21 @@ export class Function {
         }
 
         const basicType: basicKind = (type as BasicType).type;
+        const expr = this.generateExpression(node.expr);
 
         if (basicType == basicKind.INTEGER) {
-            return this.module.call("logInteger", [this.generateExpression(node.expr)], binaryen.none);
+            return this.module.call("logInteger", [expr], binaryen.none);
         }
         else if (basicType == basicKind.REAL) {
-            return this.module.call("logReal", [this.generateExpression(node.expr)], binaryen.none);
+            return this.module.call("logReal", [expr], binaryen.none);
         }
         else if (basicType == basicKind.CHAR) {
-            return this.module.call("logChar", [this.generateExpression(node.expr)], binaryen.none);
+            return this.module.call("logChar", [expr], binaryen.none);
         }
-        return -1;
+        else if (basicType == basicKind.STRING) {
+            return this.module.call("logString", [expr], binaryen.none);
+        }
+        throw new RuntimeError("Not implemented yet");
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
     }
 
@@ -639,7 +692,7 @@ export class Function {
         const varType = convertToBasicType(node.type);
         const wasmType = convertToWasmType(node.type);
         const varIndex = this.setLocal(varName, varType, wasmType);
-        return this.module.local.set(varIndex, this.generateConstant(wasmType, 0));
+        return this.module.local.set(varIndex, this.enclosing.generateConstant(wasmType, 0));
     }
 
     private arrDeclStatement(node: ArrDeclNode): ExpressionRef {
@@ -652,7 +705,7 @@ export class Function {
         const wasmType = binaryen.i32;
         const varIndex = this.setLocal(arrName, new ArrayType(elemType, lower, upper), wasmType);
         // FIXME: set to init pointer
-        return this.module.local.set(varIndex, this.generateConstant(wasmType, 0));
+        return this.module.local.set(varIndex, this.enclosing.generateConstant(wasmType, 0));
     }
 
     private ifStatement(node: IfNode): ExpressionRef {

@@ -3,9 +3,7 @@
 import binaryen from "binaryen";
 import { Compiler } from "./compiler";
 
-
-const code0 = `OUTPUT 1 + 9
-`
+const code0 = `OUTPUT 9 + 1`;
 
 const code1 = `DECLARE i:INTEGER
 DECLARE j:INTEGER
@@ -15,7 +13,7 @@ i <- 1
 j <- 2
 k <- 3.14
 OUTPUT i + j * k
-`
+`;
 
 const code2 = `DECLARE i:INTEGER
 DECLARE j:INTEGER
@@ -27,12 +25,12 @@ IF i = j + i THEN
 ELSE
     OUTPUT 2
 ENDIF
-`
+`;
 
 const code3 = `DECLARE i:STRING
 i <- "Hi"
 OUTPUT i
-`
+`;
 
 const code4 = `DECLARE i:INTEGER
 DECLARE j:INTEGER
@@ -44,7 +42,7 @@ WHILE i < 10
 ENDWHILE
 
 OUTPUT j
-`
+`;
 
 const code5 = `DECLARE i:INTEGER
 DECLARE j:INTEGER
@@ -56,7 +54,7 @@ REPEAT
 UNTIL i = 10
 
 OUTPUT j
-`
+`;
 
 const code6 = `DECLARE i:INTEGER
 DECLARE j:INTEGER
@@ -66,7 +64,7 @@ FOR i <- 1 TO 11
 NEXT i
 
 OUTPUT j
-`
+`;
 
 const code7 = `FUNCTION add(a:INTEGER, b:INTEGER) RETURNS INTEGER
     RETURN a + b
@@ -78,7 +76,7 @@ DECLARE j:INTEGER
 i <- 1
 j <- 2
 OUTPUT add(i, j)
-`
+`;
 
 const code8 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
     DECLARE b:INTEGER
@@ -91,7 +89,7 @@ const code8 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
 ENDFUNCTION
 
 OUTPUT for(10)
-`
+`;
 
 const code9 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
     DECLARE b:INTEGER
@@ -103,7 +101,7 @@ const code9 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
 ENDFUNCTION
 
 OUTPUT for(1)
-`
+`;
 
 const code10 = `FUNCTION recur(a:INTEGER) RETURNS INTEGER
     IF a = 10 THEN
@@ -113,7 +111,7 @@ const code10 = `FUNCTION recur(a:INTEGER) RETURNS INTEGER
 ENDFUNCTION
 
 OUTPUT recur(1)
-`
+`;
 
 const code11 = `DECLARE a:INTEGER
 a <- 1
@@ -128,7 +126,7 @@ FUNCTION scope() RETURNS INTEGER
 ENDFUNCTION
 
 OUTPUT scope()
-`
+`;
 
 const code12 = `PROCEDURE print(a:INTEGER)
     DECLARE b:INTEGER
@@ -140,7 +138,7 @@ const code12 = `PROCEDURE print(a:INTEGER)
 ENDPROCEDURE
 
 CALL print(1)
-`
+`;
 
 const code13 = `DECLARE i: INTEGER
 i <- 1
@@ -151,7 +149,7 @@ ENDPROCEDURE
 
 CALL increment(i)
 OUTPUT i
-`
+`;
 
 const code14 = `DECLARE i: INTEGER
 i <- 1
@@ -162,7 +160,7 @@ ENDPROCEDURE
 
 CALL increment()
 OUTPUT i
-`
+`;
 
 const code15 = `FUNCTION add(a:REAL, b:REAL) RETURNS REAL
     DECLARE c: REAL
@@ -176,27 +174,27 @@ DECLARE j: REAL
 i <- 1.1
 j <- 2.2
 OUTPUT add(i, j)
-`
+`;
 
-const code16 = `OUTPUT 'a'`
+const code16 = `OUTPUT 'a'`;
 
 const code17 = `DECLARE i: CHAR
 i <- 'v'
 
 OUTPUT i
-`
+`;
 
 const code18 = `DECLARE i: INTEGER
 
 i <- 1
 OUTPUT -i
-`
+`;
 
 const code19 = `DECLARE i: REAL
 
 i <- 1
 OUTPUT -i
-`
+`;
 
 const code20 = `DECLARE arr: ARRAY[0: 3] OF INTEGER
 
@@ -204,7 +202,7 @@ arr[0] <- 1
 arr[1] <- 2
 arr[2] <- 3
 
-OUTPUT arr[0] + arr[1] + arr[2]`
+OUTPUT arr[0] + arr[1] + arr[2]`;
 
 const code21 = `DECLARE arr: ARRAY[0: 10] OF INTEGER
 
@@ -220,7 +218,7 @@ arr[8] <- 9
 arr[9] <- 10
 
 OUTPUT arr[0] + arr[1] + arr[2] + arr[3] + arr[4] + arr[5] + arr[6] + arr[7] + arr[8] + arr[9]
-`
+`;
 
 const code22 = `DECLARE arr: ARRAY[0: 10] OF INTEGER
 DECLARE i: INTEGER
@@ -236,7 +234,7 @@ FOR i <- 0 TO 10
 NEXT i
 
 OUTPUT sum
-`
+`;
 
 const code23 = `DECLARE arr: ARRAY[0: 10, 0: 10] OF INTEGER
 DECLARE i: INTEGER
@@ -257,7 +255,7 @@ FOR i <- 0 TO 10
 NEXT i
 
 OUTPUT sum
-`
+`;
 
 const code24 = `DECLARE i: INTEGER
 DECLARE j: INTEGER
@@ -271,22 +269,22 @@ FOR i <- 0 TO 10
 NEXT i
 
 OUTPUT sum
-`
+`;
 
-const code25 = `OUTPUT "Hello World"`
+const code25 = `OUTPUT "Hello World"`;
 
 const code26 = `DECLARE i: ARRAY[0: 1] OF INTEGER
 
 i[0] <- 2147483647
 OUTPUT i[0]
-`
+`;
 
 const code27 = `DECLARE i: ARRAY[0: 2] OF INTEGER
 
 i[0] <- 2147483647
 i[1] <- -2147483648
 OUTPUT i[0] + i[1]
-`
+`;
 
 // ARRAY OF CHAR "Hello World"
 const code28 = `DECLARE i: STRING
@@ -296,27 +294,28 @@ i <- "Hello"
 j <- "World"
 
 OUTPUT i & j
-`
+`;
 
 const code29 = `IF 3 THEN
     OUTPUT 2
 ENDIF
-`
+`;
 
 const code30 = `DECLARE i: ARRAY[0: 10] OF STRING
 
 i[0] <- "nihao"
 
 OUTPUT i[0]
-`
+`;
 
-const code31 = `OUTPUT "编码测试"`
+const code31 = `OUTPUT "编码测试"`;
 
 const code32 = `DECLARE arr: ARRAY[0: 9] OF REAL
 DECLARE i: INTEGER
 
 FOR i <- 0 TO 9
-    arr[i] <- i + i / 10
+    // i / 10 makes an integer value
+    arr[i] <- i + i / 10.0
 NEXT i
 
 DECLARE sum: REAL
@@ -326,11 +325,46 @@ FOR i <- 0 TO 9
 NEXT i
 
 OUTPUT sum
+`;
+
+const code33 = `OUTPUT 1.0 / 20`;
+
+const code34 = `OUTPUT 1 / 20`;
+
+const code35 = `FUNCTION print() RETURNS STRING
+    DECLARE str: STRING
+    str <- "Hi"
+    RETURN str
+ENDFUNCTION
+
+OUTPUT print()
 `
 
-const code33 = `OUTPUT 1.0 / 20`
+const code36 = `PROCEDURE print()
+    DECLARE str: STRING
+    str <- "Hi"
+    OUTPUT str
+ENDPROCEDURE
 
-const code34 = `OUTPUT 1 / 20`
+CALL print()
+`
+
+const code37 = `FUNCTION sum() RETURNS INTEGER
+    DECLARE sum: INTEGER
+    DECLARE arr: ARRAY[0: 10] OF INTEGER
+    DECLARE i: INTEGER
+    FOR i <- 0 TO 10
+        arr[i] <- i
+    NEXT i
+    
+    FOR i <- 0 TO 10
+        sum <- sum + arr[i]
+    NEXT i
+    RETURN sum
+ENDFUNCTION
+
+OUTPUT sum()
+`
 
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
@@ -383,11 +417,51 @@ const codes = [
     code31,
     code32,
     code33,
-    code34
+    code34,
+    code35,
+    code36,
+    code37
 ];
-const expected = [10, 7.28, 2, "Hi", 10, 10, 11, 3, 10, 11, 10, 4, 5, 2, 2, 1.1+2.2/*floating point inaccuracy*/
-    , 'a', 'v', -1, -1, 6, 55, 55, 1210, 1210, "Hello World", 2147483647, -1, "Hello World", 2, "nihao",
-    "编码测试", 45, 0.05, 0];
+const expected = [
+    10,
+    7.28,
+    2,
+    "Hi",
+    10,
+    10,
+    11,
+    3,
+    10,
+    11,
+    10,
+    4,
+    5,
+    2,
+    2,
+    1.1 + 2.2 /*floating point inaccuracy*/,
+    "a",
+    "v",
+    -1,
+    -1,
+    6,
+    55,
+    55,
+    1210,
+    1210,
+    "Hello World",
+    2147483647,
+    -1,
+    "Hello World",
+    2,
+    "nihao",
+    "编码测试",
+    49.5,
+    0.05,
+    0,
+    "Hi",
+    "Hi",
+    55
+];
 let total = codes.length;
 let compileCount = 0;
 let runCount = 0;
@@ -400,28 +474,24 @@ async function compileTest() {
         console.log(codes[i]);
         const compiler = new Compiler(codes[i]);
         try {
-            compiler.compile();
+            // log the tokens and ast
+            compiler.compile(true);
             compileCount++;
-        } 
-        catch (e) {
+        } catch (e) {
             console.error(e);
             compileFailed.push(i);
         }
 
         try {
             // if fail push
-            if (await compiler.test(expected[i]) === false)
-                runFailed.push(i);
-            else
-                runCount++;
-        }
-        catch (e) {
+            if ((await compiler.test(expected[i])) === false) runFailed.push(i);
+            else runCount++;
+        } catch (e) {
             console.error(e);
             runFailed.push(i);
         }
     }
 }
-
 
 // The interpreter part now is under the interpreter branch, and it is not finished
 
