@@ -254,7 +254,8 @@ export class Generator {
 
         switch (current.kind) {
             case typeKind.BASIC:
-                return this.convertBasicType((current as BasicType).type, (target as BasicType).type, expression);
+                // FIXME: get rid of this 'target as BasicType'
+                return this.convertBasicType(current.type, (target as BasicType).type, expression);
             // case typeKind.ARRAY:
             //     return this.convertArrayType(current as ArrayType, target, expression);
             // case typeKind.RECORD:
@@ -312,7 +313,7 @@ export class Generator {
         if (rVal.kind !== typeKind.RECORD) {
             throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
         }
-        return (rVal as RecordType).fields.get(node.ident.lexeme) as Type;
+        return rVal.fields.get(node.ident.lexeme) as Type;
     }
 
     private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): Type {
@@ -334,8 +335,8 @@ export class Generator {
             throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
         }
 
-        const leftBasicType = (leftType as BasicType).type;
-        const rightBasicType = (rightType as BasicType).type;
+        const leftBasicType = leftType.type;
+        const rightBasicType = rightType.type;
 
         switch (node.operator.type) {
             // arithmetic operations
@@ -537,11 +538,11 @@ export class Generator {
         const leftType = this.resolveType(node.left);
         const rightType = this.resolveType(node.right);
         // FIXME: fix soon
-        if (leftType.kind !== typeKind.BASIC) {
+        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
             throw new RuntimeError("not implemented");
         }
-        const leftBasicType = (leftType as BasicType).type;
-        const rightBasicType = (rightType as BasicType).type;
+        const leftBasicType = leftType.type;
+        const rightBasicType = rightType.type;
         const rhs = this.generateExpression(node.right);
         const ptr = this.generateLeftValue(node.left);
         switch (leftBasicType) {
@@ -569,7 +570,7 @@ export class Generator {
         if (elemType.kind !== typeKind.BASIC) {
             throw new RuntimeError("not implemented");
         }
-        const basicType = (elemType as BasicType).type;
+        const basicType = elemType.type;
         const ptr = this.indexExpression(node);
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
@@ -605,7 +606,7 @@ export class Generator {
         }
         // if it comes to here possibilities such as 1[1] are prevented
         const expr = this.generateExpression(node.expr);
-        return this.module.i32.add(expr, this.generateConstant(binaryen.i32, (rVal as RecordType).offset(node.ident.lexeme)));
+        return this.module.i32.add(expr, this.generateConstant(binaryen.i32, rVal.offset(node.ident.lexeme)));
     }
 
     private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
@@ -658,11 +659,11 @@ export class Generator {
             throw new RuntimeError("Unary operations can only be performed on basic types");
         }
 
-        const basicType: BasicType = type as BasicType;
+        const basicType = type.type;
 
         // currently keep these 2 switch cases
         // TODO: optimize later
-        if (basicType.type === basicKind.REAL) {
+        if (basicType === basicKind.REAL) {
             switch (node.operator.type) {
                 case tokenType.PLUS:
                     return this.generateExpression(node.expr);
@@ -688,12 +689,12 @@ export class Generator {
         const leftType = this.resolveType(node.left);
         const rightType = this.resolveType(node.right);
 
-        if (leftType.kind !== typeKind.BASIC || leftType.kind !== typeKind.BASIC) {
+        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
             throw new RuntimeError("Binary operations can only be performed on basic types");
         }
 
-        const leftBasicType: basicKind = (leftType as BasicType).type;
-        const rightBasicType: basicKind = (rightType as BasicType).type;
+        const leftBasicType: basicKind = leftType.type;
+        const rightBasicType: basicKind = rightType.type;
 
         const basicType = minimalCompatableBasicType(leftBasicType, rightBasicType);
 
@@ -837,7 +838,7 @@ export class Generator {
             throw new RuntimeError("Output can only be performed on basic types");
         }
 
-        const basicType: basicKind = (type as BasicType).type;
+        const basicType: basicKind = type.type;
         const expr = this.generateExpression(node.expr);
 
         if (basicType === basicKind.INTEGER) {
@@ -946,13 +947,13 @@ export class Generator {
         const stepType = this.resolveType(node.step);
         const wasmType = this.globals.getWasmType(varName);
         
-        if (varType.kind !== typeKind.BASIC && (varType as BasicType).type !== basicKind.INTEGER) {
+        if (varType.kind !== typeKind.BASIC || varType.type !== basicKind.INTEGER) {
             throw new RuntimeError("For loops only iterate over for INTEGERs");
         }
-        if (endType.kind !== typeKind.BASIC && (endType as BasicType).type !== basicKind.INTEGER) {
+        if (endType.kind !== typeKind.BASIC || endType.type !== basicKind.INTEGER) {
             throw new RuntimeError("End value of for loops can only be INTEGERs");
         }
-        if (stepType.kind !== typeKind.BASIC && (stepType as BasicType).type !== basicKind.INTEGER) {
+        if (stepType.kind !== typeKind.BASIC || stepType.type !== basicKind.INTEGER) {
             throw new RuntimeError("Step value of for loops can only be INTEGERs");
         }
 
