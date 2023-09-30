@@ -42,7 +42,7 @@ import {
     InputNode
 } from "../ast";
 
-import { Function } from "./function";
+import { Function, DefinedFunction } from "./function";
 import { Procedure } from "./procedure";
 import { convertToBasicType, convertToWasmType, unreachable } from "../util";
 import { GlobalTable } from "./global";
@@ -57,6 +57,7 @@ import {
 } from "../type/type";
 import { minimalCompatableBasicType } from "../type/type";
 import { String } from "./string";
+import { LengthFunction } from "./builtin";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -101,6 +102,7 @@ export class Generator {
         this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
 
+        this.generateBuiltins();
         this.module.setStart(this.generateBody(this.ast.body));
 
         // initialize the globals
@@ -120,6 +122,12 @@ export class Generator {
 
         this.module.addMemoryImport("0", "env", "buffer");
         return this.module;
+    }
+
+    public generateBuiltins() {
+
+        this.setFunction("LENGTH", new LengthFunction(this.module, this));
+        this.getFunction("LENGTH").generate();
     }
 
     // basically, all the constant value which are generated are numbers, either i32 or f64
@@ -431,8 +439,8 @@ export class Generator {
         const stmts = this.generateStatements(body);
         const block = this.module.block(null, stmts);
 
-        const mainFunciton = this.module.addFunction("main", binaryen.none, binaryen.none, new Array<WasmType>(), block);
-        this.module.addFunctionExport("main", "main");
+        const mainFunciton = this.module.addFunction("__main", binaryen.none, binaryen.none, new Array<WasmType>(), block);
+        this.module.addFunctionExport("__main", "main");
         return mainFunciton;
     }
 
@@ -451,7 +459,7 @@ export class Generator {
             index++;
         }
 
-        const func = new Function(this.module, this, funcName, funcParams, convertToBasicType(node.type), convertToWasmType(node.type), node.body);
+        const func = new DefinedFunction(this.module, this, funcName, funcParams, convertToBasicType(node.type), convertToWasmType(node.type), node.body);
 
         this.setFunction(funcName, func);
         this.getFunction(funcName).generate();

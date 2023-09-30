@@ -392,6 +392,8 @@ ENDPROCEDURE
 CALL print("procedure")
 `
 
+const code40 = `OUTPUT LENGTH("Happy Days")`
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i:INTEGER
 
@@ -448,7 +450,8 @@ const codes = [
     code36,
     code37,
     code38,
-    code39
+    code39,
+    code40
 ];
 const expected = [
     10,
@@ -490,7 +493,8 @@ const expected = [
     "Hi",
     55,
     55,
-    "procedure"
+    "procedure",
+    10
 ];
 let total = codes.length;
 let compileCount = 0;

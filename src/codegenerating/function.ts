@@ -58,31 +58,27 @@ type FunctionRef = binaryen.FunctionRef;
 type ExpressionRef = binaryen.ExpressionRef;
 type WasmType = binaryen.Type;
 
-export class Function {
-    private module: Module;
-    // I have no better idea for the name of the outergenerator instead of 'enclosing'
-    private enclosing: Generator;
-    private ident: string;
-    // Public variable
-    public returnType: Type;
-    public wasmReturnType: WasmType;
+export abstract class Function {
+    constructor(protected module: Module,
+        protected enclosing: Generator,
+        protected ident: string,
+        public params: LocalTable,
+        public returnType: Type,
+        public wasmReturnType: WasmType,
+        public isBuiltin: boolean,
+        protected locals: LocalTable = new LocalTable(),
+        protected label: number = 0) {  }
+    
+    public abstract generate(): void;
+}
+
+// User Defined Function
+export class DefinedFunction extends Function {
     private body: Array<Stmt>;
-    // public params
-    public params: LocalTable;
-    // updated data structure
-    private locals: LocalTable;
-    private label: number;
 
     constructor(module: Module, enclosing: Generator, ident: string, params: LocalTable, returnType: Type, wasmReturnType: WasmType, body: Array<Stmt>) {
-        this.module = module;
-        this.enclosing = enclosing;
-        this.ident = ident;
-        this.params = params;
-        this.returnType = returnType;
-        this.wasmReturnType = wasmReturnType;
+        super(module, enclosing, ident, params, returnType, wasmReturnType, false);
         this.body = body;
-        this.locals = new LocalTable();
-        this.label = 0;
     }
 
     public generate(): void {

@@ -1,7 +1,25 @@
 import binaryen from "binaryen";
 import { Token } from "./scanning/token";
 import { RuntimeError } from "./error";
-import { BasicType, basicKind } from "./type/type";
+import { Type, BasicType, basicKind, ArrayType } from "./type/type";
+
+export function convertTokenToType(token: Token): Type {
+    switch (token.lexeme) {
+        case "INTEGER":
+            return new BasicType(basicKind.INTEGER);
+        case "REAL":
+            return new BasicType(basicKind.REAL);
+        case "CHAR":
+            return new BasicType(basicKind.CHAR);
+        case "STRING":
+            return new BasicType(basicKind.STRING);
+        case "BOOLEAN":
+            return new BasicType(basicKind.BOOLEAN);
+        // TODO: Record
+        default:
+            throw new RuntimeError("Unknown type '" + token.lexeme + "'");
+    }
+}
 
 export function convertToBasicType(type: Token): BasicType {
     switch (type.lexeme) {
@@ -19,7 +37,6 @@ export function convertToBasicType(type: Token): BasicType {
             throw new RuntimeError("Unknown type '" + type.lexeme + "'");
     }
 }
-
 
 export function convertToWasmType(type: Token): binaryen.Type {
     switch (type.lexeme) {

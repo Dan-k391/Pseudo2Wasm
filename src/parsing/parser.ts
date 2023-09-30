@@ -374,7 +374,7 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.ARRAY);
                 // function only supports BYVAL
                 params.push(new Param(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));

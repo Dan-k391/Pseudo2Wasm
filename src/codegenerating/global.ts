@@ -1,3 +1,4 @@
+// TODO: maybe change back to the one single map data structure LOL
 import binaryen from "binaryen";
 import { 
     Type,
