@@ -1,5 +1,5 @@
 /**
  * @license
- * Copyright 2022 The Binaryen Authors.
+ * Copyright 2023 The Binaryen Authors.
  * SPDX-License-Identifier: Apache-2.0
  */

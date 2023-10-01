@@ -1,20 +1,20 @@
 import binaryen from "binaryen";
 import { Token } from "./scanning/token";
-import { VarType } from "./type/variable";
 import { RuntimeError } from "./error";
+import { BasicType, basicKind } from "./type/type";
 
-export function convertToVarType(type: Token): VarType {
+export function convertToBasicType(type: Token): BasicType {
     switch (type.lexeme) {
         case "INTEGER":
-            return VarType.INTEGER;
+            return new BasicType(basicKind.INTEGER);
         case "REAL":
-            return VarType.REAL;
+            return new BasicType(basicKind.REAL);
         case "CHAR":
-            return VarType.CHAR;
+            return new BasicType(basicKind.CHAR);
         case "STRING":
-            return VarType.STRING;
+            return new BasicType(basicKind.STRING);
         case "BOOLEAN":
-            return VarType.BOOLEAN;
+            return new BasicType(basicKind.BOOLEAN);
         default:
             throw new RuntimeError("Unknown type '" + type.lexeme + "'");
     }
@@ -36,4 +36,8 @@ export function convertToWasmType(type: Token): binaryen.Type {
         default:
             throw new RuntimeError("Unknown type '" + type.lexeme + "'");
     }
+}
+
+export function unreachable(): never {
+    throw new RuntimeError("Unreachable code");
 }

@@ -1,8 +1,8 @@
-// 引入一个路径包
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const { webpack } = require("webpack");
+const TerserPlugin = require("terser-webpack-plugin")
 
 module.exports = {
     mode: "production",
@@ -23,6 +23,9 @@ module.exports = {
     },
 
     resolve: {
+        fallback: {
+            module: false,
+        },
         extensions: [".ts", ".js"],
     },
 
@@ -34,6 +37,16 @@ module.exports = {
                 exclude: /node-modules/,
             },
         ],
+    },
+
+    optimization: {
+        minimizer: [
+            new TerserPlugin({
+                terserOptions: {
+                    module: true
+                }
+            })
+        ]
     },
 
     devtool: "inline-source-map",

@@ -37,18 +37,19 @@ export class Compiler {
         const importObect = {
             env: {
                 buffer: memory,
-                logInteger: (value: number) => {
-                    output(value);
+                logInteger: (output: number) => {
+                    console.log(output);
                 },
-                logReal: (value: number) => {
-                    console.log(value);
+                logReal: (output: number) => {
+                    console.log(output);
                 },
-                logChar: (value: number) => {
-                    console.log(String.fromCharCode(value));
+                logChar: (output: number) => {
+                    console.log(String.fromCharCode(output));
                 },
-                logString: (value: number) => {
-                    const bytes = new Uint8Array(memory.buffer, value);
-                    const str = bytes.toString();
+                logString: (output: number) => {
+                    const bytes = new Uint8Array(memory.buffer, output, 65535 - output);
+                    let str = new TextDecoder("utf8").decode(bytes);
+                    str = str.split('\0')[0];
                     console.log(str);
                 }
             },

@@ -1,6 +1,6 @@
 {
   "name": "pseudo2wasm",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "",
   "main": "dist/pseudo2wasm.js",
   "scripts": {
@@ -15,14 +15,15 @@
     "@babel/core": "^7.20.12",
     "@babel/preset-env": "^7.20.2",
     "babel-loader": "^9.1.2",
-    "binaryen": "^110.0.0-nightly.20221105",
+    "binaryen": "^114.0.0",
     "clean-webpack-plugin": "^4.0.0",
     "core-js": "^3.27.1",
     "html-webpack-plugin": "^5.5.0",
+    "terser-webpack-plugin": "^5.3.9",
     "ts-loader": "^9.4.2",
     "typescript": "^4.9.4",
     "wasi-js": "^1.7.2",
-    "webpack": "^5.75.0",
+    "webpack": "^5.88.2",
     "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^4.11.1"
   }
