@@ -5,9 +5,9 @@ import { Compiler } from "./compiler";
 
 const code0 = `OUTPUT 9 + 1`;
 
-const code1 = `DECLARE i:INTEGER
-DECLARE j:INTEGER
-DECLARE k:REAL
+const code1 = `DECLARE i: INTEGER
+DECLARE j: INTEGER
+DECLARE k: REAL
 
 i <- 1
 j <- 2
@@ -15,8 +15,8 @@ k <- 3.14
 OUTPUT i + j * k
 `;
 
-const code2 = `DECLARE i:INTEGER
-DECLARE j:INTEGER
+const code2 = `DECLARE i: INTEGER
+DECLARE j: INTEGER
 
 i <- -1.99
 j <- 2.99
@@ -27,13 +27,13 @@ ELSE
 ENDIF
 `;
 
-const code3 = `DECLARE i:STRING
+const code3 = `DECLARE i: STRING
 i <- "Hi"
 OUTPUT i
 `;
 
-const code4 = `DECLARE i:INTEGER
-DECLARE j:INTEGER
+const code4 = `DECLARE i: INTEGER
+DECLARE j: INTEGER
 
 i <- 1
 WHILE i < 10
@@ -44,8 +44,8 @@ ENDWHILE
 OUTPUT j
 `;
 
-const code5 = `DECLARE i:INTEGER
-DECLARE j:INTEGER
+const code5 = `DECLARE i: INTEGER
+DECLARE j: INTEGER
 
 i <- 1
 REPEAT
@@ -56,8 +56,8 @@ UNTIL i = 10
 OUTPUT j
 `;
 
-const code6 = `DECLARE i:INTEGER
-DECLARE j:INTEGER
+const code6 = `DECLARE i: INTEGER
+DECLARE j: INTEGER
 
 FOR i <- 1 TO 11
     j <- i
@@ -66,21 +66,21 @@ NEXT i
 OUTPUT j
 `;
 
-const code7 = `FUNCTION add(a:INTEGER, b:INTEGER) RETURNS INTEGER
+const code7 = `FUNCTION add(a: INTEGER, b: INTEGER) RETURNS INTEGER
     RETURN a + b
 ENDFUNCTION
 
-DECLARE i:INTEGER
-DECLARE j:INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
 
 i <- 1
 j <- 2
 OUTPUT add(i, j)
 `;
 
-const code8 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
-    DECLARE b:INTEGER
-    DECLARE c:INTEGER
+const code8 = `FUNCTION for(a: INTEGER) RETURNS INTEGER
+    DECLARE b: INTEGER
+    DECLARE c: INTEGER
 
     FOR b <- 1 TO a
         c <- b
@@ -91,8 +91,8 @@ ENDFUNCTION
 OUTPUT for(10)
 `;
 
-const code9 = `FUNCTION for(a:INTEGER) RETURNS INTEGER
-    DECLARE b:INTEGER
+const code9 = `FUNCTION for(a: INTEGER) RETURNS INTEGER
+    DECLARE b: INTEGER
 
     FOR a <- 1 TO 11
         b <- a
@@ -103,7 +103,7 @@ ENDFUNCTION
 OUTPUT for(1)
 `;
 
-const code10 = `FUNCTION recur(a:INTEGER) RETURNS INTEGER
+const code10 = `FUNCTION recur(a: INTEGER) RETURNS INTEGER
     IF a = 10 THEN
         RETURN a
     ENDIF
@@ -113,12 +113,12 @@ ENDFUNCTION
 OUTPUT recur(1)
 `;
 
-const code11 = `DECLARE a:INTEGER
+const code11 = `DECLARE a: INTEGER
 a <- 1
 
 FUNCTION scope() RETURNS INTEGER
-    DECLARE b:INTEGER
-    DECLARE c:INTEGER
+    DECLARE b: INTEGER
+    DECLARE c: INTEGER
 
     b <- 1
     c <- 2
@@ -128,9 +128,9 @@ ENDFUNCTION
 OUTPUT scope()
 `;
 
-const code12 = `PROCEDURE print(a:INTEGER)
-    DECLARE b:INTEGER
-    DECLARE c:INTEGER
+const code12 = `PROCEDURE print(a: INTEGER)
+    DECLARE b: INTEGER
+    DECLARE c: INTEGER
 
     b <- 2
     c <- 2
@@ -143,7 +143,7 @@ CALL print(1)
 const code13 = `DECLARE i: INTEGER
 i <- 1
 
-PROCEDURE increment(BYREF a:INTEGER)
+PROCEDURE increment(BYREF a: INTEGER)
     a <- a + 1
 ENDPROCEDURE
 
@@ -162,7 +162,7 @@ CALL increment()
 OUTPUT i
 `;
 
-const code15 = `FUNCTION add(a:REAL, b:REAL) RETURNS REAL
+const code15 = `FUNCTION add(a: REAL, b: REAL) RETURNS REAL
     DECLARE c: REAL
     c <- a + b
     RETURN c
@@ -395,7 +395,7 @@ CALL print("procedure")
 const code40 = `OUTPUT LENGTH("Happy Days")`
 
 // const code11 = `TYPE a = ^INTEGER
-// DECLARE i:INTEGER
+// DECLARE i: INTEGER
 
 // i <- 9
 // a <- ^i
@@ -403,7 +403,7 @@ const code40 = `OUTPUT LENGTH("Happy Days")`
 // `
 
 // const code12 = `TYPE a = ^INTEGER
-// DECLARE i:INTEGER
+// DECLARE i: INTEGER
 
 // i <- 9
 // a <- ^^^^i^^^
