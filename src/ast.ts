@@ -183,12 +183,12 @@ export class VarExprNode extends BaseNode {
 export class IndexExprNode extends BaseNode {
     public readonly kind = nodeKind.IndexExprNode;
     public expr: Expr;
-    public index: Expr;
+    public indexes: Array<Expr>;
 
-    constructor(expr: Expr, index: Expr) {
+    constructor(expr: Expr, indexes: Array<Expr>) {
         super();
         this.expr = expr;
-        this.index = index;
+        this.indexes = indexes;
     }
 
     public toString(): string {
@@ -281,7 +281,6 @@ export class BinaryExprNode extends BaseNode {
 
 export class PointerExprNode extends BaseNode {
     public readonly kind = nodeKind.PointerDeclNode;
-    // FIXME: ident should be LeftValue
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
@@ -296,7 +295,6 @@ export class PointerExprNode extends BaseNode {
 
 export class LocationExprNode extends BaseNode {
     public readonly kind = nodeKind.LocationExprNode;
-    // FIXME: ident should be LeftValue
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
@@ -395,19 +393,22 @@ export class VarDeclNode extends BaseNode {
     }
 }
 
+export interface Dimension {
+    lower: Token;
+    upper: Token;
+}
+
 export class ArrDeclNode extends BaseNode {
     public readonly kind = nodeKind.ArrDeclNode;
     public ident: Token;
     public type: Token;
-    public lower: Token;
-    public upper: Token;
+    public dimensions: Array<Dimension>;
 
-    constructor(ident: Token, type: Token, lower: Token, upper: Token) {
+    constructor(ident: Token, type: Token, dimensions: Array<Dimension>) {
         super();
         this.ident = ident;
         this.type = type;
-        this.lower = lower;
-        this.upper = upper;
+        this.dimensions = dimensions;
     }
 
     public toString(): string {

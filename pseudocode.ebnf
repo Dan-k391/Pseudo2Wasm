@@ -14,12 +14,12 @@ Comparison ::= Term {("<" | "<=" | ">" | ">=" | "AND") Term}
 Term ::= Factor {("+" | "-" | "&") Factor}
 Factor ::= Unary {("*" | "/" | "MOD") Unary}
 Unary ::= ["+" | "-" | "NOT"] Unary | Pointer
-/* The below rule should be the correct one but i do not know how to implement it with a recursive descent parser. */
-/* Pointer ::= "^" Pointer | Pointer "^" | LVal | CallExpr */
-Pointer ::= "^" Pointer | Pointer { "^" } | CallExpr
+(* The below rule should be the correct one but i do not know how to implement it with a recursive descent parser. *)
+(* Pointer ::= "^" Pointer | Pointer "^" | LVal | Call *)
+Pointer ::= "^" Pointer | Pointer { "^" } | Call
 
 Args ::= Expr {"," Expr}
-CallExpr ::= Primary ["(" [Args] ")"] | "CALL" Primary "(" [Args] ")"
+Call ::= Primary ["(" [Args] ")"] | "CALL" Primary "(" [Args] ")"
 
 Primary ::= IDENT |
     INTEGER |
@@ -30,7 +30,7 @@ Primary ::= IDENT |
     "(" Expr ")"|
     Primary "[" Args "]" |
     Primary "." IDENT |
-    CallExpr
+    Call
 
 Statement ::= Decl | TypeDecl | Assign | If | While | Repeat | For | Return
 Decl ::= "DECLARE" IDENT ":" Type | "DECLARE" IDENT ":" "ARRAY" "OF" Type

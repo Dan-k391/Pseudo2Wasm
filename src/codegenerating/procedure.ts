@@ -444,7 +444,7 @@ export class Procedure {
         const elemType = this.resolveType(node);
         // if it comes to here possibilities such as 1[1] are prevented
         const expr = this.generateExpression(node.expr);
-        const index = this.generateExpression(node.index);
+        const index = this.generateExpression(node.indexes[0]);
         return this.module.i32.add(expr, this.module.i32.mul(index, this.enclosing.generateConstant(binaryen.i32, elemType.size())));
     }
 
@@ -690,8 +690,9 @@ export class Procedure {
         const arrName = node.ident.lexeme;
         // FIXME: only basic types supported
         const elemType = convertToBasicType(node.type);
-        const lower = node.lower.literal;
-        const upper = node.upper.literal;
+        // FIXME: temp test
+        const lower = node.dimensions[0].lower.literal;
+        const upper = node.dimensions[0].upper.literal;
         // pointer to head
         const wasmType = binaryen.i32;
         const varIndex = this.setLocal(arrName, new ArrayType(elemType, lower, upper), wasmType);
