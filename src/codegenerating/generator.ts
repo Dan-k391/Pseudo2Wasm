@@ -9,7 +9,6 @@ import { tokenType } from "../scanning/token";
 import {
     nodeKind,
 
-    ASTNode,
     Expr,
     Stmt,
     Param,
@@ -43,7 +42,7 @@ import {
     InputNode
 } from "../ast";
 
-import { Function } from "./function";
+import { Function, DefinedFunction } from "./function";
 import { Procedure } from "./procedure";
 import { convertToBasicType, convertToWasmType, unreachable } from "../util";
 import { GlobalTable } from "./global";
@@ -58,6 +57,7 @@ import {
 } from "../type/type";
 import { minimalCompatableBasicType } from "../type/type";
 import { String } from "./string";
+import { LengthFunction } from "./builtin";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -102,7 +102,8 @@ export class Generator {
         this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
 
-        this.generateBody(this.ast.body);
+        this.generateBuiltins();
+        this.module.setStart(this.generateBody(this.ast.body));
 
         // initialize the globals
         for (const name of this.globals.names) {
@@ -123,8 +124,14 @@ export class Generator {
         return this.module;
     }
 
+    public generateBuiltins() {
+
+        this.setFunction("LENGTH", new LengthFunction(this.module, this));
+        this.getFunction("LENGTH").generate();
+    }
+
     // basically, all the constant value which are generated are numbers, either i32 or f64
-    private generateConstant(type: WasmType, value: number): ExpressionRef {
+    public generateConstant(type: WasmType, value: number): ExpressionRef {
         if (type === binaryen.i32) {
             return this.module.i32.const(value);
         }
@@ -254,7 +261,8 @@ export class Generator {
 
         switch (current.kind) {
             case typeKind.BASIC:
-                return this.convertBasicType((current as BasicType).type, (target as BasicType).type, expression);
+                // FIXME: get rid of this 'target as BasicType'
+                return this.convertBasicType(current.type, (target as BasicType).type, expression);
             // case typeKind.ARRAY:
             //     return this.convertArrayType(current as ArrayType, target, expression);
             // case typeKind.RECORD:
@@ -269,19 +277,19 @@ export class Generator {
             // FIXME: some cases such as assignment are not considered
             // maybe not need to be fixed, keep this FIXME though
             case nodeKind.VarExprNode:
-                return this.resolveVarExprNodeType(expression as VarExprNode);
+                return this.resolveVarExprNodeType(expression);
             case nodeKind.IndexExprNode:
-                return this.resolveIndexExprNodeType(expression as IndexExprNode);
+                return this.resolveIndexExprNodeType(expression);
             case nodeKind.SelectExprNode:
-                return this.resolveSelectExprNodeType(expression as SelectExprNode);
+                return this.resolveSelectExprNodeType(expression);
             case nodeKind.CallFunctionExprNode:
-                return this.resolveCallFunctionExprNodeType(expression as CallFunctionExprNode);
+                return this.resolveCallFunctionExprNodeType(expression);
             case nodeKind.UnaryExprNode:
                 // The type of a expression remains the same after a unary operation 
                 // (as far as I can think)
-                return this.resolveType((expression as UnaryExprNode).expr);
+                return this.resolveType(expression.expr);
             case nodeKind.BinaryExprNode:
-                return this.resolveBasicBinaryExprNodeType(expression as BinaryExprNode);
+                return this.resolveBasicBinaryExprNodeType(expression);
             case nodeKind.IntegerExprNode:
                 return new BasicType(basicKind.INTEGER);
             case nodeKind.RealExprNode:
@@ -304,7 +312,7 @@ export class Generator {
         if (rVal.kind !== typeKind.ARRAY) {
             throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
         }
-        return (rVal as ArrayType).elem;
+        return rVal.elem;
     }
 
     public resolveSelectExprNodeType(node: SelectExprNode): Type {
@@ -312,13 +320,13 @@ export class Generator {
         if (rVal.kind !== typeKind.RECORD) {
             throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
         }
-        return (rVal as RecordType).fields.get(node.ident.lexeme) as Type;
+        return rVal.fields.get(node.ident.lexeme) as Type;
     }
 
     private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): Type {
         // FIXME: complicated expression calls are not implemented
         if (node.callee.kind === nodeKind.VarExprNode) {
-            const funcName = (node.callee as VarExprNode).ident.lexeme;
+            const funcName = node.callee.ident.lexeme;
             return this.getFunction(funcName).returnType;
         }
         throw new RuntimeError("Not implemented yet");
@@ -334,8 +342,8 @@ export class Generator {
             throw new RuntimeError("Cannot convert" + rightType + "to" + leftType);
         }
 
-        const leftBasicType = (leftType as BasicType).type;
-        const rightBasicType = (rightType as BasicType).type;
+        const leftBasicType = leftType.type;
+        const rightBasicType = rightType.type;
 
         switch (node.operator.type) {
             // arithmetic operations
@@ -431,8 +439,8 @@ export class Generator {
         const stmts = this.generateStatements(body);
         const block = this.module.block(null, stmts);
 
-        const mainFunciton = this.module.addFunction("main", binaryen.none, binaryen.none, new Array<WasmType>(), block);
-        this.module.addFunctionExport("main", "main");
+        const mainFunciton = this.module.addFunction("__main", binaryen.none, binaryen.none, new Array<WasmType>(), block);
+        this.module.addFunctionExport("__main", "main");
         return mainFunciton;
     }
 
@@ -451,7 +459,7 @@ export class Generator {
             index++;
         }
 
-        const func = new Function(this.module, this, funcName, funcParams, convertToBasicType(node.type), convertToWasmType(node.type), node.body);
+        const func = new DefinedFunction(this.module, this, funcName, funcParams, convertToBasicType(node.type), convertToWasmType(node.type), node.body);
 
         this.setFunction(funcName, func);
         this.getFunction(funcName).generate();
@@ -481,42 +489,42 @@ export class Generator {
     private generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.AssignNode:
-                return this.assignExpression(expression as AssignNode);
+                return this.assignExpression(expression);
             case nodeKind.VarExprNode:
-                return this.varExpression(expression as VarExprNode);
+                return this.varExpression(expression);
             case nodeKind.IndexExprNode:
-                return this.loadIndexExpression(expression as IndexExprNode);
+                return this.loadIndexExpression(expression);
             case nodeKind.SelectExprNode:
-                return this.selectExpression(expression as SelectExprNode);
+                return this.selectExpression(expression);
             case nodeKind.CallFunctionExprNode:
-                return this.callFunctionExpression(expression as CallFunctionExprNode);
+                return this.callFunctionExpression(expression);
             case nodeKind.CallProcedureExprNode:
-                return this.callProcedureExpression(expression as CallProcedureExprNode);
+                return this.callProcedureExpression(expression);
             case nodeKind.UnaryExprNode:
-                return this.unaryExpression(expression as UnaryExprNode);
+                return this.unaryExpression(expression);
             case nodeKind.BinaryExprNode:
-                return this.binaryExpression(expression as BinaryExprNode);
+                return this.binaryExpression(expression);
             case nodeKind.IntegerExprNode:
-                return this.integerExpression(expression as IntegerExprNode);
+                return this.integerExpression(expression);
             case nodeKind.RealExprNode:
-                return this.realExpression(expression as RealExprNode);
+                return this.realExpression(expression);
             case nodeKind.CharExprNode:
-                return this.charExpression(expression as CharExprNode);
+                return this.charExpression(expression);
             case nodeKind.StringExprNode:
-                return this.stringExpression(expression as StringExprNode);
+                return this.stringExpression(expression);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
     private generateLeftValue(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.VarExprNode:
-                return this.varExpression(expression as VarExprNode);
+                return this.varExpression(expression);
             case nodeKind.IndexExprNode:
-                return this.indexExpression(expression as IndexExprNode);
+                return this.indexExpression(expression);
             case nodeKind.SelectExprNode:
-                return this.selectExpression(expression as SelectExprNode);
+                return this.selectExpression(expression);
             default:
                 throw new RuntimeError(expression.toString() + "cannot be a left value");
         }
@@ -527,30 +535,33 @@ export class Generator {
         // Guess what? VarExpr has to be a special case
         // Because this is wasm!
         if (node.left.kind === nodeKind.VarExprNode) {
-            const varName = (node.left as VarExprNode).ident.lexeme;
+            const varName = node.left.ident.lexeme;
             const varType = this.globals.getType(varName);
             const rhs = this.generateExpression(node.right);
             const rightType = this.resolveType(node.right);
             return this.module.global.set(varName, this.convertType(rightType, varType, rhs));   
         }
 
-        const type = this.resolveType(node.left);
+        const leftType = this.resolveType(node.left);
+        const rightType = this.resolveType(node.right);
         // FIXME: fix soon
-        if (type.kind !== typeKind.BASIC) {
+        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
             throw new RuntimeError("not implemented");
         }
-        const basicType = (type as BasicType).type;
+        const leftBasicType = leftType.type;
+        const rightBasicType = rightType.type;
+        const rhs = this.generateExpression(node.right);
         const ptr = this.generateLeftValue(node.left);
-        if (basicType === basicKind.INTEGER ||
-            basicType === basicKind.CHAR||
-            basicType === basicKind.BOOLEAN) {
-            return this.module.i32.store(0, 2, ptr, this.generateExpression(node.right), "0");
+        switch (leftBasicType) {
+            case basicKind.INTEGER:
+            case basicKind.CHAR:
+            case basicKind.BOOLEAN:
+            case basicKind.STRING:
+                return this.module.i32.store(0, 1, ptr, this.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
+            case basicKind.REAL:
+                return this.module.f64.store(0, 1, ptr, this.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
         }
-        else if (basicType === basicKind.REAL) {
-            return this.module.f64.store(0, 2, ptr, this.generateExpression(node.right), "0");
-        }
-
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     public varExpression(node: VarExprNode): ExpressionRef {
@@ -566,17 +577,18 @@ export class Generator {
         if (elemType.kind !== typeKind.BASIC) {
             throw new RuntimeError("not implemented");
         }
-        const basicType = (elemType as BasicType).type;
+        const basicType = elemType.type;
         const ptr = this.indexExpression(node);
         if (basicType === basicKind.INTEGER ||
             basicType === basicKind.CHAR||
-            basicType === basicKind.BOOLEAN) {
-            return this.module.i32.load(0, 2, ptr, "0");
+            basicType === basicKind.BOOLEAN||
+            basicType === basicKind.STRING) {
+            return this.module.i32.load(0, 1, ptr, "0");
         }
         else if (basicType === basicKind.REAL) {
-            return this.module.f64.load(0, 2, ptr, "0");
+            return this.module.f64.load(0, 1, ptr, "0");
         }
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -589,7 +601,8 @@ export class Generator {
         const elemType = this.resolveType(node);
         // if it comes to here possibilities such as 1[1] are prevented
         const expr = this.generateExpression(node.expr);
-        const index = this.generateExpression(node.index);
+        // FIXME: Temporary test for one dimension, traverse all indexes for multidimension
+        const index = this.generateExpression(node.indexes[0]);
         return this.module.i32.add(expr, this.module.i32.mul(index, this.generateConstant(binaryen.i32, elemType.size())));
     }
 
@@ -601,12 +614,12 @@ export class Generator {
         }
         // if it comes to here possibilities such as 1[1] are prevented
         const expr = this.generateExpression(node.expr);
-        return this.module.i32.add(expr, this.generateConstant(binaryen.i32, (rVal as RecordType).offset(node.ident.lexeme)));
+        return this.module.i32.add(expr, this.generateConstant(binaryen.i32, rVal.offset(node.ident.lexeme)));
     }
 
     private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
-            const funcName = (node.callee as VarExprNode).ident.lexeme;
+            const funcName = node.callee.ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
             const func = this.getFunction(funcName);
             if (func.params.size() !== node.args.length) {
@@ -623,12 +636,12 @@ export class Generator {
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
-            const procName = (node.callee as VarExprNode).ident.lexeme;
+            const procName = node.callee.ident.lexeme;
             const procArgs = new Array<ExpressionRef>();
             const proc = this.getProcedure(procName);
             if (proc.params.size() !== node.args.length) {
@@ -645,7 +658,7 @@ export class Generator {
             return this.module.call(procName, procArgs, binaryen.none);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
-        return -1;
+        throw new RuntimeError("Not implemented yet");
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {
@@ -654,18 +667,18 @@ export class Generator {
             throw new RuntimeError("Unary operations can only be performed on basic types");
         }
 
-        const basicType: BasicType = type as BasicType;
+        const basicType = type.type;
 
         // currently keep these 2 switch cases
         // TODO: optimize later
-        if (basicType.type === basicKind.REAL) {
+        if (basicType === basicKind.REAL) {
             switch (node.operator.type) {
                 case tokenType.PLUS:
                     return this.generateExpression(node.expr);
                 case tokenType.MINUS:
                     return this.module.f64.neg(this.generateExpression(node.expr));
                 default:
-                    return -1;
+                    throw new RuntimeError("Not implemented yet");
             }
         }
         // otherwise i32
@@ -675,7 +688,7 @@ export class Generator {
             case tokenType.MINUS:
                 return this.module.i32.sub(this.module.i32.const(0), this.generateExpression(node.expr));
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -684,12 +697,12 @@ export class Generator {
         const leftType = this.resolveType(node.left);
         const rightType = this.resolveType(node.right);
 
-        if (leftType.kind !== typeKind.BASIC || leftType.kind !== typeKind.BASIC) {
+        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
             throw new RuntimeError("Binary operations can only be performed on basic types");
         }
 
-        const leftBasicType: basicKind = (leftType as BasicType).type;
-        const rightBasicType: basicKind = (rightType as BasicType).type;
+        const leftBasicType: basicKind = leftType.type;
+        const rightBasicType: basicKind = rightType.type;
 
         const basicType = minimalCompatableBasicType(leftBasicType, rightBasicType);
 
@@ -726,7 +739,7 @@ export class Generator {
                 case tokenType.GREATER_EQUAL:
                     return this.module.f64.ge(leftExpr, rightExpr);
                 default:
-                    return -1;
+                    throw new RuntimeError("Not implemented yet");
             }
         }
 
@@ -752,7 +765,7 @@ export class Generator {
             case tokenType.GREATER_EQUAL:
                 return this.module.i32.ge_s(leftExpr, rightExpr);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
         // TODO: STRING
 
@@ -771,7 +784,7 @@ export class Generator {
     }
 
     // use null-terminated strings
-    private stringExpression(node: StringExprNode): ExpressionRef {
+    public stringExpression(node: StringExprNode): ExpressionRef {
         const stringIndex = this.offset;
         this.offset += node.value.length + 1;
         // add this string to strings with type interface String Lol
@@ -785,13 +798,13 @@ export class Generator {
     }
 
     private generateStatements(statements: Array<Stmt>): Array<ExpressionRef> {
-        const stmts = new Array<binaryen.ExpressionRef>();
+        const stmts = new Array<ExpressionRef>();
         for (const statement of statements) {
             if (statement.kind == nodeKind.FuncDefNode) {
-                this.generateFunctionDefinition(statement as FuncDefNode);
+                this.generateFunctionDefinition(statement);
             }
             else if (statement.kind == nodeKind.ProcDefNode) {
-                this.generateProcedureDefinition(statement as ProcDefNode);
+                this.generateProcedureDefinition(statement);
             }
             else {
                 stmts.push(this.generateStatement(statement));
@@ -803,27 +816,27 @@ export class Generator {
     protected generateStatement(statement: Stmt): ExpressionRef {
         switch (statement.kind) {
             case nodeKind.ExprStmtNode:
-                return this.generateExpression((statement as ExprStmtNode).expr);
+                return this.generateExpression(statement.expr);
             case nodeKind.ReturnNode:
                 throw new RuntimeError("Really? What were you expecting it to return?");
             case nodeKind.OutputNode:
-                return this.outputStatement(statement as OutputNode);
+                return this.outputStatement(statement);
             case nodeKind.VarDeclNode:
-                return this.varDeclStatement(statement as VarDeclNode);
+                return this.varDeclStatement(statement);
             case nodeKind.ArrDeclNode:
-                return this.arrDeclStatement(statement as ArrDeclNode);
+                return this.arrDeclStatement(statement);
             case nodeKind.PointerDeclNode:
-                return this.pointerDeclStatement(statement as PointerDeclNode);
+                return this.pointerDeclStatement(statement);
             case nodeKind.IfNode:
-                return this.ifStatement(statement as IfNode);
+                return this.ifStatement(statement);
             case nodeKind.WhileNode:
-                return this.whileStatement(statement as WhileNode);
+                return this.whileStatement(statement);
             case nodeKind.RepeatNode:
-                return this.repeatStatement(statement as RepeatNode);
+                return this.repeatStatement(statement);
             case nodeKind.ForNode:
-                return this.forStatement(statement as ForNode);
+                return this.forStatement(statement);
             default:
-                return -1;
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -833,21 +846,22 @@ export class Generator {
             throw new RuntimeError("Output can only be performed on basic types");
         }
 
-        const basicType: basicKind = (type as BasicType).type;
+        const basicType: basicKind = type.type;
+        const expr = this.generateExpression(node.expr);
 
-        if (basicType == basicKind.INTEGER) {
-            return this.module.call("logInteger", [this.generateExpression(node.expr)], binaryen.none);
+        if (basicType === basicKind.INTEGER) {
+            return this.module.call("logInteger", [expr], binaryen.none);
         }
-        else if (basicType == basicKind.REAL) {
-            return this.module.call("logReal", [this.generateExpression(node.expr)], binaryen.none);
+        else if (basicType === basicKind.REAL) {
+            return this.module.call("logReal", [expr], binaryen.none);
         }
-        else if (basicType == basicKind.CHAR) {
-            return this.module.call("logChar", [this.generateExpression(node.expr)], binaryen.none);
+        else if (basicType === basicKind.CHAR) {
+            return this.module.call("logChar", [expr], binaryen.none);
         }
-        else if (basicType == basicKind.STRING) {
-            return this.module.call("logString", [this.generateExpression(node.expr)], binaryen.none);
+        else if (basicType === basicKind.STRING) {
+            return this.module.call("logString", [expr], binaryen.none);
         }
-        return -1;
+        throw new RuntimeError("Not implemented yet");
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
     }
 
@@ -864,8 +878,9 @@ export class Generator {
         const arrName = node.ident.lexeme;
         // FIXME: only basic types supported
         const elemType = convertToBasicType(node.type);
-        const lower = node.lower.literal;
-        const upper = node.upper.literal;
+        // FIXME: temp test
+        const lower = node.dimensions[0].lower.literal;
+        const upper = node.dimensions[0].upper.literal;
         // pointer to head
         const wasmType = binaryen.i32;
         const arrType = new ArrayType(elemType, lower, upper);
@@ -941,13 +956,13 @@ export class Generator {
         const stepType = this.resolveType(node.step);
         const wasmType = this.globals.getWasmType(varName);
         
-        if (varType.kind !== typeKind.BASIC && (varType as BasicType).type !== basicKind.INTEGER) {
+        if (varType.kind !== typeKind.BASIC || varType.type !== basicKind.INTEGER) {
             throw new RuntimeError("For loops only iterate over for INTEGERs");
         }
-        if (endType.kind !== typeKind.BASIC && (endType as BasicType).type !== basicKind.INTEGER) {
+        if (endType.kind !== typeKind.BASIC || endType.type !== basicKind.INTEGER) {
             throw new RuntimeError("End value of for loops can only be INTEGERs");
         }
-        if (stepType.kind !== typeKind.BASIC && (stepType as BasicType).type !== basicKind.INTEGER) {
+        if (stepType.kind !== typeKind.BASIC || stepType.type !== basicKind.INTEGER) {
             throw new RuntimeError("Step value of for loops can only be INTEGERs");
         }
 

@@ -11,8 +11,8 @@ export const enum typeKind {
 }
 
 // empty class
-export abstract class Type {
-    constructor(public kind: typeKind) { }
+export abstract class BaseType {
+    public abstract readonly kind: typeKind;
 
     public abstract toString(): string;
 
@@ -30,13 +30,17 @@ export const enum basicKind {
     NONE = "NONE"
 }
 
-export class BasicType extends Type {
+// this kind of design omits the 'type as BasicType' statements
+export type Type = BasicType | ArrayType | RecordType;
+
+export class BasicType extends BaseType {
+    // stupid naming, i know, plz do not blame me
+    // open an issue if you have a better idea
+    public readonly kind = typeKind.BASIC;
     public type: basicKind;
 
     constructor(type: basicKind) {
-        // stupid naming, i know, plz do not blame me
-        // open an issue if you have a better idea
-        super(typeKind.BASIC);
+        super();
         this.type = type;
     }
 
@@ -62,13 +66,14 @@ export class BasicType extends Type {
     }
 }
 
-export class ArrayType extends Type {
+export class ArrayType extends BaseType {
+    public readonly kind = typeKind.ARRAY;
     public elem: Type;
     public lower: number;
     public upper: number;
 
     constructor(elem: Type, lower: number, upper: number) {
-        super(typeKind.ARRAY);
+        super();
         this.elem = elem;
         this.lower = lower;
         this.upper = upper;
@@ -91,11 +96,12 @@ export class ArrayType extends Type {
     }
 }
 
-export class RecordType extends Type {
+export class RecordType extends BaseType {
+    public readonly kind = typeKind.RECORD;
     public fields: Map<string, Type>;
 
     constructor(fields: Map<string, Type>) {
-        super(typeKind.RECORD);
+        super();
         this.fields = fields;
     }
 

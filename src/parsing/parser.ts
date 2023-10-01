@@ -9,7 +9,6 @@
 import {
     nodeKind,
 
-    ASTNode,
     Expr,
     Stmt,
     Param,
@@ -44,7 +43,8 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode,
-    AssignNode
+    AssignNode,
+    Dimension
 } from "../ast";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../scanning/token";
@@ -194,21 +194,30 @@ export class Parser {
         return new CallProcedureExprNode(callee, args);
     }
 
+    // this implementation looks ugly, but works fine
     private index(): Expr {
         let expr: Expr = this.primary();
         while (true) {
             if (this.match(tokenType.LEFT_BRACKET)) {
-                const index: Expr = this.expression();
+                const indexes: Array<Expr> = new Array<Expr>();
+                if (!this.check(tokenType.RIGHT_BRACKET)) {
+                    do {
+                        // keep it
+                        if (indexes.length >= 255) {
+                            this.error(this.peek(), "Cannot have more than 255 indexes.");
+                        }
+                        indexes.push(this.expression());
+                    }
+                    while (this.match(tokenType.COMMA));
+                }
                 this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
-                expr = new IndexExprNode(expr, index);
+                expr = new IndexExprNode(expr, indexes);
             }
             else if (this.match(tokenType.DOT)) {
                 const ident: Token = this.consume("Expected field name", tokenType.IDENTIFIER);
                 expr = new SelectExprNode(expr, ident);
             }
-            else {
-                break;
-            }
+            break;
         }
         return expr;
     }
@@ -261,13 +270,25 @@ export class Parser {
         this.consume("Expected colon", tokenType.COLON);
         if (this.match(tokenType.ARRAY)) {
             this.consume("Expected '['", tokenType.LEFT_BRACKET);
-            const lower: Token = this.consume("Expected INTEGER for ARRAY lower bound", tokenType.INT_CONST);
-            this.consume("Expected colon", tokenType.COLON);
-            const upper: Token = this.consume("Expected INTEGER for ARRAY upper bound", tokenType.INT_CONST);
+            const dimensions: Array<Dimension> = new Array<Dimension>;
+            if (!this.check(tokenType.RIGHT_BRACKET)) {
+                do {
+                    // keep it
+                    if (dimensions.length >= 255) {
+                        this.error(this.peek(), "Cannot have more than 255 dimensions.");
+                    }
+                    const lower: Token = this.consume("Expected INTEGER for ARRAY lower bound", tokenType.INT_CONST);
+                    this.consume("Expected colon", tokenType.COLON);
+                    const upper: Token = this.consume("Expected INTEGER for ARRAY upper bound", tokenType.INT_CONST);
+                    // use interfaces
+                    dimensions.push({lower, upper});
+                }
+                while (this.match(tokenType.COMMA));
+            }
             this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
             this.consume("Expected 'OF'", tokenType.OF);
             const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
-            return new ArrDeclNode(ident, type, lower, upper);
+            return new ArrDeclNode(ident, type, dimensions);
         }
         const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
         return new VarDeclNode(ident, type);
@@ -375,7 +396,7 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.ARRAY);
                 // function only supports BYVAL
                 params.push(new Param(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));
