@@ -1,3 +1,4 @@
+// TODO: this will be implemented after the first complete version is done
 import { Scope } from "./scopes";
 
 
