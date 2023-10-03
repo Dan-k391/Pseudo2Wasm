@@ -451,6 +451,85 @@ NEXT i
 OUTPUT sum
 `
 
+const code45 = `DECLARE arr: ARRAY[1: 4, 1: 4] OF INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
+
+FOR i <- 1 TO 4
+    FOR j <- 1 TO 4
+        arr[i, j] <- i + j
+    NEXT j
+NEXT i
+
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 1 TO 4
+    FOR j <- 1 TO 4
+        sum <- sum + arr[i, j]
+    NEXT j
+NEXT i
+
+OUTPUT sum
+`
+
+const code46 = `PROCEDURE temp()
+    DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
+    DECLARE i: INTEGER
+    DECLARE j: INTEGER
+    DECLARE k: INTEGER
+
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                arr[i, j, k] <- i + j + k
+            NEXT k
+        NEXT j
+    NEXT i
+
+    DECLARE sum: INTEGER
+    sum <- 0
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                sum <- sum + arr[i, j, k]
+            NEXT k
+        NEXT j
+    NEXT i
+    OUTPUT sum
+ENDPROCEDURE
+
+CALL temp()
+`
+
+const code47 = `FUNCTION temp() RETURNS INTEGER
+    DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
+    DECLARE i: INTEGER
+    DECLARE j: INTEGER
+    DECLARE k: INTEGER
+
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                arr[i, j, k] <- i + j + k
+            NEXT k
+        NEXT j
+    NEXT i
+
+    DECLARE sum: INTEGER
+    sum <- 0
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                sum <- sum + arr[i, j, k]
+            NEXT k
+        NEXT j
+    NEXT i
+    RETURN sum
+ENDFUNCTION
+
+OUTPUT temp()
+`
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i: INTEGER
 
@@ -512,7 +591,10 @@ const codes = [
     code41,
     code42,
     code43,
-    code44
+    code44,
+    code45,
+    code46,
+    code47
 ];
 const expected = [
     10,
@@ -559,6 +641,9 @@ const expected = [
     2,
     22,
     48,
+    288,
+    80,
+    288,
     288
 ];
 let total = codes.length;

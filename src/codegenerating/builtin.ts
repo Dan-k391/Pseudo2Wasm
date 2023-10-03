@@ -38,10 +38,7 @@ export class LengthFunction extends Function {
                 this.module.loop(
                     "0",
                     this.module.if(
-                        this.module.i32.ne(
-                            this.module.i32.load8_u(0, 1, this.module.local.get(1, binaryen.i32), "0"),
-                            this.module.i32.const(0)
-                        ),
+                        this.module.i32.load8_u(0, 1, this.module.local.get(1, binaryen.i32), "0"),
                         this.module.block(null, [
                             this.module.if(
                                 this.module.i32.ne(

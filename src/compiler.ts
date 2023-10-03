@@ -110,8 +110,8 @@ export class Compiler {
 
         // for debug
         // debugger;
-        const main = instance.exports.main as CallableFunction;
-        main();
+        // const main = instance.exports.main as CallableFunction;
+        // main();
 
         return correct;
     }

@@ -437,16 +437,53 @@ export class Procedure {
     // obtain the pointer of the value but not setting or loading it
     public indexExpression(node: IndexExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
-        const rVal = this.resolveType(node.expr);
-        if (rVal.kind !== typeKind.ARRAY) {
+        const rValType = this.resolveType(node.expr);
+        if (rValType.kind !== typeKind.ARRAY) {
             throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
         }
         const elemType = this.resolveType(node);
         // if it comes to here possibilities such as 1[1] are prevented
-        const expr = this.generateExpression(node.expr);
-        const index = this.generateExpression(node.indexes[0]);
-        return this.module.i32.add(expr, this.module.i32.mul(index, this.enclosing.generateConstant(binaryen.i32, elemType.size())));
-    }
+        // the base ptr(head) of the array
+        const base = this.generateExpression(node.expr);
+        // if the numbers of dimensions do not match
+        if (node.indexes.length != rValType.dimensions.length) {
+            throw new RuntimeError("The index dimension numbers do not match for " + rValType.toString());
+        }
+        // flaten index expressions
+        let index = this.enclosing.generateConstant(binaryen.i32, 0);
+        for (let i = 0; i < rValType.dimensions.length; i++) {
+            // the section index
+            let section = 1;
+            for (let j = i + 1; j < rValType.dimensions.length; j++) {
+                // section is static, basically represents the size of one section
+                // For example: i = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+                // i[2, 1]
+                // for 2, section is 3
+                // for 1, section is 1
+
+                // add 1 because Pseudocode ARRAYs include upper and lower bound
+                section *= rValType.dimensions[j].upper.literal - rValType.dimensions[j].lower.literal + 1;
+            }
+            index = this.module.i32.add(
+                index,
+                // and then multiple the index to the section
+                this.module.i32.mul(
+                    this.module.i32.sub(
+                        this.generateExpression(node.indexes[i]),
+                        this.enclosing.generateConstant(binaryen.i32, rValType.dimensions[i].lower.literal)
+                    ),
+                    this.enclosing.generateConstant(binaryen.i32, section)
+                )
+            )
+        }
+        return this.module.i32.add(
+            base,
+            this.module.i32.mul(
+                index,
+                this.enclosing.generateConstant(binaryen.i32, elemType.size())
+            )
+        );    
+   }
 
     public selectExpression(node: SelectExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
@@ -622,7 +659,10 @@ export class Procedure {
             stmts.push(this.generateStatement(statement));
         }
         // create an empty return statement at the end of the block, its a good habit
-        stmts.push(this.module.return());
+        // ^
+        // |
+        // stupid me, it's a bug
+        // stmts.push(this.module.return());
         return stmts;
     }
 
@@ -682,7 +722,6 @@ export class Procedure {
         const varType = convertToBasicType(node.type);
         const wasmType = convertToWasmType(node.type);
         const varIndex = this.setLocal(varName, varType, wasmType);
-        console.log(varName, varType, varIndex, wasmType);
         return this.module.local.set(varIndex, this.enclosing.generateConstant(wasmType, 0));
     }
 
@@ -700,10 +739,17 @@ export class Procedure {
 
     private ifStatement(node: IfNode): ExpressionRef {
         if (node.elseBody) {
-            return this.module.if(this.generateExpression(node.condition), this.generateBlock(node.body), this.generateBlock(node.elseBody)); 
+            return this.module.if(
+                this.generateExpression(node.condition),
+                this.generateBlock(node.body),
+                this.generateBlock(node.elseBody)
+            ); 
         }
         else {
-            return this.module.if(this.generateExpression(node.condition), this.generateBlock(node.body));
+            return this.module.if(
+                this.generateExpression(node.condition),
+                this.generateBlock(node.body)
+            );
         }
     }
 
@@ -720,7 +766,13 @@ export class Procedure {
         const statements = this.generateStatements(node.body);
         const condition = this.generateExpression(node.condition);
         statements.push(this.module.br((++this.label).toString()));
-        return this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)));
+        return this.module.loop(
+            this.label.toString(),
+            this.module.if(
+                condition,
+                this.module.block(null, statements)
+            )
+        );
     }
 
     private repeatStatement(node: RepeatNode): ExpressionRef {
@@ -735,7 +787,12 @@ export class Procedure {
         
         const statements = this.generateStatements(node.body);
         const condition = this.generateExpression(node.condition);
-        statements.push(this.module.if(this.module.i32.eqz(condition), this.module.br((++this.label).toString())));
+        statements.push(
+            this.module.if(
+                this.module.i32.eqz(condition),
+                this.module.br((++this.label).toString())
+            )
+        );
         return this.module.loop(this.label.toString(), this.module.block(null, statements));
     }
 
@@ -775,10 +832,25 @@ export class Procedure {
         const variable = this.module.local.get(varIndex, wasmType);
     
         const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-        const step = this.module.local.set(varIndex, this.module.i32.add(variable, this.generateExpression(node.step)));
+        const step = this.module.local.set(
+            varIndex,
+            this.module.i32.add(
+                variable,
+                this.generateExpression(node.step)
+            )
+        );
 
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));
-        return this.module.block(null, [init, this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)))]);
+        return this.module.block(null, [
+            init,
+            this.module.loop(
+                this.label.toString(),
+                this.module.if(
+                    condition,
+                    this.module.block(null, statements)
+                )
+            )
+        ]);
     }
 }

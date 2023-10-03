@@ -103,8 +103,8 @@ export class Generator {
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
 
         this.generateBuiltins();
-        // this.module.setStart(this.generateBody(this.ast.body));
-        this.generateBody(this.ast.body);
+        this.module.setStart(this.generateBody(this.ast.body));
+        // this.generateBody(this.ast.body);
 
         // initialize the globals
         for (const name of this.globals.names) {
@@ -621,15 +621,15 @@ export class Generator {
             // the section index
             let section = 1;
             for (let j = i + 1; j < rValType.dimensions.length; j++) {
-                console.log(i, j, rValType.dimensions[j].upper.literal, rValType.dimensions[j].lower.literal);
                 // section is static, basically represents the size of one section
                 // For example: i = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
                 // i[2, 1]
                 // for 2, section is 3
                 // for 1, section is 1
+
+                // add 1 because Pseudocode ARRAYs include upper and lower bound
                 section *= rValType.dimensions[j].upper.literal - rValType.dimensions[j].lower.literal + 1;
             }
-            console.log("section", section);
             index = this.module.i32.add(
                 index,
                 // and then multiple the index to the section
