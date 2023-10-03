@@ -690,14 +690,12 @@ export class Procedure {
         const arrName = node.ident.lexeme;
         // FIXME: only basic types supported
         const elemType = convertToBasicType(node.type);
-        // FIXME: temp test
-        const lower = node.dimensions[0].lower.literal;
-        const upper = node.dimensions[0].upper.literal;
         // pointer to head
         const wasmType = binaryen.i32;
-        const varIndex = this.setLocal(arrName, new ArrayType(elemType, lower, upper), wasmType);
+        const arrType = new ArrayType(elemType, node.dimensions);
+        const arrIndex = this.setLocal(arrName, arrType, wasmType);
         // FIXME: set to init pointer
-        return this.module.local.set(varIndex, this.enclosing.generateConstant(wasmType, 0));
+        return this.module.local.set(arrIndex, this.enclosing.generateConstant(wasmType, this.enclosing.getOffset(arrType)));
     }
 
     private ifStatement(node: IfNode): ExpressionRef {

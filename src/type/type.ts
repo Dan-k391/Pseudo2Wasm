@@ -1,3 +1,4 @@
+import { Dimension } from "../ast";
 import { RuntimeError } from "../error";
 import { unreachable } from "../util";
 
@@ -69,30 +70,38 @@ export class BasicType extends BaseType {
 export class ArrayType extends BaseType {
     public readonly kind = typeKind.ARRAY;
     public elem: Type;
-    public lower: number;
-    public upper: number;
+    public dimensions: Array<Dimension>;
 
-    constructor(elem: Type, lower: number, upper: number) {
+    constructor(elem: Type, dimensions: Array<Dimension>) {
         super();
         this.elem = elem;
-        this.lower = lower;
-        this.upper = upper;
+        this.dimensions = dimensions;
     }
 
     public toString(): string {
-        return "ARRAY[" + this.lower + ": " + this.upper + "] OF " + this.elem;
+        let msg = "";
+        for (const dimension of this.dimensions) {
+            msg += dimension.upper.lexeme + ': ' + dimension.lower.lexeme + ', ';
+        }
+        return "ARRAY[" + msg + "] OF " + this.elem;
     }
 
     public size(): number {
-        return this.elem.size() * (this.upper - this.lower);
+        let length = 1;
+        for (const dimension of this.dimensions) {
+            length *= (dimension.upper.literal - dimension.lower.literal)
+        }
+        return this.elem.size() * length;
     }
 
     // returns the offset relative to the array
     public offset(index: number): number {
-        if (index >= this.upper) {
-            throw new RuntimeError("Index out of bounds for " + this.toString());
-        }
-        return this.elem.size() * (index - this.lower);
+        // useless for now
+        return 0;
+        // if (index >= this.length) {
+        //     throw new RuntimeError("Index out of bounds for " + this.toString());
+        // }
+        // return this.elem.size() * index;
     }
 }
 

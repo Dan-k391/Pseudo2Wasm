@@ -103,7 +103,8 @@ export class Generator {
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
 
         this.generateBuiltins();
-        this.module.setStart(this.generateBody(this.ast.body));
+        // this.module.setStart(this.generateBody(this.ast.body));
+        this.generateBody(this.ast.body);
 
         // initialize the globals
         for (const name of this.globals.names) {
@@ -459,7 +460,15 @@ export class Generator {
             index++;
         }
 
-        const func = new DefinedFunction(this.module, this, funcName, funcParams, convertToBasicType(node.type), convertToWasmType(node.type), node.body);
+        const func = new DefinedFunction(
+            this.module,
+            this,
+            funcName,
+            funcParams,
+            convertToBasicType(node.type),
+            convertToWasmType(node.type),
+            node.body
+        );
 
         this.setFunction(funcName, func);
         this.getFunction(funcName).generate();
@@ -594,16 +603,52 @@ export class Generator {
     // obtain the pointer of the value but not setting or loading it
     public indexExpression(node: IndexExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
-        const rVal = this.resolveType(node.expr);
-        if (rVal.kind !== typeKind.ARRAY) {
+        const rValType = this.resolveType(node.expr);
+        if (rValType.kind !== typeKind.ARRAY) {
             throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
         }
         const elemType = this.resolveType(node);
         // if it comes to here possibilities such as 1[1] are prevented
-        const expr = this.generateExpression(node.expr);
-        // FIXME: Temporary test for one dimension, traverse all indexes for multidimension
-        const index = this.generateExpression(node.indexes[0]);
-        return this.module.i32.add(expr, this.module.i32.mul(index, this.generateConstant(binaryen.i32, elemType.size())));
+        // the base ptr(head) of the array
+        const base = this.generateExpression(node.expr);
+        // if the numbers of dimensions do not match
+        if (node.indexes.length != rValType.dimensions.length) {
+            throw new RuntimeError("The index dimension numbers do not match for " + rValType.toString());
+        }
+        // flaten index expressions
+        let index = this.generateConstant(binaryen.i32, 0);
+        for (let i = 0; i < rValType.dimensions.length; i++) {
+            // the section index
+            let section = 1;
+            for (let j = i + 1; j < rValType.dimensions.length; j++) {
+                console.log(i, j, rValType.dimensions[j].upper.literal, rValType.dimensions[j].lower.literal);
+                // section is static, basically represents the size of one section
+                // For example: i = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+                // i[2, 1]
+                // for 2, section is 3
+                // for 1, section is 1
+                section *= rValType.dimensions[j].upper.literal - rValType.dimensions[j].lower.literal + 1;
+            }
+            console.log("section", section);
+            index = this.module.i32.add(
+                index,
+                // and then multiple the index to the section
+                this.module.i32.mul(
+                    this.module.i32.sub(
+                        this.generateExpression(node.indexes[i]),
+                        this.generateConstant(binaryen.i32, rValType.dimensions[i].lower.literal)
+                    ),
+                    this.generateConstant(binaryen.i32, section)
+                )
+            )
+        }
+        return this.module.i32.add(
+            base,
+            this.module.i32.mul(
+                index,
+                this.generateConstant(binaryen.i32, elemType.size())
+            )
+        );
     }
 
     public selectExpression(node: SelectExprNode): ExpressionRef {
@@ -878,12 +923,9 @@ export class Generator {
         const arrName = node.ident.lexeme;
         // FIXME: only basic types supported
         const elemType = convertToBasicType(node.type);
-        // FIXME: temp test
-        const lower = node.dimensions[0].lower.literal;
-        const upper = node.dimensions[0].upper.literal;
         // pointer to head
         const wasmType = binaryen.i32;
-        const arrType = new ArrayType(elemType, lower, upper);
+        const arrType = new ArrayType(elemType, node.dimensions);
         this.globals.set(arrName, arrType, wasmType);
         // FIXME: set to init pointer
         return this.module.global.set(arrName, this.generateConstant(wasmType, this.getOffset(arrType)));
@@ -900,10 +942,17 @@ export class Generator {
 
     private ifStatement(node: IfNode): ExpressionRef {
         if (node.elseBody) {
-            return this.module.if(this.generateExpression(node.condition), this.generateBlock(node.body), this.generateBlock(node.elseBody)); 
+            return this.module.if(
+                this.generateExpression(node.condition),
+                this.generateBlock(node.body),
+                this.generateBlock(node.elseBody)
+            ); 
         }
         else {
-            return this.module.if(this.generateExpression(node.condition), this.generateBlock(node.body));
+            return this.module.if(
+                this.generateExpression(node.condition),
+                this.generateBlock(node.body)
+            );
         }
     }
 
@@ -920,7 +969,13 @@ export class Generator {
         const statements = this.generateStatements(node.body);
         const condition = this.generateExpression(node.condition);
         statements.push(this.module.br((++this.label).toString()));
-        return this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)));
+        return this.module.loop(
+            this.label.toString(),
+            this.module.if(
+                condition,
+                this.module.block(null, statements)
+            )
+        );
     }
 
     private repeatStatement(node: RepeatNode): ExpressionRef {
@@ -935,7 +990,12 @@ export class Generator {
         
         const statements = this.generateStatements(node.body);
         const condition = this.generateExpression(node.condition);
-        statements.push(this.module.if(this.module.i32.eqz(condition), this.module.br((++this.label).toString())));
+        statements.push(
+            this.module.if(
+                this.module.i32.eqz(condition),
+                this.module.br((++this.label).toString())
+            )
+        );
         return this.module.loop(this.label.toString(), this.module.block(null, statements));
     }
 
@@ -975,10 +1035,22 @@ export class Generator {
         const variable = this.module.global.get(varName, wasmType);
 
         const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-        const step = this.module.global.set(varName, this.module.i32.add(variable, this.generateExpression(node.step)));
+        const step = this.module.global.set(
+            varName,
+            this.module.i32.add(
+                variable,
+                this.generateExpression(node.step)
+            )
+        );
 
         statements.push(step);
         statements.push(this.module.br((++this.label).toString()));
-        return this.module.block(null, [init, this.module.loop(this.label.toString(), this.module.if(condition, this.module.block(null, statements)))]);
+        return this.module.block(null, [
+            init,
+            this.module.loop(
+                this.label.toString(),
+                this.module.if(condition, this.module.block(null, statements))
+            )
+        ]);
     }
 }

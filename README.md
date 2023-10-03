@@ -32,7 +32,7 @@ Notice that the Semantic Analysis and IR Generation are done at the same time. (
 - [x] FUNCTION & PROCEDURE 
 - [x] 优先实现CHAR
 确实，得先实现数组和字符串，再搞指针
-- [ ] 数组和字符串
+- [x] 数组和字符串
 就快实现数组了，现在遇到一个问题
 是否加入语义分析模块（虽然加入这个项目做到后期肯定会加）
 比如数组越界等问题就很棘手，当然可以直接让数组第一位存长度
