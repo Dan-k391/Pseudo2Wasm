@@ -23,6 +23,7 @@ It uses the following process.
 6. Runtime
 
 Notice that the Semantic Analysis and IR Generation are done at the same time. (Both in the codegenerating section)
+The semantic analysis is very basic and currently only has type check and validation(like those stuff).
 
 ### RoadMap
 - [x] OUTPUT
@@ -45,6 +46,19 @@ Notice that the Semantic Analysis and IR Generation are done at the same time. (
 - [ ] 结构体
 
 - [ ] INPUT
+
+## Precautions
+
+***This compiler treats PseudoCode as a totally static typed language(I tried to make most of the standards same as C)***
+
+So, for example
+```
+DECLARE i: ARRAY[0: 9] OF INTEGER
+
+i[10] <- 20
+```
+This is **ALLOWED** for this compiler(at least currently).
+I may add a more sophisticated semantic analyzer in the future.....Well lets see.
 
 ## Basic Grammar
 
@@ -93,7 +107,7 @@ ENDIF
 #### While loop
 ```
 WHILE <Expression>
-    <Statements>****
+    <Statements>
 ENDWHILE
 ```
 
@@ -128,7 +142,7 @@ ENDFUNCTION
 
 // BYREF passes the reference of the object
 PROCEDURE foo (BYREF: i: INTEGER)
-    i = i + 1
+    i <-> i + 1
 ENDPROCEDURE
 ```
 
