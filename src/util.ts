@@ -1,5 +1,5 @@
 import binaryen from "binaryen";
-import { Token } from "./scanning/token";
+import { Token } from "./lex/token";
 import { RuntimeError } from "./error";
 import { Type, BasicType, basicKind, ArrayType } from "./type/type";
 

@@ -1,9 +1,9 @@
 // TODO: get rid of the main function
 import binaryen from "binaryen";
 
-import { Scanner } from "./scanning/scanner";
-import { Parser } from "./parsing/parser";
-import { Generator } from "./codegenerating/generator";
+import { Scanner } from "./lex/scanner";
+import { Parser } from "./syntax/parser";
+import { Generator } from "./codegen/generator";
 
 export class Compiler {
     private input: string;

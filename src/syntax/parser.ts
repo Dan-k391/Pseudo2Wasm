@@ -11,7 +11,6 @@ import {
 
     Expr,
     Stmt,
-    Param,
     ProgramNode,
     FuncDefNode,
     ProcDefNode,
@@ -34,8 +33,8 @@ import {
     CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
-    PointerExprNode,
-    LocationExprNode,
+    DerefExprNode,
+    AddrExprNode,
     IntegerExprNode,
     RealExprNode,
     CharExprNode,
@@ -45,10 +44,11 @@ import {
     InputNode,
     AssignNode,
     Dimension
-} from "../ast";
+} from "./ast";
+import { Param } from "./param";
 import { SyntaxError } from "../error";
-import { tokenType, Token } from "../scanning/token";
-import { passType } from "../passtype";
+import { tokenType, Token } from "../lex/token";
+import { passType } from "./passtype";
 
 
 export class Parser {
@@ -138,13 +138,13 @@ export class Parser {
     private pointer(): Expr {
         if (this.match(tokenType.CARET)) {
             const leftValue: Expr = this.pointer();
-            return new LocationExprNode(leftValue);
+            return new AddrExprNode(leftValue);
         }
 
         // FIXME: A very hard problem here, this.call() should be this.pointer().
         let expr = this.call();
 
-        while (this.match(tokenType.CARET)) expr = new PointerExprNode(expr);
+        while (this.match(tokenType.CARET)) expr = new DerefExprNode(expr);
         return expr;
     }           
 

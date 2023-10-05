@@ -3,7 +3,6 @@ import {
 
     Expr,
     Stmt,
-    Param,
     ProgramNode,
     FuncDefNode,
     ProcDefNode,
@@ -30,7 +29,8 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode
-} from "../ast";
+} from "../syntax/ast";
+import { Param } from "../syntax/param";
 
 
 export class Resolver {

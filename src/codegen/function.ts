@@ -2,13 +2,12 @@ import binaryen from "binaryen";
 import { Environment } from "../import";
 import { RuntimeError } from "../error";
 import { _Symbol } from "./symbol";
-import { tokenType } from "../scanning/token";
+import { tokenType } from "../lex/token";
 import {
     nodeKind,
 
     Expr,
     Stmt,
-    Param,
     ProgramNode,
     FuncDefNode,
     ProcDefNode,
@@ -36,7 +35,8 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode
-} from "../ast";
+} from "../syntax/ast";
+import { Param } from "../syntax/param";
 
 import { convertToBasicType, convertToWasmType, unreachable } from "../util";
 import { GlobalTable } from "./global";
@@ -52,32 +52,33 @@ import {
 import { minimalCompatableBasicType } from "../type/type";
 import { Generator } from "./generator";
 
-
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
+type FunctionRef = binaryen.FunctionRef;
 type ExpressionRef = binaryen.ExpressionRef;
 type WasmType = binaryen.Type;
 
-export class Procedure {
-    private module: Module;
-    // I have no better idea for the name of the outergenerator instead of 'enclosing'
-    private enclosing: Generator;
-    private ident: string;
-    // Params are initialized to a Map in the generator
-    public params: LocalTable;
-    private body: Array<Stmt>;
-    // TODO: change the data structure here
-    private locals: LocalTable;
-    private label: number;
+export abstract class Function {
+    constructor(protected module: Module,
+        protected enclosing: Generator,
+        protected ident: string,
+        public params: LocalTable,
+        public returnType: Type,
+        public wasmReturnType: WasmType,
+        public isBuiltin: boolean,
+        protected locals: LocalTable = new LocalTable(),
+        protected label: number = 0) {  }
+    
+    public abstract generate(): void;
+}
 
-    constructor(module: Module, enclosing: Generator, ident: string, params: LocalTable, body: Array<Stmt>) {
-        this.module = module;
-        this.enclosing = enclosing;
-        this.ident = ident;
-        this.params = params;
+// User Defined Function
+export class DefinedFunction extends Function {
+    private body: Array<Stmt>;
+
+    constructor(module: Module, enclosing: Generator, ident: string, params: LocalTable, returnType: Type, wasmReturnType: WasmType, body: Array<Stmt>) {
+        super(module, enclosing, ident, params, returnType, wasmReturnType, false);
         this.body = body;
-        this.locals = new LocalTable();
-        this.label = 0;
     }
 
     public generate(): void {
@@ -97,10 +98,11 @@ export class Procedure {
             vars.push(wasmType);
         }
 
-        this.module.addFunction(this.ident, paramType, binaryen.none, vars, funcBlock);
+        // FIXME: single returnType has problem here
+        this.module.addFunction(this.ident, paramType, this.wasmReturnType, vars, funcBlock);
     }
 
-    // returns bask the index
+    // returns back the index
     private setLocal(name: string, type: Type, wasmType: WasmType): number {
         const index = this.params.size() + this.locals.size();
         this.locals.set(name, type, wasmType, index);
@@ -144,10 +146,11 @@ export class Procedure {
 
     private getIndexForParam(name: string): number {
         if (!this.params.names.includes(name)) {
-            throw new Error("Symbol '" + name + "' is not declared");
+            throw new RuntimeError("Symbol '" + name + "' is not declared");
         }
         return this.params.getIndex(name);
     }
+
 
     private resolveType(expression: Expr): Type {
         switch (expression.kind) {
@@ -482,8 +485,8 @@ export class Procedure {
                 index,
                 this.enclosing.generateConstant(binaryen.i32, elemType.size())
             )
-        );    
-   }
+        );
+    }
 
     public selectExpression(node: SelectExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
@@ -654,15 +657,10 @@ export class Procedure {
     }
 
     private generateStatements(statements: Array<Stmt>): Array<ExpressionRef> {
-        const stmts = new Array<ExpressionRef>();
+        const stmts = new Array<binaryen.ExpressionRef>();
         for (const statement of statements) {
             stmts.push(this.generateStatement(statement));
         }
-        // create an empty return statement at the end of the block, its a good habit
-        // ^
-        // |
-        // stupid me, it's a bug
-        // stmts.push(this.module.return());
         return stmts;
     }
 
@@ -671,7 +669,7 @@ export class Procedure {
             case nodeKind.ExprStmtNode:
                 return this.generateExpression(statement.expr);
             case nodeKind.ReturnNode:
-                throw new RuntimeError("Procedures cannot contain return statements");
+                return this.returnStatement(statement);
             case nodeKind.OutputNode:
                 return this.outputStatement(statement);
             case nodeKind.VarDeclNode:
@@ -714,6 +712,10 @@ export class Procedure {
         }
         throw new RuntimeError("Not implemented yet");
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
+    }
+
+    private returnStatement(node: ReturnNode): ExpressionRef {
+        return this.module.return(this.generateExpression(node.expr));
     }
 
     private varDeclStatement(node: VarDeclNode): ExpressionRef {
@@ -813,7 +815,7 @@ export class Procedure {
         const endType = this.resolveType(node.end);
         const stepType = this.resolveType(node.step);
         const wasmType = this.getWasmTypeForLocal(varName);
-        
+
         if (varType.kind !== typeKind.BASIC || varType.type !== basicKind.INTEGER) {
             throw new RuntimeError("For loops only iterate over for INTEGERs");
         }
@@ -823,7 +825,7 @@ export class Procedure {
         if (stepType.kind !== typeKind.BASIC || stepType.type !== basicKind.INTEGER) {
             throw new RuntimeError("Step value of for loops can only be INTEGERs");
         }
-
+        
         const initExpr = this.generateExpression(node.start);
 
         const init = this.module.local.set(varIndex, initExpr);
@@ -846,10 +848,7 @@ export class Procedure {
             init,
             this.module.loop(
                 this.label.toString(),
-                this.module.if(
-                    condition,
-                    this.module.block(null, statements)
-                )
+                this.module.if(condition, this.module.block(null, statements))
             )
         ]);
     }

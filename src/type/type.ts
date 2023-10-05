@@ -1,4 +1,4 @@
-import { Dimension } from "../ast";
+import { Dimension } from "../syntax/ast";
 import { RuntimeError } from "../error";
 import { unreachable } from "../util";
 

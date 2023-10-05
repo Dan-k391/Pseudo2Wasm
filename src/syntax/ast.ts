@@ -2,9 +2,9 @@
  * I tried to use the visitor pattern but I found that it really was not necessary.
  */
 
-import { Token, tokenType } from "./scanning/token";
+import { Token, tokenType } from "../lex/token";
+import { Param } from "./param";
 
-import { passType } from "./passtype";
 
 
 export const enum nodeKind {
@@ -31,8 +31,8 @@ export const enum nodeKind {
     CallProcedureExprNode,
     UnaryExprNode,
     BinaryExprNode,
-    PointerExprNode,
-    LocationExprNode,
+    DerefExprNode,
+    AddrExprNode,
     IntegerExprNode,
     RealExprNode,
     CharExprNode,
@@ -54,8 +54,8 @@ export type Expr = AssignNode |
     CallProcedureExprNode |
     UnaryExprNode |
     BinaryExprNode |
-    PointerExprNode |
-    LocationExprNode |
+    DerefExprNode |
+    AddrExprNode |
     IntegerExprNode |
     RealExprNode |
     CharExprNode |
@@ -79,28 +79,6 @@ export type Stmt = ProgramNode |
     ExprStmtNode |
     OutputNode |
     InputNode;
-
-// export abstract class Expr extends BaseNode {
-//     public abstract toString(): string;
-// }
-
-// export abstract class Stmt extends BaseNode {
-//     public abstract toString(): string;
-// }
-
-// fix it
-export class Param {
-    // default passtype will be done in the parser
-    public ident: Token;
-    public type: Token;
-    public passType: passType;
-
-    constructor(ident: Token, type: Token, passType: passType) {
-        this.ident = ident;
-        this.type = type;
-        this.passType = passType;
-    }
-}
 
 export class ProgramNode extends BaseNode {
     public readonly kind = nodeKind.ProgramNode;
@@ -279,8 +257,8 @@ export class BinaryExprNode extends BaseNode {
     }
 }
 
-export class PointerExprNode extends BaseNode {
-    public readonly kind = nodeKind.PointerDeclNode;
+export class DerefExprNode extends BaseNode {
+    public readonly kind = nodeKind.DerefExprNode;
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
@@ -289,12 +267,12 @@ export class PointerExprNode extends BaseNode {
     }
 
     public toString(): string {
-        return "PointerExprNode";
+        return "DerefExprNode";
     }
 }
 
-export class LocationExprNode extends BaseNode {
-    public readonly kind = nodeKind.LocationExprNode;
+export class AddrExprNode extends BaseNode {
+    public readonly kind = nodeKind.AddrExprNode;
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
@@ -303,7 +281,7 @@ export class LocationExprNode extends BaseNode {
     }
 
     public toString(): string {
-        return "LocationExprNode";
+        return "AddrExprNode";
     }
 }
 

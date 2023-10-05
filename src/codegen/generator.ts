@@ -5,13 +5,12 @@ import { Environment } from "../import";
 import { RuntimeError } from "../error";
 // TODO: Optimise the _Symbol class
 import { _Symbol } from "./symbol";
-import { tokenType } from "../scanning/token";
+import { tokenType } from "../lex/token";
 import {
     nodeKind,
 
     Expr,
     Stmt,
-    Param,
     ProgramNode,
     FuncDefNode,
     ProcDefNode,
@@ -40,7 +39,8 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode
-} from "../ast";
+} from "../syntax/ast";
+import { Param } from "../syntax/param";
 
 import { Function, DefinedFunction } from "./function";
 import { Procedure } from "./procedure";
