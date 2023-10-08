@@ -3,8 +3,6 @@
 import binaryen from "binaryen";
 import { Environment } from "../import";
 import { RuntimeError } from "../error";
-// TODO: Optimise the _Symbol class
-import { _Symbol } from "./symbol";
 import { tokenType } from "../lex/token";
 import {
     nodeKind,
@@ -45,7 +43,7 @@ import { Param } from "../syntax/param";
 import { Function, DefinedFunction } from "./function";
 import { Procedure } from "./procedure";
 import { convertToBasicType, convertToWasmType, unreachable } from "../util";
-import { GlobalTable } from "./global";
+import { Global } from "./global";
 import { LocalTable } from "./local";
 import { 
     Type,
@@ -53,7 +51,8 @@ import {
     basicKind,
     BasicType,
     ArrayType,
-    RecordType
+    RecordType,
+    PointerType
 } from "../type/type";
 import { minimalCompatableBasicType } from "../type/type";
 import { String } from "./string";
@@ -65,12 +64,14 @@ type FunctionRef = binaryen.FunctionRef;
 type ExpressionRef = binaryen.ExpressionRef;
 type WasmType = binaryen.Type;
 
+
 export class Generator {
     private ast: ProgramNode;
     private module: binaryen.Module;
     private functions: Map<string, Function>;
     private procedures: Map<string, Procedure>;
-    private globals: GlobalTable;
+    private globals: Map<string, Global>;
+    // the global offset(where the stack starts from)
     private offset: number;
     private size: number;
     private label: number;
@@ -83,7 +84,7 @@ export class Generator {
         this.functions = new Map<string, Function>();
         this.procedures = new Map<string, Procedure>();
         // all variables in the body are global variables
-        this.globals = new GlobalTable();
+        this.globals = new Map<string, Global>();
 
         // memory
         this.size = 65536;
@@ -102,15 +103,15 @@ export class Generator {
         this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
 
+        // The stack grows upwards
+        // stack top
+        this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
+        // stack base
+        this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
+
         this.generateBuiltins();
         this.module.setStart(this.generateBody(this.ast.body));
         // this.generateBody(this.ast.body);
-
-        // initialize the globals
-        for (const name of this.globals.names) {
-            const wasmType = this.globals.getWasmType(name);
-            this.module.addGlobal(name, wasmType, true, this.generateConstant(wasmType, 0));
-        }
 
         const encoder = new TextEncoder();
         this.module.setMemory(0, 65536, null, 
@@ -142,11 +143,54 @@ export class Generator {
         throw new RuntimeError("Unknown type '" + type + "'");
     }
 
+    private incrementStackBase(value: ExpressionRef): ExpressionRef {
+        return this.module.global.set(
+            "__stackBase", 
+            this.module.i32.add(
+                this.module.global.get("__stackBase", binaryen.i32),
+                this.generateConstant(binaryen.i32, value)
+            )
+        );
+    }
+
+    private incrementStackTop(value: ExpressionRef): ExpressionRef {
+        return this.module.global.set(
+            "__stackTop", 
+            this.module.i32.add(
+                this.module.global.get("__stackTop", binaryen.i32),
+                this.generateConstant(binaryen.i32, value)
+            )
+        );
+    }
+
     public getOffset(type: Type): ExpressionRef {
-        console.log(this.offset);
         const old = this.offset;
         this.offset += type.size();
         return old;
+    }
+
+    public getGlobalType(name: string): Type {
+        if (!this.globals.has(name)) {
+            throw new RuntimeError("Unknown variable '" + name + "'");
+        }
+        // have to use non-null assertion here
+        return this.globals.get(name)!.type;
+    }
+
+    public getGlobalWasmType(name: string): WasmType {
+        if (!this.globals.has(name)) {
+            throw new RuntimeError("Unknown variable '" + name + "'");
+        }
+        // have to use non-null assertion here
+        return this.globals.get(name)!.wasmType;
+    }
+
+    public getGlobalOffset(name: string): number {
+        if (!this.globals.has(name)) {
+            throw new RuntimeError("Unknown variable '" + name + "'");
+        }
+        // have to use non-null assertion here
+        return this.globals.get(name)!.offset;
     }
 
     public getFunction(name: string): Function {
@@ -305,7 +349,7 @@ export class Generator {
     }
 
     public resolveVarExprNodeType(node: VarExprNode): Type {
-        return this.globals.getType(node.ident.lexeme);
+        return this.getGlobalType(node.ident.lexeme);
     }
 
     public resolveIndexExprNodeType(node: IndexExprNode): Type {
@@ -500,7 +544,7 @@ export class Generator {
             case nodeKind.AssignNode:
                 return this.assignExpression(expression);
             case nodeKind.VarExprNode:
-                return this.varExpression(expression);
+                return this.loadVarExpression(expression);
             case nodeKind.IndexExprNode:
                 return this.loadIndexExpression(expression);
             case nodeKind.SelectExprNode:
@@ -540,17 +584,6 @@ export class Generator {
     }
 
     public assignExpression(node: AssignNode): ExpressionRef {
-        // FIXME: resolve left value
-        // Guess what? VarExpr has to be a special case
-        // Because this is wasm!
-        if (node.left.kind === nodeKind.VarExprNode) {
-            const varName = node.left.ident.lexeme;
-            const varType = this.globals.getType(varName);
-            const rhs = this.generateExpression(node.right);
-            const rightType = this.resolveType(node.right);
-            return this.module.global.set(varName, this.convertType(rightType, varType, rhs));   
-        }
-
         const leftType = this.resolveType(node.left);
         const rightType = this.resolveType(node.right);
         // FIXME: fix soon
@@ -573,11 +606,30 @@ export class Generator {
         throw new RuntimeError("Not implemented yet");
     }
 
+    public loadVarExpression(node: VarExprNode): ExpressionRef {
+        const type = this.resolveType(node);
+        if (type.kind !== typeKind.BASIC) {
+            throw new RuntimeError("Cannot load a non basic type variable");
+        }
+        const basicType = type.type;
+        const ptr = this.varExpression(node);
+        switch (basicType) {
+            case basicKind.INTEGER:
+            case basicKind.CHAR:
+            case basicKind.BOOLEAN:
+            case basicKind.STRING:
+                return this.module.i32.load(0, 1, ptr, "0");
+            case basicKind.REAL:
+                return this.module.f64.load(0, 1, ptr, "0");
+        }
+        unreachable();
+    }
+
+    // returns the pointer(offset) of the variable
     public varExpression(node: VarExprNode): ExpressionRef {
         const varName = node.ident.lexeme;
-        const wasmType = this.globals.getWasmType(varName);
-        const variable = this.module.global.get(varName, wasmType);
-        return variable;
+        const offset = this.getGlobalOffset(varName);
+        return this.generateConstant(binaryen.i32, offset);
     }
 
     private loadIndexExpression(node: IndexExprNode): ExpressionRef {
@@ -588,16 +640,16 @@ export class Generator {
         }
         const basicType = elemType.type;
         const ptr = this.indexExpression(node);
-        if (basicType === basicKind.INTEGER ||
-            basicType === basicKind.CHAR||
-            basicType === basicKind.BOOLEAN||
-            basicType === basicKind.STRING) {
-            return this.module.i32.load(0, 1, ptr, "0");
+        switch (basicType) {
+            case basicKind.INTEGER:
+            case basicKind.CHAR:
+            case basicKind.BOOLEAN:
+            case basicKind.STRING:
+                return this.module.i32.load(0, 1, ptr, "0");
+            case basicKind.REAL:
+                return this.module.f64.load(0, 1, ptr, "0");
         }
-        else if (basicType === basicKind.REAL) {
-            return this.module.f64.load(0, 1, ptr, "0");
-        }
-        throw new RuntimeError("Not implemented yet");
+        unreachable();
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -605,12 +657,12 @@ export class Generator {
         // check whether the expr exists and whether it is an ARRAY
         const rValType = this.resolveType(node.expr);
         if (rValType.kind !== typeKind.ARRAY) {
-            throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
+            throw new RuntimeError("Cannot perfrom 'index' operation to non ARRAY types");
         }
         const elemType = this.resolveType(node);
         // if it comes to here possibilities such as 1[1] are prevented
         // the base ptr(head) of the array
-        const base = this.generateExpression(node.expr);
+        const base = this.generateLeftValue(node.expr);
         // if the numbers of dimensions do not match
         if (node.indexes.length != rValType.dimensions.length) {
             throw new RuntimeError("The index dimension numbers do not match for " + rValType.toString());
@@ -655,7 +707,7 @@ export class Generator {
         // check whether the expr exists and whether it is an ARRAY
         const rVal = this.resolveType(node.expr);
         if (rVal.kind !== typeKind.RECORD) {
-            throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
+            throw new RuntimeError("Cannot perfrom 'select' operation to non RECORD types");
         }
         // if it comes to here possibilities such as 1[1] are prevented
         const expr = this.generateExpression(node.expr);
@@ -915,8 +967,11 @@ export class Generator {
         // FIXME: only basic types supported
         const varType = convertToBasicType(node.type);
         const wasmType = convertToWasmType(node.type);
-        this.globals.set(varName, varType, wasmType);
-        return this.module.global.set(varName, this.generateConstant(wasmType, 0));
+        this.globals.set(varName, new Global(varType, wasmType, this.getOffset(varType)));
+        return this,this.module.block(null, [
+            this.incrementStackBase(varType.size()),
+            this.incrementStackTop(varType.size())
+        ]);
     }
 
     private arrDeclStatement(node: ArrDeclNode): ExpressionRef {
@@ -926,18 +981,25 @@ export class Generator {
         // pointer to head
         const wasmType = binaryen.i32;
         const arrType = new ArrayType(elemType, node.dimensions);
-        this.globals.set(arrName, arrType, wasmType);
+        this.globals.set(arrName, new Global(arrType, wasmType, this.getOffset(arrType)));
         // FIXME: set to init pointer
-        return this.module.global.set(arrName, this.generateConstant(wasmType, this.getOffset(arrType)));
+        return this,this.module.block(null, [
+            this.incrementStackBase(arrType.size()),
+            this.incrementStackTop(arrType.size())
+        ]);
     }
 
     private pointerDeclStatement(node: PointerDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
-        const varType = convertToBasicType(node.type);
-        const wasmType = convertToWasmType(node.type);
-        this.globals.set(varName, varType, wasmType);
-        return this.module.global.set(varName, this.generateConstant(wasmType, 0));
+        const baseType = convertToBasicType(node.type);
+        const wasmType = binaryen.i32;
+        const ptrType = new PointerType(baseType);
+        this.globals.set(varName, new Global(ptrType, wasmType, this.getOffset(ptrType)));
+        return this,this.module.block(null, [
+            this.incrementStackBase(ptrType.size()),
+            this.incrementStackTop(ptrType.size())
+        ]);
     }
 
     private ifStatement(node: IfNode): ExpressionRef {
@@ -1011,10 +1073,10 @@ export class Generator {
         //  )
         // )
         const varName = node.ident.lexeme;
-        const varType = this.globals.getType(varName);
+        const varType = this.getGlobalType(varName);
         const endType = this.resolveType(node.end);
         const stepType = this.resolveType(node.step);
-        const wasmType = this.globals.getWasmType(varName);
+        const varOffset = this.getGlobalOffset(varName);
         
         if (varType.kind !== typeKind.BASIC || varType.type !== basicKind.INTEGER) {
             throw new RuntimeError("For loops only iterate over for INTEGERs");
@@ -1029,18 +1091,18 @@ export class Generator {
         const initExpr = this.generateExpression(node.start);
 
         // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
-        const init = this.module.global.set(varName, initExpr);
+        const init = this.module.i32.store(0, 1, this.generateConstant(binaryen.i32, varOffset), initExpr, "0");
 
         const statements = this.generateStatements(node.body);
-        const variable = this.module.global.get(varName, wasmType);
+        const variable = this.module.i32.load(0, 1, this.generateConstant(binaryen.i32, varOffset), "0");
 
         const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-        const step = this.module.global.set(
-            varName,
+        const step = this.module.i32.store(
+            0, 1, this.generateConstant(binaryen.i32, varOffset),
             this.module.i32.add(
                 variable,
                 this.generateExpression(node.step)
-            )
+            ), "0"
         );
 
         statements.push(step);

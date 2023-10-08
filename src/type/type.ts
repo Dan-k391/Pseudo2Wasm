@@ -7,6 +7,7 @@ export const enum typeKind {
     BASIC = "BASIC",
     ARRAY = "ARRAY",
     RECORD = "RECORD",
+    POINTER = "POINTER",
     // NONE Type, for error handling
     NONE = "NONE"
 }
@@ -32,7 +33,7 @@ export const enum basicKind {
 }
 
 // this kind of design omits the 'type as BasicType' statements
-export type Type = BasicType | ArrayType | RecordType;
+export type Type = BasicType | ArrayType | RecordType | PointerType;
 
 export class BasicType extends BaseType {
     // stupid naming, i know, plz do not blame me
@@ -83,25 +84,16 @@ export class ArrayType extends BaseType {
         for (const dimension of this.dimensions) {
             msg += dimension.upper.lexeme + ': ' + dimension.lower.lexeme + ', ';
         }
-        return "ARRAY[" + msg + "] OF " + this.elem;
+        return "ARRAY[" + msg + "] OF " + this.elem.toString();
     }
 
     public size(): number {
         let length = 1;
         for (const dimension of this.dimensions) {
-            length *= (dimension.upper.literal - dimension.lower.literal)
+            // add 1 because the upper and lower bounds are included
+            length *= (dimension.upper.literal - dimension.lower.literal + 1);
         }
         return this.elem.size() * length;
-    }
-
-    // returns the offset relative to the array
-    public offset(index: number): number {
-        // useless for now
-        return 0;
-        // if (index >= this.length) {
-        //     throw new RuntimeError("Index out of bounds for " + this.toString());
-        // }
-        // return this.elem.size() * index;
     }
 }
 
@@ -117,13 +109,13 @@ export class RecordType extends BaseType {
     public toString(): string {
         let str = "TYPE";
         for (let [key, value] of this.fields) {
-            str += key + ": " + value + " ";
+            str += key + ": " + value.toString() + " ";
         }
         str += "ENDTYPE";
         return str;
     }
 
-    public size() {
+    public size(): number {
         let total: number = 0;
         for (let [key, value] of this.fields) {
             total += value.size();
@@ -131,6 +123,7 @@ export class RecordType extends BaseType {
         return total;
     }
 
+    // static caculation (I think it will work fine)
     // returns the offset relative to the start of the record
     public offset(name: string): number {
         if (!this.fields.has(name)) {
@@ -145,6 +138,25 @@ export class RecordType extends BaseType {
             offset += value.size();            
         }
         return offset;
+    }
+}
+
+export class PointerType extends BaseType {
+    public readonly kind = typeKind.POINTER;
+    public base: Type;
+
+    constructor(base: Type) {
+        super();
+        this.base = base;
+    }
+
+    public toString(): string {
+        return "^" + this.base.toString;
+    }
+
+    public size(): number {
+        // ALL pointer type are 4 bytes
+        return 4;
     }
 }
 
