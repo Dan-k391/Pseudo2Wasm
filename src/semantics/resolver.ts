@@ -30,7 +30,7 @@ import {
     OutputNode,
     InputNode
 } from "../syntax/ast";
-import { Param } from "../syntax/param";
+import { ParamNode } from "../syntax/param";
 
 
 export class Resolver {

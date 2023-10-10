@@ -45,7 +45,7 @@ import {
     AssignNode,
     Dimension
 } from "./ast";
-import { Param } from "./param";
+import { ParamNode } from "./param";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../lex/token";
 import { passType } from "./passtype";
@@ -387,7 +387,7 @@ export class Parser {
     private funcDefinition(): FuncDefNode {
         const ident: Token = this.consume("Expected function name", tokenType.IDENTIFIER);
         this.consume("Expected left parenthesis", tokenType.LEFT_PAREN);
-        const params: Array<Param> = new Array<Param>();
+        const params: Array<ParamNode> = new Array<ParamNode>();
         if (!this.check(tokenType.RIGHT_PAREN)) {
             do {
                 if (params.length >= 255) {
@@ -398,7 +398,7 @@ export class Parser {
                 this.consume("Expected colon", tokenType.COLON);
                 let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.ARRAY);
                 // function only supports BYVAL
-                params.push(new Param(ident, type, passType.BYVAL));
+                params.push(new ParamNode(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));
         }
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
@@ -415,7 +415,7 @@ export class Parser {
     private procDefinition(): ProcDefNode {
         const ident: Token = this.consume("Expected procedure name", tokenType.IDENTIFIER);
         this.consume("Expected left parenthesis", tokenType.LEFT_PAREN);
-        const params: Array<Param> = new Array<Param>();
+        const params: Array<ParamNode> = new Array<ParamNode>();
         if (!this.check(tokenType.RIGHT_PAREN)) {
             do {
                 if (params.length >= 255) {
@@ -436,7 +436,7 @@ export class Parser {
                 this.consume("Expected colon", tokenType.COLON);
                 let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
                 // default passType is BYVAL
-                params.push(new Param(ident, type, _passType));
+                params.push(new ParamNode(ident, type, _passType));
             } while (this.match(tokenType.COMMA));
         }
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);

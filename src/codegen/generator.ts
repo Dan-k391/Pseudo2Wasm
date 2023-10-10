@@ -38,13 +38,13 @@ import {
     OutputNode,
     InputNode
 } from "../syntax/ast";
-import { Param } from "../syntax/param";
+import { ParamNode } from "../syntax/param";
 
 import { Function, DefinedFunction } from "./function";
 import { Procedure } from "./procedure";
 import { convertToBasicType, convertToWasmType, unreachable } from "../util";
 import { Global } from "./global";
-import { LocalTable } from "./local";
+import { Local } from "./local";
 import { 
     Type,
     typeKind,
@@ -57,6 +57,7 @@ import {
 import { minimalCompatableBasicType } from "../type/type";
 import { String } from "./string";
 import { LengthFunction } from "./builtin";
+import { Param } from "./param";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -104,9 +105,9 @@ export class Generator {
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
 
         // The stack grows upwards
-        // stack top
+        // stacktop
         this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
-        // stack base
+        // stackbase
         this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
 
         this.generateBuiltins();
@@ -143,7 +144,7 @@ export class Generator {
         throw new RuntimeError("Unknown type '" + type + "'");
     }
 
-    private incrementStackBase(value: ExpressionRef): ExpressionRef {
+    public incrementStackBase(value: ExpressionRef): ExpressionRef {
         return this.module.global.set(
             "__stackBase", 
             this.module.i32.add(
@@ -153,7 +154,7 @@ export class Generator {
         );
     }
 
-    private incrementStackTop(value: ExpressionRef): ExpressionRef {
+    public incrementStackTop(value: ExpressionRef): ExpressionRef {
         return this.module.global.set(
             "__stackTop", 
             this.module.i32.add(
@@ -163,10 +164,15 @@ export class Generator {
         );
     }
 
-    public getOffset(type: Type): ExpressionRef {
+    public getOffset(type: Type): number {
         const old = this.offset;
         this.offset += type.size();
         return old;
+    }
+
+    public setGlobal(name: string, type: Type, wasmType: WasmType): void {
+        const offset = this.getOffset(type);
+        this.globals.set(name, new Global(type, wasmType, offset));
     }
 
     public getGlobalType(name: string): Type {
@@ -185,6 +191,7 @@ export class Generator {
         return this.globals.get(name)!.wasmType;
     }
 
+    // TODO: maybe change to return ExpressionRef
     public getGlobalOffset(name: string): number {
         if (!this.globals.has(name)) {
             throw new RuntimeError("Unknown variable '" + name + "'");
@@ -217,6 +224,32 @@ export class Generator {
         if (!this.procedures.has(name)) {
             this.procedures.set(name, proc);
         }
+    }
+
+    public loadGlobal(basicType: basicKind, ptr: ExpressionRef): ExpressionRef {
+        switch (basicType) {
+            case basicKind.INTEGER:
+            case basicKind.CHAR:
+            case basicKind.BOOLEAN:
+            case basicKind.STRING:
+                return this.module.i32.load(0, 1, ptr, "0");
+            case basicKind.REAL:
+                return this.module.f64.load(0, 1, ptr, "0");
+        }
+        unreachable();
+    }
+
+    public storeGlobal(basicType: basicKind, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
+        switch (basicType) {
+            case basicKind.INTEGER:
+            case basicKind.CHAR:
+            case basicKind.BOOLEAN:
+            case basicKind.STRING:
+                return this.module.i32.store(0, 1, ptr, value, "0");
+            case basicKind.REAL:
+                return this.module.f64.store(0, 1, ptr, value, "0");
+        }
+        unreachable();
     }
 
     // private generateMainFunction(statements: Array<Stmt>): void {
@@ -491,7 +524,7 @@ export class Generator {
 
     private generateFunctionDefinition(node: FuncDefNode): void {
         const funcName = node.ident.lexeme;
-        const funcParams = new LocalTable();
+        const funcParams = new Map<string, Param>();
 
         let index = 0;
         for (const param of node.params) {
@@ -500,7 +533,7 @@ export class Generator {
             const paramType = convertToBasicType(param.type);
             const wasmType = convertToWasmType(param.type);
             // nethermind the method to set
-            funcParams.set(paramName, paramType, wasmType, index);
+            funcParams.set(paramName, new Param(paramType, wasmType, index));
             index++;
         }
 
@@ -520,7 +553,7 @@ export class Generator {
 
     private generateProcedureDefinition(node: ProcDefNode): void {
         const procName = node.ident.lexeme;
-        const procParams = new LocalTable();
+        const procParams = new Map<string, Param>();
 
         let index = 0;
         for (const param of node.params) {
@@ -528,7 +561,7 @@ export class Generator {
             // FIXME: only basic types supported
             const paramType = convertToBasicType(param.type);
             const wasmType = convertToWasmType(param.type);
-            procParams.set(paramName, paramType, wasmType, index);
+            procParams.set(paramName, new Param(paramType, wasmType, index));
             index++;
         }
         const proc = new Procedure(this.module, this, procName, procParams, node.body);
@@ -594,16 +627,8 @@ export class Generator {
         const rightBasicType = rightType.type;
         const rhs = this.generateExpression(node.right);
         const ptr = this.generateLeftValue(node.left);
-        switch (leftBasicType) {
-            case basicKind.INTEGER:
-            case basicKind.CHAR:
-            case basicKind.BOOLEAN:
-            case basicKind.STRING:
-                return this.module.i32.store(0, 1, ptr, this.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
-            case basicKind.REAL:
-                return this.module.f64.store(0, 1, ptr, this.convertBasicType(rightBasicType, leftBasicType, rhs), "0");
-        }
-        throw new RuntimeError("Not implemented yet");
+        const value = this.convertBasicType(rightBasicType, leftBasicType, rhs);
+        return this.storeGlobal(leftBasicType, ptr, value);
     }
 
     public loadVarExpression(node: VarExprNode): ExpressionRef {
@@ -613,16 +638,7 @@ export class Generator {
         }
         const basicType = type.type;
         const ptr = this.varExpression(node);
-        switch (basicType) {
-            case basicKind.INTEGER:
-            case basicKind.CHAR:
-            case basicKind.BOOLEAN:
-            case basicKind.STRING:
-                return this.module.i32.load(0, 1, ptr, "0");
-            case basicKind.REAL:
-                return this.module.f64.load(0, 1, ptr, "0");
-        }
-        unreachable();
+        return this.loadGlobal(basicType, ptr);
     }
 
     // returns the pointer(offset) of the variable
@@ -640,16 +656,7 @@ export class Generator {
         }
         const basicType = elemType.type;
         const ptr = this.indexExpression(node);
-        switch (basicType) {
-            case basicKind.INTEGER:
-            case basicKind.CHAR:
-            case basicKind.BOOLEAN:
-            case basicKind.STRING:
-                return this.module.i32.load(0, 1, ptr, "0");
-            case basicKind.REAL:
-                return this.module.f64.load(0, 1, ptr, "0");
-        }
-        unreachable();
+        return this.loadGlobal(basicType, ptr);
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -703,6 +710,7 @@ export class Generator {
         );
     }
 
+    // TODO: do it
     public selectExpression(node: SelectExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
         const rVal = this.resolveType(node.expr);
@@ -719,14 +727,14 @@ export class Generator {
             const funcName = node.callee.ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
             const func = this.getFunction(funcName);
-            if (func.params.size() !== node.args.length) {
+            if (func.params.size !== node.args.length) {
                 throw new RuntimeError("Function '" + funcName + "' expects " + func.params.size + " arguments, but " + node.args.length + " are provided");
             }
-            for (let i = 0, paramNames = func.params.names; i < node.args.length; i++) {
+            for (let i = 0, paramNames = Array.from(func.params.keys()); i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
                 const argType = this.resolveType(arg);
-                const paramType = func.params.getType(paramNames[i]);
+                const paramType = func.params.get(paramNames[i])!.type;
                 funcArgs.push(this.convertType(argType, paramType, expr));
             }
             const returnType = this.getFunction(funcName).wasmReturnType;
@@ -741,15 +749,15 @@ export class Generator {
             const procName = node.callee.ident.lexeme;
             const procArgs = new Array<ExpressionRef>();
             const proc = this.getProcedure(procName);
-            if (proc.params.size() !== node.args.length) {
+            if (proc.params.size !== node.args.length) {
                 throw new RuntimeError("Procedure '" + procName + "' expects " + proc.params.size + " arguments, but " + node.args.length + " are provided");
             }
 
-            for (let i = 0, paramNames = proc.params.names; i < node.args.length; i++) {
+            for (let i = 0, paramNames = Array.from(proc.params.keys()); i < node.args.length; i++) {
                 const arg = node.args[i];
                 const expr = this.generateExpression(arg);
                 const argType = this.resolveType(arg);
-                const paramType = proc.params.getType(paramNames[i]);
+                const paramType = proc.params.get(paramNames[i])!.type;
                 procArgs.push(this.convertType(argType, paramType, expr));
             }
             return this.module.call(procName, procArgs, binaryen.none);
@@ -865,7 +873,6 @@ export class Generator {
                 throw new RuntimeError("Not implemented yet");
         }
         // TODO: STRING
-
     }
 
     public integerExpression(node: IntegerExprNode): ExpressionRef {
@@ -967,8 +974,9 @@ export class Generator {
         // FIXME: only basic types supported
         const varType = convertToBasicType(node.type);
         const wasmType = convertToWasmType(node.type);
-        this.globals.set(varName, new Global(varType, wasmType, this.getOffset(varType)));
-        return this,this.module.block(null, [
+        this.setGlobal(varName, varType, wasmType);
+        // increment stacktop and stackbase
+        return this.module.block(null, [
             this.incrementStackBase(varType.size()),
             this.incrementStackTop(varType.size())
         ]);
@@ -981,9 +989,9 @@ export class Generator {
         // pointer to head
         const wasmType = binaryen.i32;
         const arrType = new ArrayType(elemType, node.dimensions);
-        this.globals.set(arrName, new Global(arrType, wasmType, this.getOffset(arrType)));
+        this.setGlobal(arrName, arrType, wasmType);
         // FIXME: set to init pointer
-        return this,this.module.block(null, [
+        return this.module.block(null, [
             this.incrementStackBase(arrType.size()),
             this.incrementStackTop(arrType.size())
         ]);
@@ -995,7 +1003,7 @@ export class Generator {
         const baseType = convertToBasicType(node.type);
         const wasmType = binaryen.i32;
         const ptrType = new PointerType(baseType);
-        this.globals.set(varName, new Global(ptrType, wasmType, this.getOffset(ptrType)));
+        this.setGlobal(varName, ptrType, wasmType)
         return this,this.module.block(null, [
             this.incrementStackBase(ptrType.size()),
             this.incrementStackTop(ptrType.size())
@@ -1091,18 +1099,19 @@ export class Generator {
         const initExpr = this.generateExpression(node.start);
 
         // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
-        const init = this.module.i32.store(0, 1, this.generateConstant(binaryen.i32, varOffset), initExpr, "0");
+        const init = this.storeGlobal(basicKind.INTEGER, this.generateConstant(binaryen.i32, varOffset), initExpr);
 
         const statements = this.generateStatements(node.body);
-        const variable = this.module.i32.load(0, 1, this.generateConstant(binaryen.i32, varOffset), "0");
+        const variable = this.loadGlobal(basicKind.INTEGER, this.generateConstant(binaryen.i32, varOffset));
 
         const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-        const step = this.module.i32.store(
-            0, 1, this.generateConstant(binaryen.i32, varOffset),
+        const step = this.storeGlobal(
+            basicKind.INTEGER,
+            this.generateConstant(binaryen.i32, varOffset),
             this.module.i32.add(
                 variable,
                 this.generateExpression(node.step)
-            ), "0"
+            )
         );
 
         statements.push(step);

@@ -1,8 +1,23 @@
+/**
+ * Builtin functions, work a little bit different from the user defined functions.
+ * For now, it doesn't use the stack and move the stackbase and stacktop pointers.
+ * It uses the webassembly traditional params calling and perform operations to
+ * the params directly.
+ * 
+ * (I would probaby rewrite the builtin functions in pseudocode, but thats later stuff)
+ * 
+ * Also, the functions are totally static
+ * it depends on none of the class properties
+ * the properties in the class just act as an interface when this function is called
+ * and an inheratace from base class Function
+ */
+
 import binaryen from "binaryen";
-import { LocalTable } from "./local";
+import { Local } from "./local";
 import { BasicType, basicKind } from "../type/type";
 import { Function } from "./function";
 import { Generator } from "./generator";
+import { Param } from "./param";
 
 
 // TODO: use a better way to store builtin functions
@@ -10,19 +25,16 @@ export class LengthFunction extends Function {
     // The initialization here is for the type checker to check if arg size and param size match
     // and the corresponding type matches
     constructor(module: binaryen.Module, enclosing: Generator) {
-        const params = new LocalTable();
-        params.set("str", new BasicType(basicKind.STRING), binaryen.i32, 0);
+        const params = new Map<string, Param>();
+        params.set("str", new Param(new BasicType(basicKind.STRING), binaryen.i32, 0));
         const returnType = new BasicType(basicKind.INTEGER);
         super(module, enclosing, "LENGTH", params, returnType, binaryen.i32, true);
     }
 
     public generate(): void {
-        // the whole function is static
-        // it depends on none of the class properties
-        // the properties in the class just act as an interface when this function is called
         // in c, this function looks like this
         /**
-         * int my_strlen_utf8_c(char *s) {
+         * int LENGTH(char *s) {
          *  int i = 0, j = 0;
          *  while (s[i]) {
          *      if ((s[i] & 0xc0) != 0x80) j++;

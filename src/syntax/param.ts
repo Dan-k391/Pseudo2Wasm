@@ -2,7 +2,7 @@ import { Token } from "../lex/token";
 import { passType } from "./passtype";
 
 
-export class Param {
+export class ParamNode {
     // default passtype will be done in the parser
     public ident: Token;
     public type: Token;

@@ -111,7 +111,10 @@ export class Compiler {
         // for debug
         // debugger;
         // const main = instance.exports.main as CallableFunction;
+        // const start = new Date().getTime();
         // main();
+        // const end = new Date().getTime();
+        // console.log("Execution time: ", end - start);
 
         return correct;
     }

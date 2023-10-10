@@ -15,7 +15,7 @@ export class Global {
     // all public here is actually very convinient
     public type: Type;
     public wasmType: WasmType;
-    // it is named 'offset' but it starts from 0 because globals
+    // it is named 'offset' but it is relative to 0 because globals
     // are stored at the start of the memory
     // memory
     //       stackbase

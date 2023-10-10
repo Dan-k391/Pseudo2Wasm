@@ -3,7 +3,7 @@
  */
 
 import { Token, tokenType } from "../lex/token";
-import { Param } from "./param";
+import { ParamNode } from "./param";
 
 
 
@@ -93,12 +93,12 @@ export class ProgramNode extends BaseNode {
 export class FuncDefNode extends BaseNode {
     public readonly kind = nodeKind.FuncDefNode;
     public ident: Token;
-    public params: Array<Param>;
+    public params: Array<ParamNode>;
     // change type
     public type: Token;
     public body: Array<Stmt>;
 
-    constructor(ident: Token, params: Array<Param>, type: Token, body: Array<Stmt>) {
+    constructor(ident: Token, params: Array<ParamNode>, type: Token, body: Array<Stmt>) {
         super();
         this.ident = ident;
         this.params = params;
@@ -114,10 +114,10 @@ export class FuncDefNode extends BaseNode {
 export class ProcDefNode extends BaseNode {
     public readonly kind = nodeKind.ProcDefNode;
     public ident: Token;
-    public params: Array<Param>;
+    public params: Array<ParamNode>;
     public body: Array<Stmt>;
 
-    constructor(ident: Token, params: Array<Param>, body: Array<Stmt>) {
+    constructor(ident: Token, params: Array<ParamNode>, body: Array<Stmt>) {
         super();
         this.ident = ident;
         this.params = params;

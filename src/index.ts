@@ -66,143 +66,143 @@ NEXT i
 OUTPUT j
 `;
 
-// const code7 = `FUNCTION add(a: INTEGER, b: INTEGER) RETURNS INTEGER
-//     RETURN a + b
-// ENDFUNCTION
+const code7 = `FUNCTION add(a: INTEGER, b: INTEGER) RETURNS INTEGER
+    RETURN a + b
+ENDFUNCTION
 
-// DECLARE i: INTEGER
-// DECLARE j: INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
 
-// i <- 1
-// j <- 2
-// OUTPUT add(i, j)
-// `;
+i <- 1
+j <- 2
+OUTPUT add(i, j)
+`;
 
-// const code8 = `FUNCTION for(a: INTEGER) RETURNS INTEGER
-//     DECLARE b: INTEGER
-//     DECLARE c: INTEGER
+const code8 = `FUNCTION for(a: INTEGER) RETURNS INTEGER
+    DECLARE b: INTEGER
+    DECLARE c: INTEGER
 
-//     FOR b <- 1 TO a
-//         c <- b
-//     NEXT b
-//     RETURN c
-// ENDFUNCTION
+    FOR b <- 1 TO a
+        c <- b
+    NEXT b
+    RETURN c
+ENDFUNCTION
 
-// OUTPUT for(10)
-// `;
+OUTPUT for(10)
+`;
 
-// const code9 = `FUNCTION for(a: INTEGER) RETURNS INTEGER
-//     DECLARE b: INTEGER
+const code9 = `FUNCTION for(a: INTEGER) RETURNS INTEGER
+    DECLARE b: INTEGER
 
-//     FOR a <- 1 TO 11
-//         b <- a
-//     NEXT a
-//     RETURN b
-// ENDFUNCTION
+    FOR a <- 1 TO 11
+        b <- a
+    NEXT a
+    RETURN b
+ENDFUNCTION
 
-// OUTPUT for(1)
-// `;
+OUTPUT for(1)
+`;
 
-// const code10 = `FUNCTION recur(a: INTEGER) RETURNS INTEGER
-//     IF a = 10 THEN
-//         RETURN a
-//     ENDIF
-//     RETURN recur(a + 1)
-// ENDFUNCTION
+const code10 = `FUNCTION recur(a: INTEGER) RETURNS INTEGER
+    IF a = 10 THEN
+        RETURN a
+    ENDIF
+    RETURN recur(a + 1)
+ENDFUNCTION
 
-// OUTPUT recur(1)
-// `;
+OUTPUT recur(1)
+`;
 
-// const code11 = `DECLARE a: INTEGER
-// a <- 1
+const code11 = `DECLARE a: INTEGER
+a <- 1
 
-// FUNCTION scope() RETURNS INTEGER
-//     DECLARE b: INTEGER
-//     DECLARE c: INTEGER
+FUNCTION scope() RETURNS INTEGER
+    DECLARE b: INTEGER
+    DECLARE c: INTEGER
 
-//     b <- 1
-//     c <- 2
-//     RETURN a + b + c
-// ENDFUNCTION
+    b <- 1
+    c <- 2
+    RETURN a + b + c
+ENDFUNCTION
 
-// OUTPUT scope()
-// `;
+OUTPUT scope()
+`;
 
-// const code12 = `PROCEDURE print(a: INTEGER)
-//     DECLARE b: INTEGER
-//     DECLARE c: INTEGER
+const code12 = `PROCEDURE print(a: INTEGER)
+    DECLARE b: INTEGER
+    DECLARE c: INTEGER
 
-//     b <- 2
-//     c <- 2
-//     OUTPUT a + b + c
-// ENDPROCEDURE
+    b <- 2
+    c <- 2
+    OUTPUT a + b + c
+ENDPROCEDURE
 
-// CALL print(1)
-// `;
+CALL print(1)
+`;
 
-// const code13 = `DECLARE i: INTEGER
-// i <- 1
+const code13 = `DECLARE i: INTEGER
+i <- 1
 
-// PROCEDURE increment(BYREF a: INTEGER)
-//     a <- a + 1
-// ENDPROCEDURE
+PROCEDURE increment(BYREF a: INTEGER)
+    a <- a + 1
+ENDPROCEDURE
 
-// CALL increment(i)
-// OUTPUT i
-// `;
+CALL increment(i)
+OUTPUT i
+`;
 
-// const code14 = `DECLARE i: INTEGER
-// i <- 1
+const code14 = `DECLARE i: INTEGER
+i <- 1
 
-// PROCEDURE increment()
-//     i <- i + 1
-// ENDPROCEDURE
+PROCEDURE increment()
+    i <- i + 1
+ENDPROCEDURE
 
-// CALL increment()
-// OUTPUT i
-// `;
+CALL increment()
+OUTPUT i
+`;
 
-// const code15 = `FUNCTION add(a: REAL, b: REAL) RETURNS REAL
-//     DECLARE c: REAL
-//     c <- a + b
-//     RETURN c
-// ENDFUNCTION
+const code15 = `FUNCTION add(a: REAL, b: REAL) RETURNS REAL
+    DECLARE c: REAL
+    c <- a + b
+    RETURN c
+ENDFUNCTION
 
-// DECLARE i: REAL
-// DECLARE j: REAL
+DECLARE i: REAL
+DECLARE j: REAL
 
-// i <- 1.1
-// j <- 2.2
-// OUTPUT add(i, j)
-// `;
+i <- 1.1
+j <- 2.2
+OUTPUT add(i, j)
+`;
 
-// const code16 = `OUTPUT 'a'`;
+const code16 = `OUTPUT 'a'`;
 
-// const code17 = `DECLARE i: CHAR
-// i <- 'v'
+const code17 = `DECLARE i: CHAR
+i <- 'v'
 
-// OUTPUT i
-// `;
+OUTPUT i
+`;
 
-// const code18 = `DECLARE i: INTEGER
+const code18 = `DECLARE i: INTEGER
 
-// i <- 1
-// OUTPUT -i
-// `;
+i <- 1
+OUTPUT -i
+`;
 
-// const code19 = `DECLARE i: REAL
+const code19 = `DECLARE i: REAL
 
-// i <- 1
-// OUTPUT -i
-// `;
+i <- 1
+OUTPUT -i
+`;
 
-// const code20 = `DECLARE arr: ARRAY[0: 3] OF INTEGER
+const code20 = `DECLARE arr: ARRAY[0: 3] OF INTEGER
 
-// arr[0] <- 1
-// arr[1] <- 2
-// arr[2] <- 3
+arr[0] <- 1
+arr[1] <- 2
+arr[2] <- 3
 
-// OUTPUT arr[0] + arr[1] + arr[2]`;
+OUTPUT arr[0] + arr[1] + arr[2]`;
 
 const code21 = `DECLARE arr: ARRAY[0: 9] OF INTEGER
 
@@ -271,264 +271,272 @@ NEXT i
 OUTPUT sum
 `;
 
-// const code25 = `OUTPUT "Hello World"`;
+const code25 = `OUTPUT "Hello World"`;
 
-// const code26 = `DECLARE i: ARRAY[0: 1] OF INTEGER
+const code26 = `DECLARE i: ARRAY[0: 1] OF INTEGER
 
-// i[0] <- 2147483647
-// OUTPUT i[0]
-// `;
+i[0] <- 2147483647
+OUTPUT i[0]
+`;
 
-// const code27 = `DECLARE i: ARRAY[0: 2] OF INTEGER
+const code27 = `DECLARE i: ARRAY[0: 2] OF INTEGER
 
-// i[0] <- 2147483647
-// i[1] <- -2147483648
-// OUTPUT i[0] + i[1]
-// `;
+i[0] <- 2147483647
+i[1] <- -2147483648
+OUTPUT i[0] + i[1]
+`;
 
-// const code28 = `DECLARE i: STRING
-// DECLARE j: STRING
+const code28 = `DECLARE i: STRING
+DECLARE j: STRING
 
-// i <- "Hello"
-// j <- "World"
+i <- "Hello"
+j <- "World"
 
-// OUTPUT i & j
-// `;
+OUTPUT i & j
+`;
 
-// const code29 = `IF 3 THEN
-//     OUTPUT 2
-// ENDIF
-// `;
+const code29 = `IF 3 THEN
+    OUTPUT 2
+ENDIF
+`;
 
-// const code30 = `DECLARE i: ARRAY[0: 10] OF STRING
+const code30 = `DECLARE i: ARRAY[0: 10] OF STRING
 
-// i[0] <- "nihao"
+i[0] <- "nihao"
 
-// OUTPUT i[0]
-// `;
+OUTPUT i[0]
+`;
 
-// const code31 = `OUTPUT "编码测试"`;
+const code31 = `OUTPUT "编码测试"`;
 
-// const code32 = `DECLARE arr: ARRAY[0: 9] OF REAL
-// DECLARE i: INTEGER
+const code32 = `DECLARE arr: ARRAY[0: 9] OF REAL
+DECLARE i: INTEGER
 
-// FOR i <- 0 TO 9
-//     // i / 10 makes an integer value
-//     arr[i] <- i + i / 10.0
-// NEXT i
+FOR i <- 0 TO 9
+    // i / 10 makes an integer value
+    arr[i] <- i + i / 10.0
+NEXT i
 
-// DECLARE sum: REAL
+DECLARE sum: REAL
 
-// FOR i <- 0 TO 9
-//     sum <- sum + arr[i]
-// NEXT i
+FOR i <- 0 TO 9
+    sum <- sum + arr[i]
+NEXT i
 
-// OUTPUT sum
-// `;
+OUTPUT sum
+`;
 
-// const code33 = `OUTPUT 1.0 / 20`;
+const code33 = `OUTPUT 1.0 / 20`;
 
-// const code34 = `OUTPUT 1 / 20`;
+const code34 = `OUTPUT 1 / 20`;
 
-// const code35 = `FUNCTION print() RETURNS STRING
-//     DECLARE str: STRING
-//     str <- "Hi"
-//     RETURN str
-// ENDFUNCTION
+const code35 = `FUNCTION print() RETURNS STRING
+    DECLARE str: STRING
+    str <- "Hi"
+    RETURN str
+ENDFUNCTION
 
-// OUTPUT print()
-// `
+OUTPUT print()
+`
 
-// const code36 = `PROCEDURE print()
-//     DECLARE str: STRING
-//     str <- "Hi"
-//     OUTPUT str
-// ENDPROCEDURE
+const code36 = `PROCEDURE print()
+    DECLARE str: STRING
+    str <- "Hi"
+    OUTPUT str
+ENDPROCEDURE
 
-// CALL print()
-// `
+CALL print()
+`
 
-// const code37 = `FUNCTION sum() RETURNS INTEGER
-//     DECLARE sum: INTEGER
-//     DECLARE arr: ARRAY[0: 10] OF INTEGER
-//     DECLARE i: INTEGER
-//     FOR i <- 0 TO 10
-//         arr[i] <- i
-//     NEXT i
+const code37 = `FUNCTION sum() RETURNS INTEGER
+    DECLARE sum: INTEGER
+    DECLARE arr: ARRAY[0: 10] OF INTEGER
+    DECLARE i: INTEGER
+    FOR i <- 0 TO 10
+        arr[i] <- i
+    NEXT i
     
-//     FOR i <- 0 TO 10
-//         sum <- sum + arr[i]
-//     NEXT i
-//     RETURN sum
-// ENDFUNCTION
+    FOR i <- 0 TO 10
+        sum <- sum + arr[i]
+    NEXT i
+    RETURN sum
+ENDFUNCTION
 
-// OUTPUT sum()
-// `
+OUTPUT sum()
+`
 
-// const code38 = `FUNCTION sum(arr: ARRAY) RETURNS INTEGER
-//     DECLARE sum: INTEGER
-//     DECLARE i: INTEGER
+const code38 = `FUNCTION sum(arr: ARRAY) RETURNS INTEGER
+    DECLARE sum: INTEGER
+    DECLARE i: INTEGER
 
-//     FOR i <- 0 TO 10
-//         sum <- sum + arr[i]
-//     NEXT i
-//     RETURN sum
-// ENDFUNCTION
+    FOR i <- 0 TO 10
+        sum <- sum + arr[i]
+    NEXT i
+    RETURN sum
+ENDFUNCTION
 
-// DECLARE arr: ARRAY[0: 10] OF INTEGER
-// DECLARE i: INTEGER
-// FOR i <- 0 TO 10
-//     arr[i] <- i
-// NEXT i
+DECLARE arr: ARRAY[0: 10] OF INTEGER
+DECLARE i: INTEGER
+FOR i <- 0 TO 10
+    arr[i] <- i
+NEXT i
 
-// OUTPUT sum(arr)
-// `
+OUTPUT sum(arr)
+`
 
-// const code39 = `PROCEDURE print(str: STRING)
-//     OUTPUT str
-// ENDPROCEDURE
+const code39 = `PROCEDURE print(str: STRING)
+    OUTPUT str
+ENDPROCEDURE
 
-// CALL print("procedure")
-// `
+CALL print("procedure")
+`
 
-// const code40 = `OUTPUT LENGTH("Happy Days")`
+const code40 = `OUTPUT LENGTH("Happy Days") + LENGTH("Hi")`
 
-// const code41 = `OUTPUT LENGTH("你好")`
+const code41 = `OUTPUT LENGTH("你好")`
 
-// const code42 = `DECLARE i: ARRAY[2: 5] OF INTEGER
+const code42 = `DECLARE i: ARRAY[2: 5] OF INTEGER
 
-// i[2] <- 9
-// i[3] <- 10
-// i[4] <- 3
+i[2] <- 9
+i[3] <- 10
+i[4] <- 3
 
-// OUTPUT i[2] + i[3] + i[4]
-// `
+OUTPUT i[2] + i[3] + i[4]
+`
 
-// const code43 = `DECLARE arr: ARRAY[0: 3, 0: 3] OF INTEGER
-// DECLARE i: INTEGER
-// DECLARE j: INTEGER
+const code43 = `DECLARE arr: ARRAY[0: 3, 0: 3] OF INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
 
-// FOR i <- 0 TO 3
-//     FOR j <- 0 TO 3
-//         arr[i, j] <- i + j
-//     NEXT j
-// NEXT i
+FOR i <- 0 TO 3
+    FOR j <- 0 TO 3
+        arr[i, j] <- i + j
+    NEXT j
+NEXT i
 
-// DECLARE sum: INTEGER
-// sum <- 0
-// FOR i <- 0 TO 3
-//     FOR j <- 0 TO 3
-//         sum <- sum + arr[i, j]
-//     NEXT j
-// NEXT i
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 0 TO 3
+    FOR j <- 0 TO 3
+        sum <- sum + arr[i, j]
+    NEXT j
+NEXT i
 
-// OUTPUT sum
-// `
+OUTPUT sum
+`
 
-// const code44 = `DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
-// DECLARE i: INTEGER
-// DECLARE j: INTEGER
-// DECLARE k: INTEGER
+const code44 = `DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
+DECLARE k: INTEGER
 
-// FOR i <- 0 TO 3
-//     FOR j <- 0 TO 3
-//         FOR k <- 0 TO 3
-//             arr[i, j, k] <- i + j + k
-//         NEXT k
-//     NEXT j
-// NEXT i
+FOR i <- 0 TO 3
+    FOR j <- 0 TO 3
+        FOR k <- 0 TO 3
+            arr[i, j, k] <- i + j + k
+        NEXT k
+    NEXT j
+NEXT i
 
-// DECLARE sum: INTEGER
-// sum <- 0
-// FOR i <- 0 TO 3
-//     FOR j <- 0 TO 3
-//         FOR k <- 0 TO 3
-//             sum <- sum + arr[i, j, k]
-//         NEXT k
-//     NEXT j
-// NEXT i
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 0 TO 3
+    FOR j <- 0 TO 3
+        FOR k <- 0 TO 3
+            sum <- sum + arr[i, j, k]
+        NEXT k
+    NEXT j
+NEXT i
 
-// OUTPUT sum
-// `
+OUTPUT sum
+`
 
-// const code45 = `DECLARE arr: ARRAY[1: 4, 1: 4] OF INTEGER
-// DECLARE i: INTEGER
-// DECLARE j: INTEGER
+const code45 = `DECLARE arr: ARRAY[1: 4, 1: 4] OF INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
 
-// FOR i <- 1 TO 4
-//     FOR j <- 1 TO 4
-//         arr[i, j] <- i + j
-//     NEXT j
-// NEXT i
+FOR i <- 1 TO 4
+    FOR j <- 1 TO 4
+        arr[i, j] <- i + j
+    NEXT j
+NEXT i
 
-// DECLARE sum: INTEGER
-// sum <- 0
-// FOR i <- 1 TO 4
-//     FOR j <- 1 TO 4
-//         sum <- sum + arr[i, j]
-//     NEXT j
-// NEXT i
+DECLARE sum: INTEGER
+sum <- 0
+FOR i <- 1 TO 4
+    FOR j <- 1 TO 4
+        sum <- sum + arr[i, j]
+    NEXT j
+NEXT i
 
-// OUTPUT sum
-// `
+OUTPUT sum
+`
 
-// const code46 = `PROCEDURE temp()
-//     DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
-//     DECLARE i: INTEGER
-//     DECLARE j: INTEGER
-//     DECLARE k: INTEGER
+const code46 = `PROCEDURE temp()
+    DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
+    DECLARE i: INTEGER
+    DECLARE j: INTEGER
+    DECLARE k: INTEGER
 
-//     FOR i <- 0 TO 3
-//         FOR j <- 0 TO 3
-//             FOR k <- 0 TO 3
-//                 arr[i, j, k] <- i + j + k
-//             NEXT k
-//         NEXT j
-//     NEXT i
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                arr[i, j, k] <- i + j + k
+            NEXT k
+        NEXT j
+    NEXT i
 
-//     DECLARE sum: INTEGER
-//     sum <- 0
-//     FOR i <- 0 TO 3
-//         FOR j <- 0 TO 3
-//             FOR k <- 0 TO 3
-//                 sum <- sum + arr[i, j, k]
-//             NEXT k
-//         NEXT j
-//     NEXT i
-//     OUTPUT sum
-// ENDPROCEDURE
+    DECLARE sum: INTEGER
+    sum <- 0
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                sum <- sum + arr[i, j, k]
+            NEXT k
+        NEXT j
+    NEXT i
+    OUTPUT sum
+ENDPROCEDURE
 
-// CALL temp()
-// `
+CALL temp()
+`
 
-// const code47 = `FUNCTION temp() RETURNS INTEGER
-//     DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
-//     DECLARE i: INTEGER
-//     DECLARE j: INTEGER
-//     DECLARE k: INTEGER
+const code47 = `FUNCTION temp() RETURNS INTEGER
+    DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
+    DECLARE i: INTEGER
+    DECLARE j: INTEGER
+    DECLARE k: INTEGER
 
-//     FOR i <- 0 TO 3
-//         FOR j <- 0 TO 3
-//             FOR k <- 0 TO 3
-//                 arr[i, j, k] <- i + j + k
-//             NEXT k
-//         NEXT j
-//     NEXT i
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                arr[i, j, k] <- i + j + k
+            NEXT k
+        NEXT j
+    NEXT i
 
-//     DECLARE sum: INTEGER
-//     sum <- 0
-//     FOR i <- 0 TO 3
-//         FOR j <- 0 TO 3
-//             FOR k <- 0 TO 3
-//                 sum <- sum + arr[i, j, k]
-//             NEXT k
-//         NEXT j
-//     NEXT i
-//     RETURN sum
-// ENDFUNCTION
+    DECLARE sum: INTEGER
+    sum <- 0
+    FOR i <- 0 TO 3
+        FOR j <- 0 TO 3
+            FOR k <- 0 TO 3
+                sum <- sum + arr[i, j, k]
+            NEXT k
+        NEXT j
+    NEXT i
+    RETURN sum
+ENDFUNCTION
 
-// OUTPUT temp()
-// `
+OUTPUT temp()
+`
+
+const code48 = `DECLARE i: STRING
+DECLARE j: STRING
+i <- "Happy Days"
+j <- "Not happy"
+
+OUTPUT LENGTH(i) + LENGTH(j)
+`
 
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i: INTEGER
@@ -554,47 +562,48 @@ const codes = [
     code4,
     code5,
     code6,
-    // code7,
-    // code8,
-    // code9,
-    // code10,
-    // code11,
-    // code12,
-    // code13,
-    // code14,
-    // code15,
-    // code16,
-    // code17,
-    // code18,
-    // code19,
-    // code20,
+    code7,
+    code8,
+    code9,
+    code10,
+    code11,
+    code12,
+    code13,
+    code14,
+    code15,
+    code16,
+    code17,
+    code18,
+    code19,
+    code20,
     code21,
     code22,
     code23,
     code24,
-    // code25,
-    // code26,
-    // code27,
-    // code28,
-    // code29,
-    // code30,
-    // code31,
-    // code32,
-    // code33,
-    // code34,
-    // code35,
-    // code36,
-    // code37,
-    // code38,
-    // code39,
-    // code40,
-    // code41,
-    // code42,
-    // code43,
-    // code44,
-    // code45,
-    // code46,
-    // code47
+    code25,
+    code26,
+    code27,
+    code28,
+    code29,
+    code30,
+    code31,
+    code32,
+    code33,
+    code34,
+    code35,
+    code36,
+    code37,
+    code38,
+    code39,
+    code40,
+    code41,
+    code42,
+    code43,
+    code44,
+    code45,
+    code46,
+    code47,
+    code48
 ];
 const expected = [
     10,
@@ -604,47 +613,48 @@ const expected = [
     10,
     10,
     11,
-    // 3,
-    // 10,
-    // 11,
-    // 10,
-    // 4,
-    // 5,
-    // 2,
-    // 2,
-    // 1.1 + 2.2 /*floating point inaccuracy*/,
-    // "a",
-    // "v",
-    // -1,
-    // -1,
-    // 6,
+    3,
+    10,
+    11,
+    10,
+    4,
+    5,
+    2,
+    2,
+    1.1 + 2.2 /*floating point inaccuracy*/,
+    "a",
+    "v",
+    -1,
+    -1,
+    6,
     55,
     55,
     1210,
     1210,
-    // "Hello World",
-    // 2147483647,
-    // -1,
-    // "Hello World",
-    // 2,
-    // "nihao",
-    // "编码测试",
-    // 49.5,
-    // 0.05,
-    // 0,
-    // "Hi",
-    // "Hi",
-    // 55,
-    // 55,
-    // "procedure",
-    // 10,
-    // 2,
-    // 22,
-    // 48,
-    // 288,
-    // 80,
-    // 288,
-    // 288
+    "Hello World",
+    2147483647,
+    -1,
+    "Hello World",
+    2,
+    "nihao",
+    "编码测试",
+    49.5,
+    0.05,
+    0,
+    "Hi",
+    "Hi",
+    55,
+    55,
+    "procedure",
+    12,
+    2,
+    22,
+    48,
+    288,
+    80,
+    288,
+    288,
+    19
 ];
 let total = codes.length;
 let compileCount = 0;
