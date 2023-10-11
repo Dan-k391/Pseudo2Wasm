@@ -168,10 +168,11 @@ export abstract class Callable {
             totalSize += value.type.size();
             const offset = this.getLocalOffset(key);
             const basicType = value.type.type;
+            const wasmType = value.wasmType;
             statements.push(this.storeLocal(
                 basicType,
                 this.enclosing.generateConstant(binaryen.i32, offset),
-                this.module.local.get(value.index, binaryen.i32)
+                this.module.local.get(value.index, wasmType)
             ));
         }
         // grow the stack at the total param size
