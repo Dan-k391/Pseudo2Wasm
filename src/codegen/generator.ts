@@ -128,7 +128,6 @@ export class Generator {
     }
 
     public generateBuiltins() {
-
         this.setFunction("LENGTH", new LengthFunction(this.module, this));
         this.getFunction("LENGTH").generate();
     }
@@ -226,7 +225,7 @@ export class Generator {
         }
     }
 
-    public loadGlobal(basicType: basicKind, ptr: ExpressionRef): ExpressionRef {
+    public load(basicType: basicKind, ptr: ExpressionRef): ExpressionRef {
         switch (basicType) {
             case basicKind.INTEGER:
             case basicKind.CHAR:
@@ -239,7 +238,7 @@ export class Generator {
         unreachable();
     }
 
-    public storeGlobal(basicType: basicKind, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
+    public store(basicType: basicKind, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
         switch (basicType) {
             case basicKind.INTEGER:
             case basicKind.CHAR:
@@ -628,7 +627,7 @@ export class Generator {
         const rhs = this.generateExpression(node.right);
         const ptr = this.generateLeftValue(node.left);
         const value = this.convertBasicType(rightBasicType, leftBasicType, rhs);
-        return this.storeGlobal(leftBasicType, ptr, value);
+        return this.store(leftBasicType, ptr, value);
     }
 
     public loadVarExpression(node: VarExprNode): ExpressionRef {
@@ -638,7 +637,7 @@ export class Generator {
         }
         const basicType = type.type;
         const ptr = this.varExpression(node);
-        return this.loadGlobal(basicType, ptr);
+        return this.load(basicType, ptr);
     }
 
     // returns the pointer(offset) of the variable
@@ -656,7 +655,7 @@ export class Generator {
         }
         const basicType = elemType.type;
         const ptr = this.indexExpression(node);
-        return this.loadGlobal(basicType, ptr);
+        return this.load(basicType, ptr);
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -1099,13 +1098,13 @@ export class Generator {
         const initExpr = this.generateExpression(node.start);
 
         // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
-        const init = this.storeGlobal(basicKind.INTEGER, this.generateConstant(binaryen.i32, varOffset), initExpr);
+        const init = this.store(basicKind.INTEGER, this.generateConstant(binaryen.i32, varOffset), initExpr);
 
         const statements = this.generateStatements(node.body);
-        const variable = this.loadGlobal(basicKind.INTEGER, this.generateConstant(binaryen.i32, varOffset));
+        const variable = this.load(basicKind.INTEGER, this.generateConstant(binaryen.i32, varOffset));
 
         const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-        const step = this.storeGlobal(
+        const step = this.store(
             basicKind.INTEGER,
             this.generateConstant(binaryen.i32, varOffset),
             this.module.i32.add(

@@ -403,7 +403,7 @@ export abstract class Callable {
         const rhs = this.generateExpression(node.right);
         const ptr = this.generateLeftValue(node.left);
         const value = this.enclosing.convertBasicType(rightBasicType, leftBasicType, rhs);
-        return this.storeLocal(leftBasicType, ptr, value);
+        return this.enclosing.store(leftBasicType, ptr, value);
     }
 
     protected loadVarExpression(node: VarExprNode): ExpressionRef {
@@ -413,18 +413,17 @@ export abstract class Callable {
         }
         const basicType = type.type;
         const ptr = this.varExpression(node);
-        return this.loadLocal(basicType, ptr);
+        return this.enclosing.load(basicType, ptr);
     }
 
+    // return the absolute pointer
     protected varExpression(node: VarExprNode): ExpressionRef {
         const varName = node.ident.lexeme;
         if (this.locals.has(varName)) {
             const offset = this.getLocalOffset(varName);
-            return this.enclosing.generateConstant(binaryen.i32, offset);
+            return this.calculateAbsolutePointer(this.enclosing.generateConstant(binaryen.i32, offset));
         }
-        else {
-            return this.enclosing.varExpression(node);
-        }
+        return this.enclosing.varExpression(node);
     }
 
     protected loadIndexExpression(node: IndexExprNode): ExpressionRef {
@@ -435,7 +434,7 @@ export abstract class Callable {
         }
         const basicType = elemType.type;
         const ptr = this.indexExpression(node);
-        return this.loadLocal(basicType, ptr);
+        return this.enclosing.load(basicType, ptr);
     }
 
     // obtain the pointer of the value but not setting or loading it
