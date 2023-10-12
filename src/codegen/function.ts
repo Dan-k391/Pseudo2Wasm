@@ -137,7 +137,7 @@ export class DefinedFunction extends Function {
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
-        return this.module.block("__functionReturn", [
+        return this.module.block(null, [
             this.module.global.set(
                 "__stackTop",
                 this.module.global.get("__stackBase", binaryen.i32)
