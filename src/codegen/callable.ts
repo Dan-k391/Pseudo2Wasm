@@ -80,6 +80,37 @@ export abstract class Callable {
         protected label: number = 0) { }
     
     public abstract generate(): void;
+
+    protected prologue(): ExpressionRef {
+        return this.module.block("__callablePrologue", [
+            this.module.i32.store(0, 1, 
+                this.module.global.get("__stackTop", binaryen.i32),
+                this.module.global.get("__stackBase", binaryen.i32),
+                "0"
+            ),
+            this.enclosing.incrementStackTop(4),
+            this.module.global.set(
+                "__stackBase",
+                this.module.global.get("__stackTop", binaryen.i32)
+            )
+        ]);
+    }
+
+    protected epilogue(): ExpressionRef {
+        return this.module.block("__callableEpilogue", [
+            this.module.global.set(
+                "__stackTop",
+                this.module.global.get("__stackBase", binaryen.i32)
+            ),
+            this.module.i32.store(0, 1, 
+                this.module.global.get("__stackBase", binaryen.i32),
+                this.module.i32.load(0, 1, 
+                    this.module.global.get("__stackTop", binaryen.i32), "0"
+                ), "0"
+            ),
+            this.enclosing.decrementStackTop(4)
+        ]);
+    }
     
     // Currently use protected for all methods
     // TODO: switch to return ExpressionRef
@@ -156,6 +187,34 @@ export abstract class Callable {
         }
         unreachable();
     }
+
+    // useless for now
+    // protected pushStackBase(): ExpressionRef {
+    //     return this.module.block(null, [
+    //         this.module.i32.store(0, 1, 
+    //             this.module.global.get("__stackTop", binaryen.i32),
+    //             this.module.global.get("__stackBase", binaryen.i32)
+    //         ),
+    //         this.enclosing.incrementStackTop(
+    //             this.enclosing.generateConstant(binaryen.i32, 4)
+    //         )
+    //     ]);
+    // }
+
+    // // pops the last stackBase to stackBase
+    // protected popStackBase(): ExpressionRef {
+    //     return this.module.block(null, [
+    //         this.module.i32.store(0, 1, 
+    //             this.module.global.get("__stackBase", binaryen.i32),
+    //             this.module.i32.load(0, 1, 
+    //                 this.module.global.get("__stackTop", binaryen.i32)
+    //             ),
+    //         ),
+    //         this.enclosing.decrementStackTop(
+    //             this.enclosing.generateConstant(binaryen.i32, 4)
+    //         )
+    //     ])
+    // }
 
     protected initParams(): Array<ExpressionRef> {
         const statements = new Array<ExpressionRef>();

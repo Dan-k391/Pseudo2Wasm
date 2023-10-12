@@ -99,7 +99,12 @@ export class DefinedFunction extends Function {
 
         const paramType = binaryen.createType(paramWasmTypes);
 
-        const funcBody = [...this.initParams(), ...this.generateStatements(this.body)];
+        const funcBody = [
+            this.prologue(),
+            ...this.initParams(),
+            ...this.generateStatements(this.body),
+            this.epilogue(),
+        ];
         
         // FIXME: single returnType has problem here
         // empty local variable array
@@ -132,6 +137,19 @@ export class DefinedFunction extends Function {
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
-        return this.module.return(this.generateExpression(node.expr));
+        return this.module.block("__functionReturn", [
+            this.module.global.set(
+                "__stackTop",
+                this.module.global.get("__stackBase", binaryen.i32)
+            ),
+            this.module.i32.store(0, 1, 
+                this.module.global.get("__stackBase", binaryen.i32),
+                this.module.i32.load(0, 1, 
+                    this.module.global.get("__stackTop", binaryen.i32), "0"
+                ), "0"
+            ),
+            this.enclosing.decrementStackTop(4),
+            this.module.return(this.generateExpression(node.expr))
+        ]);
     }
 }

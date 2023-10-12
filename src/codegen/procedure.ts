@@ -80,7 +80,12 @@ export class Procedure extends Callable {
 
         const paramType = binaryen.createType(paramWasmTypes);
 
-        const procBody = [...this.initParams(), ...this.generateStatements(this.body)];
+        const procBody = [
+            this.prologue(),
+            ...this.initParams(),
+            ...this.generateStatements(this.body),
+            this.epilogue()
+        ];
 
         // empty local variable array
         this.module.addFunction(this.ident, paramType, binaryen.none, [], this.module.block(null, procBody));

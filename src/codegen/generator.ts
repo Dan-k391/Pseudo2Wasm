@@ -143,7 +143,7 @@ export class Generator {
         throw new RuntimeError("Unknown type '" + type + "'");
     }
 
-    public incrementStackBase(value: ExpressionRef): ExpressionRef {
+    public incrementStackBase(value: number): ExpressionRef {
         return this.module.global.set(
             "__stackBase", 
             this.module.i32.add(
@@ -153,7 +153,7 @@ export class Generator {
         );
     }
 
-    public incrementStackTop(value: ExpressionRef): ExpressionRef {
+    public incrementStackTop(value: number): ExpressionRef {
         return this.module.global.set(
             "__stackTop", 
             this.module.i32.add(
@@ -162,6 +162,46 @@ export class Generator {
             )
         );
     }
+
+    public decrementStackBase(value: number): ExpressionRef {
+        return this.module.global.set(
+            "__stackBase", 
+            this.module.i32.sub(
+                this.module.global.get("__stackBase", binaryen.i32),
+                this.generateConstant(binaryen.i32, value)
+            )
+        );
+    }
+
+    public decrementStackTop(value: number): ExpressionRef {
+        return this.module.global.set(
+            "__stackTop", 
+            this.module.i32.sub(
+                this.module.global.get("__stackTop", binaryen.i32),
+                this.generateConstant(binaryen.i32, value)
+            )
+        );
+    }
+
+    // public push(value: ExpressionRef, size: number): ExpressionRef {
+    //     return this.module.block(null, [
+    //         this.module.i32.store(0, 1, 
+    //             this.module.global.get("__stackTop", binaryen.i32),
+    //             value
+    //         ),
+    //         this.incrementStackTop(this.generateConstant(binaryen.i32, size))
+    //     ]);
+    // }
+
+    // there is no place to return the popped value so don't use this for now
+    // public pop(): ExpressionRef {
+    //     return this.module.block(null, [
+    //         this.module.i32.load(0, 1, 
+    //             this.module.global.get("__stackTop", binaryen.i32),
+    //         ),
+    //         this.incrementStackTop(this.generateConstant(binaryen.i32, 4))
+    //     ]);
+    // }
 
     public getOffset(type: Type): number {
         const old = this.offset;
