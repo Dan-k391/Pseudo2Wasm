@@ -76,8 +76,14 @@ export abstract class Callable {
         public params: Map<string, Param>,
         protected locals: Map<string, Local> = new Map<string, Local>(),
         // the local offset (relative to stackbase)
-        protected offset: number = 0,
-        protected label: number = 0) { }
+        // starts from 4, the first item is the stackbase when calling this function
+        protected offset: number = 4,
+        protected label: number = 0,
+        // returnIndex is the index of the current local index that can be used
+        // just like registers lol
+        // specifically used for recording the return 
+        // initializes as paramNumber
+        protected returnIndex: number = params.size) { }
     
     public abstract generate(): void;
 
@@ -88,7 +94,7 @@ export abstract class Callable {
                 this.module.global.get("__stackBase", binaryen.i32),
                 "0"
             ),
-            this.enclosing.incrementStackTop(4),
+            // this.enclosing.incrementStackTop(4),
             this.module.global.set(
                 "__stackBase",
                 this.module.global.get("__stackTop", binaryen.i32)
@@ -102,11 +108,11 @@ export abstract class Callable {
                 "__stackTop",
                 this.module.global.get("__stackBase", binaryen.i32)
             ),
-            this.module.i32.store(0, 1, 
-                this.module.global.get("__stackBase", binaryen.i32),
+            this.module.global.set(
+                "__stackBase",
                 this.module.i32.load(0, 1, 
                     this.module.global.get("__stackTop", binaryen.i32), "0"
-                ), "0"
+                )
             ),
             this.enclosing.decrementStackTop(4)
         ]);
@@ -216,9 +222,10 @@ export abstract class Callable {
     //     ])
     // }
 
-    protected initParams(): Array<ExpressionRef> {
+    protected initParams(): ExpressionRef {
         const statements = new Array<ExpressionRef>();
-        let totalSize = 0;
+        // starts from 4, the first item is the stackbase when calling this function
+        let totalSize = 4;
         for (const [key, value] of this.params) {
             this.setLocal(key, value.type, value.wasmType);
             if (value.type.kind !== typeKind.BASIC) {
@@ -236,7 +243,7 @@ export abstract class Callable {
         }
         // grow the stack at the total param size
         statements.push(this.enclosing.incrementStackTop(totalSize));
-        return statements;
+        return this.module.block("__paramInit", statements);
     }
 
     protected resolveType(expression: Expr): Type {

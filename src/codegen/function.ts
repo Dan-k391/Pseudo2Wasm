@@ -101,14 +101,20 @@ export class DefinedFunction extends Function {
 
         const funcBody = [
             this.prologue(),
-            ...this.initParams(),
+            this.initParams(),
             ...this.generateStatements(this.body),
             this.epilogue(),
         ];
         
         // FIXME: single returnType has problem here
-        // empty local variable array
-        this.module.addFunction(this.ident, paramType, this.wasmReturnType, [], this.module.block(null, funcBody));
+        // the only local variable: the return value variable
+        this.module.addFunction(
+            this.ident,
+            paramType,
+            this.wasmReturnType,
+            [this.wasmReturnType],
+            this.module.block(null, funcBody)
+        );
     }
 
     protected override generateStatement(statement: Stmt): ExpressionRef {
@@ -137,19 +143,30 @@ export class DefinedFunction extends Function {
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
+        const type = this.resolveType(node.expr);
+        const returnVal = this.generateExpression(node.expr);
         return this.module.block(null, [
+            this.module.local.set(
+                this.returnIndex,
+                this.enclosing.convertType(type, this.returnType, returnVal)
+            ),
             this.module.global.set(
                 "__stackTop",
                 this.module.global.get("__stackBase", binaryen.i32)
             ),
-            this.module.i32.store(0, 1, 
-                this.module.global.get("__stackBase", binaryen.i32),
+            this.module.global.set(
+                "__stackBase",
                 this.module.i32.load(0, 1, 
                     this.module.global.get("__stackTop", binaryen.i32), "0"
-                ), "0"
+                )
             ),
             this.enclosing.decrementStackTop(4),
-            this.module.return(this.generateExpression(node.expr))
+            this.module.return(
+                this.module.local.get(
+                    this.returnIndex,
+                    this.wasmReturnType
+                )
+            )
         ]);
     }
 }

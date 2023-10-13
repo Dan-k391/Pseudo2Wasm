@@ -82,7 +82,7 @@ export class Procedure extends Callable {
 
         const procBody = [
             this.prologue(),
-            ...this.initParams(),
+            this.initParams(),
             ...this.generateStatements(this.body),
             this.epilogue()
         ];
