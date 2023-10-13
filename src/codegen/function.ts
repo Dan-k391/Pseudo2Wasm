@@ -154,13 +154,13 @@ export class DefinedFunction extends Function {
                 "__stackTop",
                 this.module.global.get("__stackBase", binaryen.i32)
             ),
+            this.enclosing.decrementStackTop(4),
             this.module.global.set(
                 "__stackBase",
                 this.module.i32.load(0, 1, 
                     this.module.global.get("__stackTop", binaryen.i32), "0"
                 )
             ),
-            this.enclosing.decrementStackTop(4),
             this.module.return(
                 this.module.local.get(
                     this.returnIndex,

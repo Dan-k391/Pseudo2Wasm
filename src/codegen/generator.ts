@@ -111,8 +111,8 @@ export class Generator {
         this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
 
         this.generateBuiltins();
-        this.module.setStart(this.generateBody(this.ast.body));
-        // this.generateBody(this.ast.body);
+        // this.module.setStart(this.generateBody(this.ast.body));
+        this.generateBody(this.ast.body);
 
         const encoder = new TextEncoder();
         this.module.setMemory(0, 65536, null, 
