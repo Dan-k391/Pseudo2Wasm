@@ -1,7 +1,10 @@
 import binaryen from "binaryen";
 import { Token } from "./lex/token";
 import { RuntimeError } from "./error";
-import { Type, BasicType, basicKind, ArrayType } from "./type/type";
+import { Type } from "./type/type";
+import { basicKind } from "./type/basic";
+import { ArrayType } from "./type/array";
+import { BasicType } from "./type/basic";
 
 export function convertTokenToType(token: Token): Type {
     switch (token.lexeme) {

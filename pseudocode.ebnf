@@ -8,14 +8,13 @@ ProcDef ::= "PROCEDURE" IDENT "(" [Params] ")"  "ENDPROCEDURE"
 Params ::= Param {"," Param}
 Param ::= ["BYVAL" | "BYREF"] IDENT ":" Type
 
-Expr ::= Equality
+Expr ::= Assign
+Assign ::= Equality <- Assign
 Equality ::= Comparison {("=" | "<>" | "OR") Comparison}
 Comparison ::= Term {("<" | "<=" | ">" | ">=" | "AND") Term}
 Term ::= Factor {("+" | "-" | "&") Factor}
 Factor ::= Unary {("*" | "/" | "MOD") Unary}
 Unary ::= ["+" | "-" | "NOT"] Unary | Pointer
-(* The below rule should be the correct one but i do not know how to implement it with a recursive descent parser. *)
-(* Pointer ::= "^" Pointer | Pointer "^" | LVal | Call *)
 Pointer ::= "^" Pointer | Pointer { "^" } | Call
 
 Args ::= Expr {"," Expr}
@@ -28,16 +27,18 @@ Primary ::= IDENT |
     STRING |
     BOOLEAN |
     "(" Expr ")"|
-    Primary "[" Args "]" |
-    Primary "." IDENT |
+    Primary Select |
+    Primary Index |
     Call
+
+Select ::= "[" Args "]"
+Index ::= "." IDENT
 
 Statement ::= Decl | TypeDecl | Assign | If | While | Repeat | For | Return
 Decl ::= "DECLARE" IDENT ":" Type | "DECLARE" IDENT ":" "ARRAY" "OF" Type
 TypeDecl ::= "TYPE" IDENT {Decl} "ENDTYPE" |
     "TYPE" IDENT "=" "(" Value {"," Value} ")" |
     "TYPE" IDENT "=" "^" Type
-Assign ::= Expr "<-" Expr
 If ::= "IF" Expr "THEN" {Statement} ["ELSE" {Statement}] "ENDIF"
 While ::= "WHILE" Expr {Statement} "ENDWHILE"
 Repeat ::= "REPEAT" {Statement} "UNTIL" Expr

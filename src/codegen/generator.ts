@@ -15,7 +15,7 @@ import {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
-    PointerDeclNode,
+    PtrDeclNode,
     TypeDefNode,
     AssignNode,
     IfNode,
@@ -26,8 +26,8 @@ import {
     VarExprNode,
     IndexExprNode,
     SelectExprNode,
-    CallFunctionExprNode,
-    CallProcedureExprNode,
+    CallFuncExprNode,
+    CallProcExprNode,
     UnaryExprNode,
     BinaryExprNode,
     IntegerExprNode,
@@ -47,13 +47,12 @@ import { Global } from "./global";
 import { Local } from "./local";
 import { 
     Type,
-    typeKind,
-    basicKind,
-    BasicType,
-    ArrayType,
-    RecordType,
-    PointerType
-} from "../type/type";
+    typeKind} from "../type/type";
+import { basicKind } from "../type/basic";
+import { PointerType } from "../type/pointer";
+import { RecordType } from "../type/record";
+import { ArrayType } from "../type/array";
+import { BasicType } from "../type/basic";
 import { minimalCompatableBasicType } from "../type/type";
 import { String } from "./string";
 import { LengthFunction } from "./builtin";
@@ -111,8 +110,8 @@ export class Generator {
         this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
 
         this.generateBuiltins();
-        // this.module.setStart(this.generateBody(this.ast.body));
-        this.generateBody(this.ast.body);
+        this.module.setStart(this.generateBody(this.ast.body));
+        // this.generateBody(this.ast.body);
 
         const encoder = new TextEncoder();
         this.module.setMemory(0, 65536, null, 
@@ -399,8 +398,8 @@ export class Generator {
                 return this.resolveIndexExprNodeType(expression);
             case nodeKind.SelectExprNode:
                 return this.resolveSelectExprNodeType(expression);
-            case nodeKind.CallFunctionExprNode:
-                return this.resolveCallFunctionExprNodeType(expression);
+            case nodeKind.CallFuncExprNode:
+                return this.resolveCallFuncExprNodeType(expression);
             case nodeKind.UnaryExprNode:
                 // The type of a expression remains the same after a unary operation 
                 // (as far as I can think)
@@ -437,10 +436,10 @@ export class Generator {
         if (rVal.kind !== typeKind.RECORD) {
             throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
         }
-        return rVal.fields.get(node.ident.lexeme) as Type;
+        return rVal.fields.get(node.ident.lexeme)!;
     }
 
-    private resolveCallFunctionExprNodeType(node: CallFunctionExprNode): Type {
+    private resolveCallFuncExprNodeType(node: CallFuncExprNode): Type {
         // FIXME: complicated expression calls are not implemented
         if (node.callee.kind === nodeKind.VarExprNode) {
             const funcName = node.callee.ident.lexeme;
@@ -546,8 +545,8 @@ export class Generator {
                         }
                         throw new RuntimeError("Cannot convert" + rightBasicType + "to" + leftBasicType);
                 }
-                default:
-                    unreachable();
+            default:
+                unreachable();
         }
     }
 
@@ -621,9 +620,9 @@ export class Generator {
                 return this.loadIndexExpression(expression);
             case nodeKind.SelectExprNode:
                 return this.selectExpression(expression);
-            case nodeKind.CallFunctionExprNode:
+            case nodeKind.CallFuncExprNode:
                 return this.callFunctionExpression(expression);
-            case nodeKind.CallProcedureExprNode:
+            case nodeKind.CallProcExprNode:
                 return this.callProcedureExpression(expression);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression);
@@ -761,7 +760,7 @@ export class Generator {
         return this.module.i32.add(expr, this.generateConstant(binaryen.i32, rVal.offset(node.ident.lexeme)));
     }
 
-    private callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
+    private callFunctionExpression(node: CallFuncExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
             const funcName = node.callee.ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
@@ -783,7 +782,7 @@ export class Generator {
         throw new RuntimeError("Not implemented yet");
     }
 
-    private callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
+    private callProcedureExpression(node: CallProcExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
             const procName = node.callee.ident.lexeme;
             const procArgs = new Array<ExpressionRef>();
@@ -943,10 +942,10 @@ export class Generator {
     private generateStatements(statements: Array<Stmt>): Array<ExpressionRef> {
         const stmts = new Array<ExpressionRef>();
         for (const statement of statements) {
-            if (statement.kind == nodeKind.FuncDefNode) {
+            if (statement.kind === nodeKind.FuncDefNode) {
                 this.generateFunctionDefinition(statement);
             }
-            else if (statement.kind == nodeKind.ProcDefNode) {
+            else if (statement.kind === nodeKind.ProcDefNode) {
                 this.generateProcedureDefinition(statement);
             }
             else {
@@ -968,7 +967,7 @@ export class Generator {
                 return this.varDeclStatement(statement);
             case nodeKind.ArrDeclNode:
                 return this.arrDeclStatement(statement);
-            case nodeKind.PointerDeclNode:
+            case nodeKind.PtrDeclNode:
                 return this.pointerDeclStatement(statement);
             case nodeKind.IfNode:
                 return this.ifStatement(statement);
@@ -1036,7 +1035,7 @@ export class Generator {
         ]);
     }
 
-    private pointerDeclStatement(node: PointerDeclNode): ExpressionRef {
+    private pointerDeclStatement(node: PtrDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
         const baseType = convertToBasicType(node.type);

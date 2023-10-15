@@ -14,7 +14,8 @@
 
 import binaryen from "binaryen";
 import { Local } from "./local";
-import { BasicType, basicKind } from "../type/type";
+import { basicKind } from "../type/basic";
+import { BasicType } from "../type/basic";
 import { Function } from "./function";
 import { Generator } from "./generator";
 import { Param } from "./param";

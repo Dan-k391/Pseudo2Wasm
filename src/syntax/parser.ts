@@ -17,7 +17,7 @@ import {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
-    PointerDeclNode,
+    PtrDeclNode,
     TypeDefNode,
     VarAssignNode,
     ArrAssignNode,
@@ -29,8 +29,8 @@ import {
     VarExprNode,
     IndexExprNode,
     SelectExprNode,
-    CallFunctionExprNode,
-    CallProcedureExprNode,
+    CallFuncExprNode,
+    CallProcExprNode,
     UnaryExprNode,
     BinaryExprNode,
     DerefExprNode,
@@ -162,7 +162,7 @@ export class Parser {
         return expr;
     }
 
-    private finishFunctionCall(callee: Expr): CallFunctionExprNode {
+    private finishFunctionCall(callee: Expr): CallFuncExprNode {
         const args: Array<Expr> = new Array<Expr>();
         if (!this.check(tokenType.RIGHT_PAREN)) {
             do {
@@ -175,10 +175,10 @@ export class Parser {
             while (this.match(tokenType.COMMA));
         }
         this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
-        return new CallFunctionExprNode(callee, args);
+        return new CallFuncExprNode(callee, args);
     }
 
-    private finishProcedureCall(callee: Expr): CallProcedureExprNode {
+    private finishProcedureCall(callee: Expr): CallProcExprNode {
         const args: Array<Expr> = new Array<Expr>();
         if (!this.check(tokenType.RIGHT_PAREN)) {
             do {
@@ -191,7 +191,7 @@ export class Parser {
             while (this.match(tokenType.COMMA));
         }
         this.consume("Expect ')' after arguments.", tokenType.RIGHT_PAREN);
-        return new CallProcedureExprNode(callee, args);
+        return new CallProcExprNode(callee, args);
     }
 
     // this implementation looks ugly, but works fine
@@ -299,7 +299,7 @@ export class Parser {
         if (this.match(tokenType.EQUAL)) {
             this.consume("Expected caret", tokenType.CARET);
             const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
-            return new PointerDeclNode(ident, type);
+            return new PtrDeclNode(ident, type);
         }
         const component: Array<Stmt> = new Array<VarDeclNode>();
         while (!this.check(tokenType.ENDTYPE) && !this.isAtEnd()) {

@@ -3,6 +3,7 @@
  */
 
 import { Token, tokenType } from "../lex/token";
+import { Type } from "../type/type";
 import { ParamNode } from "./param";
 
 
@@ -14,7 +15,7 @@ export const enum nodeKind {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
-    PointerDeclNode,
+    PtrDeclNode,
     TypeDefNode,
     AssignNode,
     VarAssignNode,
@@ -27,8 +28,8 @@ export const enum nodeKind {
     VarExprNode,
     IndexExprNode,
     SelectExprNode,
-    CallFunctionExprNode,
-    CallProcedureExprNode,
+    CallFuncExprNode,
+    CallProcExprNode,
     UnaryExprNode,
     BinaryExprNode,
     DerefExprNode,
@@ -46,12 +47,13 @@ export abstract class BaseNode {
     public abstract readonly kind: nodeKind;
 }
 
+// every Expr has type property
 export type Expr = AssignNode |
     VarExprNode |
     IndexExprNode |
     SelectExprNode |
-    CallFunctionExprNode |
-    CallProcedureExprNode |
+    CallFuncExprNode |
+    CallProcExprNode |
     UnaryExprNode |
     BinaryExprNode |
     DerefExprNode |
@@ -68,7 +70,7 @@ export type Stmt = ProgramNode |
     ReturnNode |
     VarDeclNode |
     ArrDeclNode |
-    PointerDeclNode |
+    PtrDeclNode |
     TypeDefNode |
     VarAssignNode |
     ArrAssignNode |
@@ -146,6 +148,7 @@ export class ReturnNode extends BaseNode {
 
 export class VarExprNode extends BaseNode {
     public readonly kind = nodeKind.VarExprNode;
+    public type!: Type;
     public ident: Token;
 
     constructor(ident: Token) {
@@ -160,6 +163,7 @@ export class VarExprNode extends BaseNode {
 
 export class IndexExprNode extends BaseNode {
     public readonly kind = nodeKind.IndexExprNode;
+    public type!: Type;
     public expr: Expr;
     public indexes: Array<Expr>;
 
@@ -176,6 +180,7 @@ export class IndexExprNode extends BaseNode {
 
 export class SelectExprNode extends BaseNode {
     public readonly kind = nodeKind.SelectExprNode;
+    public type!: Type;
     public expr: Expr;
     public ident: Token;
 
@@ -191,8 +196,9 @@ export class SelectExprNode extends BaseNode {
 }
 
 // seperate the function and procedure calls
-export class CallFunctionExprNode extends BaseNode {
-    public readonly kind = nodeKind.CallFunctionExprNode;
+export class CallFuncExprNode extends BaseNode {
+    public readonly kind = nodeKind.CallFuncExprNode;
+    public type!: Type;
     public callee: Expr;
     public args: Array<Expr>;
 
@@ -203,12 +209,12 @@ export class CallFunctionExprNode extends BaseNode {
     }
 
     public toString(): string {
-        return "CallFunctionExprNode";
+        return "CallFuncExprNode";
     }
 }
 
-export class CallProcedureExprNode extends BaseNode {
-    public readonly kind = nodeKind.CallProcedureExprNode;
+export class CallProcExprNode extends BaseNode {
+    public readonly kind = nodeKind.CallProcExprNode;
     public callee: Expr;
     public args: Array<Expr>;
 
@@ -219,12 +225,13 @@ export class CallProcedureExprNode extends BaseNode {
     }
 
     public toString(): string {
-        return "CallProcedureExprNode";
+        return "CallProcExprNode";
     }
 }
 
 export class UnaryExprNode extends BaseNode {
     public readonly kind = nodeKind.UnaryExprNode;
+    public type!: Type;
     public operator: Token;
     public expr: Expr;
 
@@ -241,6 +248,7 @@ export class UnaryExprNode extends BaseNode {
 
 export class BinaryExprNode extends BaseNode {
     public readonly kind = nodeKind.BinaryExprNode;
+    public type!: Type;
     public left: Expr;
     public operator: Token;
     public right: Expr;
@@ -259,6 +267,7 @@ export class BinaryExprNode extends BaseNode {
 
 export class DerefExprNode extends BaseNode {
     public readonly kind = nodeKind.DerefExprNode;
+    public type!: Type;
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
@@ -273,6 +282,7 @@ export class DerefExprNode extends BaseNode {
 
 export class AddrExprNode extends BaseNode {
     public readonly kind = nodeKind.AddrExprNode;
+    public type!: Type;
     public leftValue: Expr;
 
     constructor(leftValue: Expr) {
@@ -287,6 +297,7 @@ export class AddrExprNode extends BaseNode {
 
 export class IntegerExprNode extends BaseNode {
     public readonly kind = nodeKind.IntegerExprNode;
+    public type!: Type;
     public value: number;
 
     constructor(value: number) {
@@ -301,6 +312,7 @@ export class IntegerExprNode extends BaseNode {
 
 export class RealExprNode extends BaseNode {
     public readonly kind = nodeKind.RealExprNode;
+    public type!: Type;
     public value: number;
 
     constructor(value: number) {
@@ -315,6 +327,7 @@ export class RealExprNode extends BaseNode {
 
 export class CharExprNode extends BaseNode {
     public readonly kind = nodeKind.CharExprNode;
+    public type!: Type;
     public value: string;
 
     constructor(value: string) {
@@ -329,6 +342,7 @@ export class CharExprNode extends BaseNode {
 
 export class StringExprNode extends BaseNode {
     public readonly kind = nodeKind.StringExprNode;
+    public type!: Type;
     public value: string;
 
     constructor(value: string) {
@@ -343,6 +357,7 @@ export class StringExprNode extends BaseNode {
 
 export class BoolExprNode extends BaseNode {
     public readonly kind = nodeKind.BoolExprNode;
+    public type!: Type;
     public value: boolean;
 
     constructor(value: boolean) {
@@ -394,8 +409,8 @@ export class ArrDeclNode extends BaseNode {
     }
 }
 
-export class PointerDeclNode extends BaseNode {
-    public readonly kind = nodeKind.PointerDeclNode;
+export class PtrDeclNode extends BaseNode {
+    public readonly kind = nodeKind.PtrDeclNode;
     public ident: Token;
     public type: Token;
 
@@ -406,7 +421,7 @@ export class PointerDeclNode extends BaseNode {
     }
 
     public toString(): string {
-        return "PointerDeclNode";
+        return "PtrDeclNode";
     }
 }
 

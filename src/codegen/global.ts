@@ -2,12 +2,11 @@
 import binaryen from "binaryen";
 import { 
     Type,
-    typeKind,
-    basicKind,
-    BasicType,
-    ArrayType,
-    RecordType
-} from "../type/type";
+    typeKind} from "../type/type";
+import { basicKind } from "../type/basic";
+import { RecordType } from "../type/record";
+import { ArrayType } from "../type/array";
+import { BasicType } from "../type/basic";
 
 type WasmType = binaryen.Type;
 

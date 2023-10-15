@@ -4,6 +4,7 @@ import binaryen from "binaryen";
 import { Scanner } from "./lex/scanner";
 import { Parser } from "./syntax/parser";
 import { Generator } from "./codegen/generator";
+import { Checker } from "./type/checker";
 
 export class Compiler {
     private input: string;
@@ -17,11 +18,14 @@ export class Compiler {
         const tokens = scanner.scan();
         const parser = new Parser(tokens);
         const ast = parser.parse();
+        const checker = new Checker(ast);
+        const typedAst = checker.check();
         if (log) {
             console.log(tokens);
             console.log(ast);
+            console.log(typedAst);
         }
-        const generator = new Generator(ast);
+        const generator = new Generator(typedAst);
         const module = generator.generate();
         return module;
     }
@@ -109,12 +113,12 @@ export class Compiler {
         const { instance } = await WebAssembly.instantiate(wasm, importObect);
 
         // for debug
-        debugger;
-        const main = instance.exports.main as CallableFunction;
-        const start = new Date().getTime();
-        main();
-        const end = new Date().getTime();
-        console.log("Execution time: ", end - start);
+        // debugger;
+        // const main = instance.exports.main as CallableFunction;
+        // const start = new Date().getTime();
+        // main();
+        // const end = new Date().getTime();
+        // console.log("Execution time: ", end - start);
 
         return correct;
     }

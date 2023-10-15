@@ -24,8 +24,8 @@ import {
     VarExprNode,
     IndexExprNode,
     SelectExprNode,
-    CallFunctionExprNode,
-    CallProcedureExprNode,
+    CallFuncExprNode,
+    CallProcExprNode,
     UnaryExprNode,
     BinaryExprNode,
     IntegerExprNode,
@@ -42,12 +42,11 @@ import { convertToBasicType, convertToWasmType, unreachable } from "../util";
 import { Local } from "./local";
 import { 
     Type,
-    typeKind,
-    basicKind,
-    BasicType,
-    ArrayType,
-    RecordType
-} from "../type/type";
+    typeKind} from "../type/type";
+import { basicKind } from "../type/basic";
+import { RecordType } from "../type/record";
+import { ArrayType } from "../type/array";
+import { BasicType } from "../type/basic";
 import { minimalCompatableBasicType } from "../type/type";
 import { Generator } from "./generator";
 import { Callable } from "./callable";

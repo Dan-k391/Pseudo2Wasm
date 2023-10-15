@@ -24,8 +24,8 @@ import {
     VarExprNode,
     IndexExprNode,
     SelectExprNode,
-    CallFunctionExprNode,
-    CallProcedureExprNode,
+    CallFuncExprNode,
+    CallProcExprNode,
     UnaryExprNode,
     BinaryExprNode,
     IntegerExprNode,
@@ -42,12 +42,11 @@ import { convertToBasicType, convertToWasmType, unreachable } from "../util";
 import { Local } from "./local";
 import { 
     Type,
-    typeKind,
-    basicKind,
-    BasicType,
-    ArrayType,
-    RecordType
-} from "../type/type";
+    typeKind} from "../type/type";
+import { basicKind } from "../type/basic";
+import { RecordType } from "../type/record";
+import { ArrayType } from "../type/array";
+import { BasicType } from "../type/basic";
 import { minimalCompatableBasicType } from "../type/type";
 import { Generator } from "./generator";
 
@@ -101,6 +100,7 @@ export abstract class Callable {
     }
 
     // a very confusing concept here is that the stack starts from lower address to higher address
+    // it grows uppwards
     // therefore, the pop a operation can be transformsed into 2 operations
     // sub rsp, 4
     // load b, rsp
@@ -258,8 +258,8 @@ export abstract class Callable {
                 return this.resolveIndexExprNodeType(expression);
             case nodeKind.SelectExprNode:
                 return this.resolveSelectExprNodeType(expression);
-            case nodeKind.CallFunctionExprNode:
-                return this.resolveCallFunctionExprNodeType(expression);
+            case nodeKind.CallFuncExprNode:
+                return this.resolveCallFuncExprNodeType(expression);
             case nodeKind.UnaryExprNode:
                 // The type of a expression remains the same after a unary operation 
                 // (as far as I can think)
@@ -305,7 +305,7 @@ export abstract class Callable {
         return rVal.fields.get(node.ident.lexeme) as Type;
     }
 
-    protected resolveCallFunctionExprNodeType(node: CallFunctionExprNode): Type {
+    protected resolveCallFuncExprNodeType(node: CallFuncExprNode): Type {
         // FIXME: complicated expression calls are not implemented
         if (node.callee.kind === nodeKind.VarExprNode) {
             const funcName = node.callee.ident.lexeme;
@@ -426,9 +426,9 @@ export abstract class Callable {
                 return this.loadIndexExpression(expression);
             case nodeKind.SelectExprNode:
                 return this.selectExpression(expression);
-            case nodeKind.CallFunctionExprNode:
+            case nodeKind.CallFuncExprNode:
                 return this.callFunctionExpression(expression);
-            case nodeKind.CallProcedureExprNode:
+            case nodeKind.CallProcExprNode:
                 return this.callProcedureExpression(expression);
             case nodeKind.UnaryExprNode:
                 return this.unaryExpression(expression);
@@ -569,7 +569,7 @@ export abstract class Callable {
         return this.module.i32.add(expr, this.enclosing.generateConstant(binaryen.i32, rVal.offset(node.ident.lexeme)));
     }
 
-    protected callFunctionExpression(node: CallFunctionExprNode): ExpressionRef {
+    protected callFunctionExpression(node: CallFuncExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
             const funcName = node.callee.ident.lexeme;
             const funcArgs = new Array<ExpressionRef>();
@@ -591,7 +591,7 @@ export abstract class Callable {
         throw new RuntimeError("Not implemented yet");
     }
 
-    protected callProcedureExpression(node: CallProcedureExprNode): ExpressionRef {
+    protected callProcedureExpression(node: CallProcExprNode): ExpressionRef {
         if (node.callee.kind === nodeKind.VarExprNode) {
             const procName = node.callee.ident.lexeme;
             const procArgs = new Array<ExpressionRef>();
