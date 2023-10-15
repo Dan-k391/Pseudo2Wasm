@@ -113,6 +113,10 @@ export class Checker {
         this.curScope.insertFunc(funcName, func);
     }
 
+    private getFuncType(name: Token): FunctionType {
+        return this.curScope.getFuncType(name.lexeme);
+    }
+
     private visitFuncDef(node: FuncDefNode) {
         this.beginScope(true);
         for (const param of node.params) {
@@ -129,10 +133,6 @@ export class Checker {
         }
         this.visitStmts(node.body);
         this.endScope();
-    }
-
-    private getFuncReturnType(name: Token): Type {
-        return this.curScope.getFuncReturnType(name.lexeme);
     }
 
     private visitExpr(expr: Expr): Type {
@@ -166,6 +166,7 @@ export class Checker {
         }
     }
 
+    // TODO: check if can convert
     // assign has no type
     private assignExpr(node: AssignNode): Type {
         const leftType = this.visitExpr(node.left);
@@ -202,8 +203,18 @@ export class Checker {
 
     private callFuncExpr(node: CallFuncExprNode): Type {
         if (node.callee.kind === nodeKind.VarExprNode) {
-            // TODO: check param types
-            node.type = this.getFuncReturnType(node.callee.ident);
+            const funcName = node.callee.ident.lexeme;
+            const func = this.getFuncType(node.callee.ident);
+            if (func.paramTypes.size !== node.args.length) {
+                throw new RuntimeError("Function '" + funcName + "' expects " + func.paramTypes.size + " arguments, but " + node.args.length + " are provided");
+            }
+            for (let i = 0, paramNames = Array.from(func.paramTypes.keys()); i < node.args.length; i++) {
+                const arg = node.args[i]; 
+                const expr = this.visitExpr(arg);
+                const paramType = func.paramTypes.get(paramNames[i]);
+                // TODO: check if can convert
+            }
+            node.type = func.returnType;
             return node.type;
         }
         throw new RuntimeError("Not implemented yet");

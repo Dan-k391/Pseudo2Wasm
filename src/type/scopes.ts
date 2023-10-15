@@ -38,13 +38,13 @@ export class Scope {
         this.functions.set(name, functionType);
     }
 
-    public getFuncReturnType(name: string): Type {
+    public getFuncType(name: string): FunctionType {
         if (!this.functions.has(name)) {
             if (!this.parent) {
                 throw new RuntimeError("Unknown Function '" + name + "'");
             }
-            return this.parent.getFuncReturnType(name);
+            return this.parent.getFuncType(name);
         }
-        return this.functions.get(name)!.returnType;
+        return this.functions.get(name)!;
     }
 }
