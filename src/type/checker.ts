@@ -33,11 +33,12 @@ import {
     StringExprNode,
     BoolExprNode,
     OutputNode,
-    InputNode
+    InputNode,
+    CastExprNode
 } from "../syntax/ast";
 import { convertToBasicType, unreachable } from "../util";
 import { Scope } from "./scopes";
-import { Type, typeKind } from "./type";
+import { NoneType, Type, commonBasicType, compatable, compatableBasic, typeKind } from "./type";
 import { basicKind } from "./basic";
 import { BasicType } from "./basic";
 import { FunctionType } from "./function";
@@ -135,6 +136,13 @@ export class Checker {
         this.endScope();
     }
 
+    // arithmetic conversion for basic type
+    private arithConv(node: Expr, type: basicKind): Expr {
+        node = new CastExprNode(node);
+        node.type = new BasicType(type);
+        return node;
+    }
+
     private visitExpr(expr: Expr): Type {
         switch (expr.kind) {
             case nodeKind.AssignNode:
@@ -175,7 +183,16 @@ export class Checker {
         if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
             throw new RuntimeError("not implemented");
         }
-        return new BasicType(basicKind.NONE);
+        
+        const leftBasicType = leftType.type;
+        const rightBasicType = rightType.type;
+
+        if (!compatableBasic(leftBasicType, rightBasicType)) {
+            throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
+        }
+
+        node.right = this.arithConv(node.right, leftBasicType);
+        return new NoneType();
     }
 
     private varExpr(node: VarExprNode): Type {
@@ -222,7 +239,7 @@ export class Checker {
 
     // PROCEDUREs do not have a return value
     private callProcExpr(node: CallProcExprNode): Type {
-        return new BasicType(basicKind.NONE);
+        return new NoneType();
     }
 
     private unaryExpr(node: UnaryExprNode): Type {   
@@ -253,116 +270,31 @@ export class Checker {
             case tokenType.PLUS:
             case tokenType.MINUS:
             case tokenType.STAR:
-            case tokenType.SLASH:
-                switch (leftBasicType) {
-                    case basicKind.INTEGER:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.CHAR ||
-                            rightBasicType == basicKind.BOOLEAN) {
-                            node.type = new BasicType(basicKind.INTEGER);
-                        }
-                        else if (rightBasicType == basicKind.REAL) {
-                            node.type = new BasicType(basicKind.REAL);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                    case basicKind.REAL:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.REAL) {
-                            node.type = new BasicType(basicKind.REAL);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                    case basicKind.CHAR:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.CHAR ||
-                            rightBasicType == basicKind.BOOLEAN) {
-                            node.type = new BasicType(basicKind.INTEGER);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                    case basicKind.STRING:
-                        // FIXME: handle concat
-                        throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        break;
-                    case basicKind.BOOLEAN:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.CHAR ||
-                            rightBasicType == basicKind.BOOLEAN) {
-                            node.type = new BasicType(basicKind.INTEGER);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                }
+            case tokenType.SLASH: {
+                const type = commonBasicType(leftBasicType, rightBasicType);
+                node.type = new BasicType(type);
+                node.left = this.arithConv(node.left, type);
+                node.right = this.arithConv(node.right, type);
+                break;
+            }
             // logical operators
             case tokenType.EQUAL:
             case tokenType.LESS_GREATER:
             case tokenType.LESS:
             case tokenType.GREATER:
             case tokenType.LESS_EQUAL:
-            case tokenType.GREATER_EQUAL:
-                switch (leftBasicType) {
-                    case basicKind.INTEGER:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.REAL ||
-                            rightBasicType == basicKind.CHAR ||
-                            rightBasicType == basicKind.BOOLEAN) {
-                            node.type = new BasicType(basicKind.BOOLEAN);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                    case basicKind.REAL:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.REAL) {
-                            node.type = new BasicType(basicKind.BOOLEAN);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                    case basicKind.CHAR:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.CHAR ||
-                            rightBasicType == basicKind.BOOLEAN ||
-                            basicKind.STRING) {
-                            node.type = new BasicType(basicKind.BOOLEAN);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                    case basicKind.STRING:
-                        if (rightBasicType == basicKind.CHAR ||
-                            rightBasicType == basicKind.STRING) {
-                            node.type = new BasicType(basicKind.BOOLEAN);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
-                    case basicKind.BOOLEAN:
-                        if (rightBasicType == basicKind.INTEGER ||
-                            rightBasicType == basicKind.BOOLEAN) {
-                            node.type = new BasicType(basicKind.BOOLEAN);
-                        }
-                        else {
-                            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-                        }
-                        break;
+            case tokenType.GREATER_EQUAL: {
+                if (!compatableBasic(leftBasicType, rightBasicType)) {
+                    throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
                 }
-            // FIXME: this is so wierd, enabling this gives an error
-            // default:
-            //     unreachable();
+                node.type = new BasicType(basicKind.BOOLEAN);
+                const type = commonBasicType(leftBasicType, rightBasicType);
+                node.left = this.arithConv(node.left, type);
+                node.right = this.arithConv(node.right, type);
+                break;
+            }
+            default:
+                unreachable();
         }
         return node.type;
     }

@@ -13,18 +13,7 @@ export const enum nodeKind {
     FuncDefNode,
     ProcDefNode,
     ReturnNode,
-    VarDeclNode,
-    ArrDeclNode,
-    PtrDeclNode,
-    TypeDefNode,
-    AssignNode,
-    VarAssignNode,
-    ArrAssignNode,
-    IfNode,
-    WhileNode,
-    RepeatNode,
-    ForNode,
-    ExprStmtNode,
+    CastExprNode,
     VarExprNode,
     IndexExprNode,
     SelectExprNode,
@@ -39,6 +28,18 @@ export const enum nodeKind {
     CharExprNode,
     StringExprNode,
     BoolExprNode,
+    VarDeclNode,
+    ArrDeclNode,
+    PtrDeclNode,
+    TypeDefNode,
+    AssignNode,
+    VarAssignNode,
+    ArrAssignNode,
+    IfNode,
+    WhileNode,
+    RepeatNode,
+    ForNode,
+    ExprStmtNode,
     OutputNode,
     InputNode
 }
@@ -48,7 +49,8 @@ export abstract class BaseNode {
 }
 
 // every Expr has type property
-export type Expr = AssignNode |
+export type Expr = CastExprNode |
+    AssignNode |
     VarExprNode |
     IndexExprNode |
     SelectExprNode |
@@ -145,6 +147,21 @@ export class ReturnNode extends BaseNode {
     }
 }
 
+// type cast, implicit or explicit
+export class CastExprNode extends BaseNode {
+    public readonly kind = nodeKind.CastExprNode;
+    public type!: Type;
+    public expr: Expr;
+
+    constructor(expr: Expr) {
+        super();
+        this.expr = expr;
+    }
+
+    public toString(): string {
+        return "CastExprNode";
+    }
+}
 
 export class VarExprNode extends BaseNode {
     public readonly kind = nodeKind.VarExprNode;

@@ -29,4 +29,13 @@ export class ArrayType extends BaseType {
         }
         return this.elem.size() * length;
     }
+
+    public length(): number {
+        let length = 1;
+        for (const dimension of this.dimensions) {
+            // add 1 because the upper and lower bounds are included
+            length *= (dimension.upper.literal - dimension.lower.literal + 1);
+        }
+        return length;
+    }
 }

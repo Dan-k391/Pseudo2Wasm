@@ -60,6 +60,12 @@ i[10] <- 20
 This is **ALLOWED** for this compiler(at least currently).
 I may add a more sophisticated semantic analyzer in the future.....Well lets see.
 
+***I changed the type system into a where all basic types(except strings) can compat with each other***
+```
+OUTPUT 'a' > 3.5
+```
+This is **ALLOWED** for this compiler.
+
 ## Basic Grammar
 
 #### Comments
