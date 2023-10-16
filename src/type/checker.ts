@@ -234,6 +234,9 @@ export class Checker {
         if (base.kind !== typeKind.ARRAY) {
             throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
         }
+        for (const index of node.indexes) {
+            this.visitExpr(index);
+        }
         node.type = base.elem;
         return node.type;
     }

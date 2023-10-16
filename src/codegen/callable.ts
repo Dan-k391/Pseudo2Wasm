@@ -34,7 +34,8 @@ import {
     StringExprNode,
     BoolExprNode,
     OutputNode,
-    InputNode
+    InputNode,
+    CastExprNode
 } from "../syntax/ast";
 import { Param } from "./param";
 
@@ -249,6 +250,8 @@ export abstract class Callable {
 
     protected generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
+            case nodeKind.CastExprNode:
+                return this.castExpression(expression);
             case nodeKind.AssignNode:
                 return this.assignExpression(expression);
             case nodeKind.VarExprNode:
@@ -289,6 +292,26 @@ export abstract class Callable {
             default:
                 throw new RuntimeError(expression.toString() + "cannot be a left value");
         }
+    }
+
+    protected castExpression(node: CastExprNode): ExpressionRef {
+        const expr = this.generateExpression(node.expr);
+        if (node.type.kind !== typeKind.BASIC || node.expr.type.kind !== typeKind.BASIC) {
+            throw new RuntimeError("Type cast can onlybe perfromed for basic types");
+        }
+        const to = node.type.type;
+        const from = node.expr.type.type;
+        // type compatability is already checked in checker
+        if (to === basicKind.REAL) {
+            if (from === basicKind.REAL) {
+                return expr;
+            }
+            return this.module.f64.convert_s.i32(expr);
+        }
+        if (from === basicKind.REAL) {
+            return this.module.i32.trunc_s.f64(expr);
+        }
+        return expr;
     }
 
     protected assignExpression(node: AssignNode): ExpressionRef {
