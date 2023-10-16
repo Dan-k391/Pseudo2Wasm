@@ -19,8 +19,6 @@ import {
     ArrDeclNode,
     PtrDeclNode,
     TypeDefNode,
-    VarAssignNode,
-    ArrAssignNode,
     IfNode,
     WhileNode,
     RepeatNode,

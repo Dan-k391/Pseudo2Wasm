@@ -47,7 +47,6 @@ import { basicKind } from "../type/basic";
 import { RecordType } from "../type/record";
 import { ArrayType } from "../type/array";
 import { BasicType } from "../type/basic";
-import { minimalCompatableBasicType } from "../type/type";
 import { Generator } from "./generator";
 import { Callable } from "./callable";
 
@@ -142,12 +141,11 @@ export class DefinedFunction extends Function {
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
-        const type = this.resolveType(node.expr);
         const returnVal = this.generateExpression(node.expr);
         return this.module.block(null, [
             this.module.local.set(
                 this.returnIndex,
-                this.enclosing.convertType(type, this.returnType, returnVal)
+                returnVal
             ),
             this.module.global.set(
                 "__stackTop",

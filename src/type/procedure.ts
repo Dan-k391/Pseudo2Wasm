@@ -1,12 +1,10 @@
 import { Type } from "./type";
 
-export class FunctionType {
+export class ProcedureType {
     public paramTypes: Map<string, Type>;
-    public returnType: Type;
 
-    constructor(paramTypes: Map<string, Type>, returnType: Type) {
+    constructor(paramTypes: Map<string, Type>) {
         this.paramTypes = paramTypes;
-        this.returnType = returnType;
     }
 
     public getParamType(name: string): Type {

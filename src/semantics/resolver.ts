@@ -10,8 +10,6 @@ import {
     VarDeclNode,
     ArrDeclNode,
     TypeDefNode,
-    VarAssignNode,
-    ArrAssignNode,
     IfNode,
     WhileNode,
     RepeatNode,

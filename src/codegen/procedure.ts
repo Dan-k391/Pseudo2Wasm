@@ -47,7 +47,6 @@ import { basicKind } from "../type/basic";
 import { RecordType } from "../type/record";
 import { ArrayType } from "../type/array";
 import { BasicType } from "../type/basic";
-import { minimalCompatableBasicType } from "../type/type";
 import { Generator } from "./generator";
 import { Callable } from "./callable";
 

@@ -74,8 +74,6 @@ export type Stmt = ProgramNode |
     ArrDeclNode |
     PtrDeclNode |
     TypeDefNode |
-    VarAssignNode |
-    ArrAssignNode |
     IfNode |
     WhileNode |
     RepeatNode |
@@ -232,6 +230,7 @@ export class CallFuncExprNode extends BaseNode {
 
 export class CallProcExprNode extends BaseNode {
     public readonly kind = nodeKind.CallProcExprNode;
+    public type!: Type;
     public callee: Expr;
     public args: Array<Expr>;
 
@@ -460,6 +459,7 @@ export class TypeDefNode extends BaseNode {
 
 export class AssignNode extends BaseNode {
     public readonly kind = nodeKind.AssignNode;
+    public type!: Type;
     public left: Expr;
     public right: Expr;
 
@@ -471,41 +471,6 @@ export class AssignNode extends BaseNode {
 
     public toString(): string {
         return "AssignNode";
-    }
-}
-
-// assignment is expr
-export class VarAssignNode extends BaseNode {
-    public readonly kind = nodeKind.VarAssignNode;
-    public ident: Token;
-    public expr: Expr;
-
-    constructor(ident: Token, expr: Expr) {
-        super();
-        this.ident = ident;
-        this.expr = expr;
-    }
-
-    public toString(): string {
-        return "VarAssignNode";
-    }
-}
-
-export class ArrAssignNode extends BaseNode {
-    public readonly kind = nodeKind.ArrAssignNode;
-    public ident: Token;
-    public index: Expr;
-    public expr: Expr;
-
-    constructor(ident: Token, index: Expr, expr: Expr) {
-        super();
-        this.ident = ident;
-        this.index = index;
-        this.expr = expr;
-    }
-
-    public toString(): string {
-        return "ArrAssignNode";
     }
 }
 

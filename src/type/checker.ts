@@ -44,6 +44,7 @@ import { BasicType } from "./basic";
 import { FunctionType } from "./function";
 import { ArrayType } from "./array";
 import { PointerType } from "./pointer";
+import { ProcedureType } from "./procedure";
 
 
 export class Checker {
@@ -79,8 +80,14 @@ export class Checker {
         this.visitStmts(this.ast.body);
     }
 
-    private beginScope(isFunc: boolean): void {
-        const scope = new Scope(isFunc, this.global);
+    private beginScope(isFunc: boolean, returnType?: Type): void {
+        let scope: Scope;
+        if (returnType) {
+            scope = new Scope(isFunc, this.global, returnType);
+        }
+        else {
+            scope = new Scope(isFunc, this.global);
+        }
         this.global.children.push(scope);
         this.curScope = scope;
     }
@@ -114,12 +121,33 @@ export class Checker {
         this.curScope.insertFunc(funcName, func);
     }
 
+    private declProc(node: ProcDefNode): void {
+        const procName = node.ident.lexeme;
+        const procParams = new Map<string, Type>();
+
+        for (const param of node.params) {
+            const paramName = param.ident.lexeme;
+            // FIXME: only basic types supported
+            const paramType = convertToBasicType(param.type);
+            // nethermind the method to set
+            procParams.set(paramName, paramType);
+        }
+
+        const proc = new ProcedureType(procParams);
+
+        this.curScope.insertProc(procName, proc);
+    }
+
     private getFuncType(name: Token): FunctionType {
         return this.curScope.getFuncType(name.lexeme);
     }
 
+    private getProcType(name: Token): ProcedureType {
+        return this.curScope.getProcType(name.lexeme);
+    }
+
     private visitFuncDef(node: FuncDefNode) {
-        this.beginScope(true);
+        this.beginScope(true, convertToBasicType(node.type));
         for (const param of node.params) {
             this.insert(param.ident, convertToBasicType(param.type));
         }
@@ -192,7 +220,8 @@ export class Checker {
         }
 
         node.right = this.arithConv(node.right, leftBasicType);
-        return new NoneType();
+        node.type = new NoneType();
+        return node.type;
     }
 
     private varExpr(node: VarExprNode): Type {
@@ -227,9 +256,15 @@ export class Checker {
             }
             for (let i = 0, paramNames = Array.from(func.paramTypes.keys()); i < node.args.length; i++) {
                 const arg = node.args[i]; 
-                const expr = this.visitExpr(arg);
-                const paramType = func.paramTypes.get(paramNames[i]);
-                // TODO: check if can convert
+                const argType = this.visitExpr(arg);
+                const paramType = func.getParamType(paramNames[i]);
+                if (!compatable(argType, paramType)) {
+                    throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
+                }
+                if (argType.kind !== typeKind.BASIC || paramType.kind !== typeKind.BASIC) {
+                    throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
+                }
+                node.args[i] = this.arithConv(node.args[i], argType.type);   
             }
             node.type = func.returnType;
             return node.type;
@@ -239,7 +274,28 @@ export class Checker {
 
     // PROCEDUREs do not have a return value
     private callProcExpr(node: CallProcExprNode): Type {
-        return new NoneType();
+        if (node.callee.kind === nodeKind.VarExprNode) {
+            const procName = node.callee.ident.lexeme;
+            const proc = this.getProcType(node.callee.ident);
+            if (proc.paramTypes.size !== node.args.length) {
+                throw new RuntimeError("Function '" + procName + "' expects " + proc.paramTypes.size + " arguments, but " + node.args.length + " are provided");
+            }
+            for (let i = 0, paramNames = Array.from(proc.paramTypes.keys()); i < node.args.length; i++) {
+                const arg = node.args[i]; 
+                const argType = this.visitExpr(arg);
+                const paramType = proc.getParamType(paramNames[i]);
+                if (!compatable(argType, paramType)) {
+                    throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
+                }
+                if (argType.kind !== typeKind.BASIC || paramType.kind !== typeKind.BASIC) {
+                    throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
+                }
+                node.args[i] = this.arithConv(node.args[i], argType.type);   
+            }
+            node.type = new NoneType();
+            return node.type;
+        }
+        throw new RuntimeError("Not implemented yet");
     }
 
     private unaryExpr(node: UnaryExprNode): Type {   
@@ -320,10 +376,13 @@ export class Checker {
     }
 
     private visitStmts(stmts: Array<Stmt>): void {
-        // first declare all functions
+        // first declare all FUNCTIONs and PROCEDUREs
         for (const stmt of stmts) {
             if (stmt.kind === nodeKind.FuncDefNode) {
                 this.declFunc(stmt);
+            }
+            if (stmt.kind === nodeKind.ProcDefNode) {
+                this.declProc(stmt);
             }
         }
         // then run the other code
@@ -382,7 +441,21 @@ export class Checker {
     }
 
     private visitReturn(node: ReturnNode): void {
-        this.visitExpr(node.expr);
+        // leftType is the return type, right type is the expected return type
+        const leftType = this.visitExpr(node.expr);
+        const rightType = this.curScope.getReturnType();
+        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
+            throw new RuntimeError("Cannot convert " + rightType + " to " + leftType);
+        }
+
+        const leftBasicType = leftType.type;
+        const rightBasicType = rightType.type;
+
+        if (!compatableBasic(leftBasicType, rightBasicType)) {
+            throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
+        }
+
+        node.expr = this.arithConv(node.expr, rightBasicType);
     }
 
     private visitOutputStmt(node: OutputNode): void {
