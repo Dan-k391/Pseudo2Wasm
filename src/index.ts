@@ -538,6 +538,28 @@ j <- "Not happy"
 OUTPUT LENGTH(i) + LENGTH(j)
 `
 
+const code49 = `TYPE nums 
+    DECLARE i: INTEGER
+    DECLARE j: INTEGER
+ENDTYPE
+DECLARE k: nums
+k.i <- 9
+k.j <- 3
+
+OUTPUT k.i + k.j
+`
+
+const code50 = `TYPE nums 
+    DECLARE i: ARRAY[0: 7] OF INTEGER
+    DECLARE j: INTEGER
+ENDTYPE
+DECLARE k: nums
+k.i[0] <- 8
+k.j <- 3
+
+OUTPUT k.i[0] + k.j
+`
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i: INTEGER
 
@@ -555,7 +577,7 @@ OUTPUT LENGTH(i) + LENGTH(j)
 // `
 
 const codes = [
-    code0,
+    code49,
     code1,
     code2,
     code3,
@@ -603,7 +625,9 @@ const codes = [
     code45,
     code46,
     code47,
-    code48
+    code48,
+    code49,
+    code50
 ];
 const expected = [
     10,
@@ -654,7 +678,9 @@ const expected = [
     80,
     288,
     288,
-    19
+    19,
+    12,
+    11
 ];
 let total = codes.length;
 let compileCount = 0;

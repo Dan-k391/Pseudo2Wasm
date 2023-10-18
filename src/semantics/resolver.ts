@@ -9,7 +9,7 @@ import {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
-    TypeDefNode,
+    TypeDeclNode,
     IfNode,
     WhileNode,
     RepeatNode,

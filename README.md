@@ -17,12 +17,12 @@ This compiler, compiles CAIE PseudoCode into WebAssembly.
 It uses the following process.
 1. Lexical Analysis
 2. Syntax Analysis
-3. Semantic Analysis(Type Check) and IR Generation(with binaryen)
-4. Code Generation
-5. Optimization
-6. Runtime
+3. Semantic Analysis(Type Check)
+4. IR Generation(with binaryen)
+5. Code Generation
+6. Optimization
+7. Runtime
 
-Notice that the Semantic Analysis and IR Generation are done at the same time. (Both in the codegenerating section)
 The semantic analysis is very basic and currently only has type check and validation(like those stuff).
 
 ### RoadMap

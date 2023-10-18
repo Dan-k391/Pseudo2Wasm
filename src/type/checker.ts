@@ -13,7 +13,7 @@ import {
     VarDeclNode,
     ArrDeclNode,
     PtrDeclNode,
-    TypeDefNode,
+    TypeDeclNode,
     AssignNode,
     IfNode,
     WhileNode,
@@ -36,7 +36,7 @@ import {
     InputNode,
     CastExprNode
 } from "../syntax/ast";
-import { convertToBasicType, unreachable } from "../util";
+import { unreachable } from "../util";
 import { Scope } from "./scopes";
 import { NoneType, Type, commonBasicType, compatable, compatableBasic, typeKind } from "./type";
 import { basicKind } from "./basic";
@@ -45,6 +45,7 @@ import { FunctionType } from "./function";
 import { ArrayType } from "./array";
 import { PointerType } from "./pointer";
 import { ProcedureType } from "./procedure";
+import { RecordType } from "./record";
 
 
 export class Checker {
@@ -104,6 +105,42 @@ export class Checker {
         return this.curScope.lookUp(name.lexeme);
     }
 
+    private getFuncType(name: Token): FunctionType {
+        return this.curScope.lookUpFunc(name.lexeme);
+    }
+
+    private getProcType(name: Token): ProcedureType {
+        return this.curScope.lookUpProc(name.lexeme);
+    }
+
+    private insertType(name: Token, type: Type): void {
+        this.curScope.insertType(name.lexeme, type);
+    }
+
+    // TODO: add pointer types and enum
+    private getType(name: Token): Type {
+        return this.curScope.lookUpType(name.lexeme);
+    }
+
+    private convertType(name: Token): Type {
+        switch (name.type) {
+            case tokenType.INTEGER:
+                return new BasicType(basicKind.INTEGER);
+            case tokenType.REAL:
+                return new BasicType(basicKind.REAL);
+            case tokenType.CHAR:
+                return new BasicType(basicKind.CHAR);
+            case tokenType.STRING:
+                return new BasicType(basicKind.STRING);
+            case tokenType.BOOLEAN:
+                return new BasicType(basicKind.BOOLEAN);
+            case tokenType.IDENTIFIER:
+                return this.getType(name);
+            default:
+                unreachable();
+        }
+    }
+
     private declFunc(node: FuncDefNode): void {
         const funcName = node.ident.lexeme;
         const funcParams = new Map<string, Type>();
@@ -111,12 +148,12 @@ export class Checker {
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
             // FIXME: only basic types supported
-            const paramType = convertToBasicType(param.type);
+            const paramType = this.convertType(param.type);
             // nethermind the method to set
             funcParams.set(paramName, paramType);
         }
 
-        const func = new FunctionType(funcParams, convertToBasicType(node.type));
+        const func = new FunctionType(funcParams, this.convertType(node.type));
 
         this.curScope.insertFunc(funcName, func);
     }
@@ -128,7 +165,7 @@ export class Checker {
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
             // FIXME: only basic types supported
-            const paramType = convertToBasicType(param.type);
+            const paramType = this.convertType(param.type);
             // nethermind the method to set
             procParams.set(paramName, paramType);
         }
@@ -138,18 +175,28 @@ export class Checker {
         this.curScope.insertProc(procName, proc);
     }
 
-    private getFuncType(name: Token): FunctionType {
-        return this.curScope.getFuncType(name.lexeme);
-    }
-
-    private getProcType(name: Token): ProcedureType {
-        return this.curScope.getProcType(name.lexeme);
+    // keep this function, maybe predeclarations are needed
+    private declRecord(node: TypeDeclNode): void {
+        const fields = new Map<string, Type>();
+        for (const decl of node.body) {
+            if (decl.kind === nodeKind.VarDeclNode) {
+                fields.set(decl.ident.lexeme, this.convertType(decl.type));
+            }
+            else if (decl.kind === nodeKind.ArrDeclNode) {
+                const elemType = this.convertType(decl.type);
+                fields.set(
+                    decl.ident.lexeme,
+                    new ArrayType(elemType, decl.dimensions)
+                );
+            }
+        }
+        this.insertType(node.ident, new RecordType(fields));
     }
 
     private visitFuncDef(node: FuncDefNode) {
-        this.beginScope(true, convertToBasicType(node.type));
+        this.beginScope(true, this.convertType(node.type));
         for (const param of node.params) {
-            this.insert(param.ident, convertToBasicType(param.type));
+            this.insert(param.ident, this.convertType(param.type));
         }
         this.visitStmts(node.body);
         this.endScope();
@@ -158,7 +205,7 @@ export class Checker {
     private visitProcDef(node: ProcDefNode) {
         this.beginScope(false);
         for (const param of node.params) {
-            this.insert(param.ident, convertToBasicType(param.type));
+            this.insert(param.ident, this.convertType(param.type));
         }
         this.visitStmts(node.body);
         this.endScope();
@@ -330,6 +377,10 @@ export class Checker {
             case tokenType.MINUS:
             case tokenType.STAR:
             case tokenType.SLASH: {
+                if (leftBasicType === basicKind.STRING ||
+                    rightBasicType === basicKind.STRING) {
+                    throw new RuntimeError("Cannot perform arithmetic operations to STRINGs")
+                }
                 const type = commonBasicType(leftBasicType, rightBasicType);
                 node.type = new BasicType(type);
                 node.left = this.arithConv(node.left, type);
@@ -343,6 +394,10 @@ export class Checker {
             case tokenType.GREATER:
             case tokenType.LESS_EQUAL:
             case tokenType.GREATER_EQUAL: {
+                if (leftBasicType === basicKind.STRING ||
+                    rightBasicType === basicKind.STRING) {
+                    throw new RuntimeError("Cannot perform logical operations to STRINGs")
+                }
                 if (!compatableBasic(leftBasicType, rightBasicType)) {
                     throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
                 }
@@ -351,6 +406,13 @@ export class Checker {
                 node.left = this.arithConv(node.left, type);
                 node.right = this.arithConv(node.right, type);
                 break;
+            }
+            case tokenType.AMPERSAND: {
+                if (leftBasicType !== basicKind.STRING ||
+                    rightBasicType !== basicKind.STRING) {
+                    throw new RuntimeError("Cannot perform logical operations to STRINGs")
+                }
+                node.type = new BasicType(basicKind.STRING);
             }
             default:
                 unreachable();
@@ -379,14 +441,16 @@ export class Checker {
     }
 
     private visitStmts(stmts: Array<Stmt>): void {
-        // first declare all FUNCTIONs and PROCEDUREs
+        // Pre declare all FUNCTIONs and PROCEDUREs
         for (const stmt of stmts) {
             if (stmt.kind === nodeKind.FuncDefNode) {
                 this.declFunc(stmt);
             }
-            if (stmt.kind === nodeKind.ProcDefNode) {
+            else if (stmt.kind === nodeKind.ProcDefNode) {
                 this.declProc(stmt);
             }
+            // do type declarations really need to be pre declared?
+            // i am not sure
         }
         // then run the other code
         for (const stmt of stmts) {
@@ -422,6 +486,9 @@ export class Checker {
                 break;
             case nodeKind.ArrDeclNode:
                 this.visitArrDeclStmt(stmt);
+                break;
+            case nodeKind.TypeDeclNode:
+                this.visitTypeDeclStmt(stmt);
                 break;
             case nodeKind.PtrDeclNode:
                 this.visitPtrDeclStmt(stmt);
@@ -466,19 +533,23 @@ export class Checker {
     }
 
     private visitVarDeclStmt(node: VarDeclNode): void {
-        this.insert(node.ident, convertToBasicType(node.type));
+        this.insert(node.ident, this.convertType(node.type));
     }
 
     private visitArrDeclStmt(node: ArrDeclNode): void {
-        const elemType = convertToBasicType(node.type);
+        const elemType = this.convertType(node.type);
         this.insert(
             node.ident,
             new ArrayType(elemType, node.dimensions)
         );
     }
 
+    private visitTypeDeclStmt(node: TypeDeclNode): void {
+        this.declRecord(node);
+    }
+
     private visitPtrDeclStmt(node: PtrDeclNode): void {
-        const elemType = convertToBasicType(node.type);
+        const elemType = this.convertType(node.type);
         this.insert(
             node.ident,
             new PointerType(elemType)

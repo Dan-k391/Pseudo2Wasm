@@ -18,7 +18,7 @@ import {
     VarDeclNode,
     ArrDeclNode,
     PtrDeclNode,
-    TypeDefNode,
+    TypeDeclNode,
     IfNode,
     WhileNode,
     RepeatNode,
@@ -106,7 +106,7 @@ export class Parser {
 
     private term(): Expr {
         let expr: Expr = this.factor();
-        while (this.match(tokenType.MINUS, tokenType.PLUS)) {
+        while (this.match(tokenType.MINUS, tokenType.PLUS, tokenType.AMPERSAND)) {
             const operator: Token = this.previous();
             const right: Expr = this.factor();
             expr = new BinaryExprNode(expr, operator, right);
@@ -263,7 +263,7 @@ export class Parser {
         return new ReturnNode(expr);
     }
 
-    private declaration(): Stmt {
+    private declaration(): VarDeclNode | ArrDeclNode {
         const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
         this.consume("Expected colon", tokenType.COLON);
         if (this.match(tokenType.ARRAY)) {
@@ -285,10 +285,10 @@ export class Parser {
             }
             this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
             this.consume("Expected 'OF'", tokenType.OF);
-            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
             return new ArrDeclNode(ident, type, dimensions);
         }
-        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
         return new VarDeclNode(ident, type);
     }
 
@@ -296,15 +296,16 @@ export class Parser {
         const ident: Token = this.consume("Expected type name", tokenType.IDENTIFIER);
         if (this.match(tokenType.EQUAL)) {
             this.consume("Expected caret", tokenType.CARET);
-            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
             return new PtrDeclNode(ident, type);
         }
-        const component: Array<Stmt> = new Array<VarDeclNode>();
+        const component: Array<VarDeclNode | ArrDeclNode> = new Array<VarDeclNode | ArrDeclNode>();
         while (!this.check(tokenType.ENDTYPE) && !this.isAtEnd()) {
             this.consume("Expected Declaration", tokenType.DECLARE);
             component.push(this.declaration());
         }
-        return new TypeDefNode(ident, component);
+        this.consume("Expected 'ENDTYPE'", tokenType.ENDTYPE);
+        return new TypeDeclNode(ident, component);
     }
 
     private ifStatement(): IfNode {

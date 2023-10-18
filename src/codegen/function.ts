@@ -14,7 +14,7 @@ import {
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
-    TypeDefNode,
+    TypeDeclNode,
     AssignNode,
     IfNode,
     WhileNode,

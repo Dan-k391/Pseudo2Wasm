@@ -16,7 +16,7 @@ import {
     VarDeclNode,
     ArrDeclNode,
     PtrDeclNode,
-    TypeDefNode,
+    TypeDeclNode,
     AssignNode,
     IfNode,
     WhileNode,

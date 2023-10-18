@@ -1,6 +1,7 @@
 import { RuntimeError } from "../error";
 import { FunctionType } from "./function";
 import { ProcedureType } from "./procedure";
+import { RecordType } from "./record";
 import { Type } from "./type";
 
 export class Scope {
@@ -12,6 +13,8 @@ export class Scope {
     public elems: Map<string, Type>;
     public functions: Map<string, FunctionType>;
     public procedures: Map<string, ProcedureType>;
+    // RECORDs, ENUMs, and POINTERs
+    public types: Map<string, Type>;
 
     constructor(isFunc: boolean, parent?: Scope, returnType?: Type) {
         this.isFunc = isFunc;
@@ -25,6 +28,7 @@ export class Scope {
         this.elems = new Map<string, Type>();
         this.functions = new Map<string, FunctionType>();
         this.procedures = new Map<string, ProcedureType>();
+        this.types = new Map<string, RecordType>;
     }
 
     public insert(name: string, type: Type) {
@@ -45,12 +49,12 @@ export class Scope {
         this.functions.set(name, funcType);
     }
 
-    public getFuncType(name: string): FunctionType {
+    public lookUpFunc(name: string): FunctionType {
         if (!this.functions.has(name)) {
             if (!this.parent) {
-                throw new RuntimeError("Unknown Function '" + name + "'");
+                throw new RuntimeError("Unknown FUNCTION '" + name + "'");
             }
-            return this.parent.getFuncType(name);
+            return this.parent.lookUpFunc(name);
         }
         return this.functions.get(name)!;
     }
@@ -59,17 +63,31 @@ export class Scope {
         this.procedures.set(name, procType);
     }
 
-    public getProcType(name: string): ProcedureType {
+    public lookUpProc(name: string): ProcedureType {
         if (!this.procedures.has(name)) {
             if (!this.parent) {
-                throw new RuntimeError("Unknown Procudure '" + name + "'");
+                throw new RuntimeError("Unknown PROCUDURE '" + name + "'");
             }
-            return this.parent.getProcType(name);
+            return this.parent.lookUpProc(name);
         }
         return this.procedures.get(name)!;
     }
 
     public getReturnType(): Type {
         return this.returnType!;
+    }
+
+    public insertType(name: string, type: Type): void {
+        this.types.set(name, type);
+    }
+
+    public lookUpType(name: string): Type {
+        if (!this.types.has(name)) {
+            if (!this.parent) {
+                throw new RuntimeError("Unknown TYPE '" + name + "'");
+            }
+            return this.parent.lookUpType(name);
+        }
+        return this.types.get(name)!;
     }
 }

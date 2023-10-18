@@ -31,7 +31,7 @@ export const enum nodeKind {
     VarDeclNode,
     ArrDeclNode,
     PtrDeclNode,
-    TypeDefNode,
+    TypeDeclNode,
     AssignNode,
     VarAssignNode,
     ArrAssignNode,
@@ -73,7 +73,7 @@ export type Stmt = ProgramNode |
     VarDeclNode |
     ArrDeclNode |
     PtrDeclNode |
-    TypeDefNode |
+    TypeDeclNode |
     IfNode |
     WhileNode |
     RepeatNode |
@@ -441,19 +441,19 @@ export class PtrDeclNode extends BaseNode {
     }
 }
 
-export class TypeDefNode extends BaseNode {
-    public readonly kind = nodeKind.TypeDefNode;
+export class TypeDeclNode extends BaseNode {
+    public readonly kind = nodeKind.TypeDeclNode;
     public ident: Token;
-    public body: Array<Stmt>;
+    public body: Array<VarDeclNode | ArrDeclNode>;
 
-    constructor(ident: Token, body: Array<Stmt>) {
+    constructor(ident: Token, body: Array<VarDeclNode | ArrDeclNode>) {
         super();
         this.ident = ident;
         this.body = body;
     }
 
     public toString(): string {
-        return "TypeDefNode";
+        return "TypeDeclNode";
     }
 }
 
