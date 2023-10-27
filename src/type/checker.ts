@@ -122,7 +122,7 @@ export class Checker {
         return this.curScope.lookUpType(name.lexeme);
     }
 
-    private convertType(name: Token): Type {
+    private resolveType(name: Token): Type {
         switch (name.type) {
             case tokenType.INTEGER:
                 return new BasicType(basicKind.INTEGER);
@@ -147,14 +147,12 @@ export class Checker {
 
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            // FIXME: only basic types supported
-            const paramType = this.convertType(param.type);
-            // nethermind the method to set
-            funcParams.set(paramName, paramType);
+            param.type = this.resolveType(param.typeToken);
+            funcParams.set(paramName, param.type);
         }
 
-        const func = new FunctionType(funcParams, this.convertType(node.type));
-
+        node.type = this.resolveType(node.typeToken);
+        const func = new FunctionType(funcParams, node.type);
         this.curScope.insertFunc(funcName, func);
     }
 
@@ -164,14 +162,11 @@ export class Checker {
 
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            // FIXME: only basic types supported
-            const paramType = this.convertType(param.type);
-            // nethermind the method to set
-            procParams.set(paramName, paramType);
+            param.type = this.resolveType(param.typeToken);
+            procParams.set(paramName, param.type);
         }
 
         const proc = new ProcedureType(procParams);
-
         this.curScope.insertProc(procName, proc);
     }
 
@@ -179,24 +174,29 @@ export class Checker {
     private declRecord(node: TypeDeclNode): void {
         const fields = new Map<string, Type>();
         for (const decl of node.body) {
+            // do not assign the type to the declarations in the typedecl
+            // not necessary
             if (decl.kind === nodeKind.VarDeclNode) {
-                fields.set(decl.ident.lexeme, this.convertType(decl.type));
+                fields.set(decl.ident.lexeme, this.resolveType(decl.typeToken));
             }
             else if (decl.kind === nodeKind.ArrDeclNode) {
-                const elemType = this.convertType(decl.type);
+                const elemType = this.resolveType(decl.typeToken);
                 fields.set(
                     decl.ident.lexeme,
                     new ArrayType(elemType, decl.dimensions)
                 );
             }
         }
-        this.insertType(node.ident, new RecordType(fields));
+        node.type = new RecordType(fields);
+        this.insertType(node.ident, node.type);
     }
 
     private visitFuncDef(node: FuncDefNode) {
-        this.beginScope(true, this.convertType(node.type));
+        // Return type already determined in function declaration
+        this.beginScope(true, node.type);
         for (const param of node.params) {
-            this.insert(param.ident, this.convertType(param.type));
+            // type of param already determined in function declaration
+            this.insert(param.ident, param.type);
         }
         this.visitStmts(node.body);
         this.endScope();
@@ -205,7 +205,8 @@ export class Checker {
     private visitProcDef(node: ProcDefNode) {
         this.beginScope(false);
         for (const param of node.params) {
-            this.insert(param.ident, this.convertType(param.type));
+            // type of param already determined in procedure declaration
+            this.insert(param.ident, param.type);
         }
         this.visitStmts(node.body);
         this.endScope();
@@ -267,7 +268,8 @@ export class Checker {
         }
 
         node.right = this.arithConv(node.right, leftBasicType);
-        node.type = new NoneType();
+        // let type for assignnode be the left type
+        node.type = leftType;
         return node.type;
     }
 
@@ -281,6 +283,9 @@ export class Checker {
         if (base.kind !== typeKind.ARRAY) {
             throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
         }
+        if (node.indexes.length !== base.dimensions.length) {
+            throw new RuntimeError("The index dimension numbers do not match for " + base.toString());
+        }
         for (const index of node.indexes) {
             this.visitExpr(index);
         }
@@ -293,7 +298,7 @@ export class Checker {
         if (base.kind !== typeKind.RECORD) {
             throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
         }
-        node.type = base.fields.get(node.ident.lexeme)!;
+        node.type = base.getField(node.ident.lexeme);
         return node.type;
     }
 
@@ -449,8 +454,11 @@ export class Checker {
             else if (stmt.kind === nodeKind.ProcDefNode) {
                 this.declProc(stmt);
             }
-            // do type declarations really need to be pre declared?
+            // FIXME: do type declarations really need to be pre declared?
             // i am not sure
+            // else if (stmt.kind === nodeKind.TypeDeclNode) {
+            //     this.declRecord(stmt);
+            // }
         }
         // then run the other code
         for (const stmt of stmts) {
@@ -529,18 +537,22 @@ export class Checker {
     }
 
     private visitOutputStmt(node: OutputNode): void {
+        // debugger;
         this.visitExpr(node.expr);
     }
 
     private visitVarDeclStmt(node: VarDeclNode): void {
-        this.insert(node.ident, this.convertType(node.type));
+        // assign the type resolved to the node
+        node.type = this.resolveType(node.typeToken);
+        this.insert(node.ident, node.type);
     }
 
     private visitArrDeclStmt(node: ArrDeclNode): void {
-        const elemType = this.convertType(node.type);
+        const elemType = this.resolveType(node.typeToken);
+        node.type = new ArrayType(elemType, node.dimensions);
         this.insert(
             node.ident,
-            new ArrayType(elemType, node.dimensions)
+            node.type
         );
     }
 
@@ -549,10 +561,11 @@ export class Checker {
     }
 
     private visitPtrDeclStmt(node: PtrDeclNode): void {
-        const elemType = this.convertType(node.type);
-        this.insert(
+        const elemType = this.resolveType(node.typeToken);
+        node.type = new PointerType(elemType)
+        this.insertType(
             node.ident,
-            new PointerType(elemType)
+            node.type
         );
     }
 

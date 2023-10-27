@@ -1,3 +1,4 @@
+import { RuntimeError } from "../error";
 import { Type } from "./type";
 
 export class FunctionType {
@@ -10,6 +11,9 @@ export class FunctionType {
     }
 
     public getParamType(name: string): Type {
+        if (!this.paramTypes.has(name)) {
+            throw new RuntimeError("Unknown param '" + name + "'");
+        }
         return this.paramTypes.get(name)!;
     }
 }

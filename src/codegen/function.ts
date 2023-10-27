@@ -92,7 +92,7 @@ export class DefinedFunction extends Function {
         const paramWasmTypes = new Array<WasmType>();
 
         for (const value of this.params.values()) {
-            paramWasmTypes.push(value.wasmType);
+            paramWasmTypes.push(value.type.wasmType());
         }
 
         const paramType = binaryen.createType(paramWasmTypes);

@@ -129,9 +129,9 @@ export abstract class Callable {
         return old;
     }
 
-    protected setLocal(name: string, type: Type, wasmType: WasmType) {
+    protected setLocal(name: string, type: Type) {
         const offset = this.getOffset(type);
-        this.locals.set(name, new Local(type, wasmType, offset));
+        this.locals.set(name, new Local(type, offset));
     }
 
     public getLocalType(name: string): Type {
@@ -147,7 +147,7 @@ export abstract class Callable {
             throw new RuntimeError("Unknown variable '" + name + "'");
         }
         // have to use non-null assertion here
-        return this.locals.get(name)!.wasmType;
+        return this.locals.get(name)!.type.wasmType();
     }
 
     public getLocalOffset(name: string): number {
@@ -166,8 +166,11 @@ export abstract class Callable {
     }
 
     // load a local with basic type to the absolute offset
-    protected loadLocal(basicType: basicKind, ptr: ExpressionRef): ExpressionRef {
-        switch (basicType) {
+    protected loadLocal(type: Type, ptr: ExpressionRef): ExpressionRef {
+        if (type.kind !== typeKind.BASIC) {
+            throw new RuntimeError("not implemented"); 
+        }
+        switch (type.type) {
             case basicKind.INTEGER:
             case basicKind.CHAR:
             case basicKind.BOOLEAN:
@@ -182,8 +185,11 @@ export abstract class Callable {
     }
 
     // load a local with basic type to the absolute offset
-    protected storeLocal(basicType: basicKind, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
-        switch (basicType) {
+    protected storeLocal(type: Type, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
+        if (type.kind !== typeKind.BASIC) {
+            throw new RuntimeError("not implemented"); 
+        }
+        switch (type.type) {
             case basicKind.INTEGER:
             case basicKind.CHAR:
             case basicKind.BOOLEAN:
@@ -229,14 +235,14 @@ export abstract class Callable {
         const statements = new Array<ExpressionRef>();
         let totalSize = 0;
         for (const [key, value] of this.params) {
-            this.setLocal(key, value.type, value.wasmType);
+            this.setLocal(key, value.type);
             if (value.type.kind !== typeKind.BASIC) {
                 throw new RuntimeError("not implemented");
             }
             totalSize += value.type.size();
             const offset = this.getLocalOffset(key);
-            const basicType = value.type.type;
-            const wasmType = value.wasmType;
+            const basicType = value.type;
+            const wasmType = value.type.wasmType();
             statements.push(this.storeLocal(
                 basicType,
                 this.enclosing.generateConstant(binaryen.i32, offset),
@@ -281,7 +287,7 @@ export abstract class Callable {
         }
     }
 
-    private generateLeftValue(expression: Expr): ExpressionRef {
+    private generateAddr(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.VarExprNode:
                 return this.varExpression(expression);
@@ -316,7 +322,7 @@ export abstract class Callable {
 
     protected assignExpression(node: AssignNode): ExpressionRef {
         const value = this.generateExpression(node.right);
-        const ptr = this.generateLeftValue(node.left);
+        const ptr = this.generateAddr(node.left);
         return this.enclosing.store(node.left.type, ptr, value);
     }
 
@@ -350,7 +356,7 @@ export abstract class Callable {
         const elemType = node.type;
         // if it comes to here possibilities such as 1[1] are prevented
         // the base ptr(head) of the array
-        const base = this.generateLeftValue(node.expr);
+        const base = this.generateAddr(node.expr);
         // if the numbers of dimensions do not match
         if (node.indexes.length != rValType.dimensions.length) {
             throw new RuntimeError("The index dimension numbers do not match for " + rValType.toString());
@@ -584,20 +590,18 @@ export abstract class Callable {
     protected varDeclStatement(node: VarDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
-        const varType = convertToBasicType(node.type);
-        const wasmType = convertToWasmType(node.type);
-        this.setLocal(varName, varType, wasmType);
+        const varType = node.type;
+        this.setLocal(varName, varType);
         return this.enclosing.incrementStackTop(varType.size());
     }
 
     protected arrDeclStatement(node: ArrDeclNode): ExpressionRef {
         const arrName = node.ident.lexeme;
         // FIXME: only basic types supported
-        const elemType = convertToBasicType(node.type);
+        const elemType = node.type;
         // pointer to head
-        const wasmType = binaryen.i32;
         const arrType = new ArrayType(elemType, node.dimensions);
-        this.setLocal(arrName, arrType, wasmType);
+        this.setLocal(arrName, arrType);
         // FIXME: set to init pointer
         return this.enclosing.incrementStackTop(arrType.size());
     }
@@ -673,23 +677,24 @@ export abstract class Callable {
         //  )
         // )
         const varName = node.ident.lexeme;
-        const varOffset = this.getLocalOffset(varName);
+        const varOffset = this.calculateAbsolutePointer(
+            this.enclosing.generateConstant(binaryen.i32, this.getLocalOffset(varName))
+        );
         
         const initExpr = this.generateExpression(node.start);
 
-        const init = this.storeLocal(basicKind.INTEGER, this.enclosing.generateConstant(binaryen.i32, varOffset), initExpr);
+        const init = this.module.i32.store(0, 1, varOffset, initExpr, "0");
 
         const statements = this.generateStatements(node.body);
-        const variable = this.loadLocal(basicKind.INTEGER, this.enclosing.generateConstant(binaryen.i32, varOffset));
+        const variable = this.module.i32.load(0, 1, varOffset, "0");
     
         const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-        const step = this.storeLocal(
-            basicKind.INTEGER,
-            this.enclosing.generateConstant(binaryen.i32, varOffset),
+        const step = this.module.i32.store(0, 1,
+            varOffset,
             this.module.i32.add(
                 variable,
                 this.generateExpression(node.step)
-            )
+            ), "0"
         );
 
         statements.push(step);

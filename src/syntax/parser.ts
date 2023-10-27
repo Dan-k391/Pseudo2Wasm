@@ -215,7 +215,9 @@ export class Parser {
                 const ident: Token = this.consume("Expected field name", tokenType.IDENTIFIER);
                 expr = new SelectExprNode(expr, ident);
             }
-            break;
+            else {
+                break;
+            }
         }
         return expr;
     }

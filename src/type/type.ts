@@ -5,7 +5,9 @@ import { RecordType } from "./record";
 import { PointerType } from "./pointer";
 import { basicKind } from "./basic";
 import { unreachable } from "../util";
+import binaryen from "binaryen";
 
+type WasmType = binaryen.Type;
 
 export const enum typeKind {
     BASIC = "BASIC",
@@ -24,6 +26,8 @@ export abstract class BaseType {
 
     // calculate the size (in bytes) of each type
     public abstract size(): number;
+
+    public abstract wasmType(): WasmType;
 }
 
 export class NoneType extends BaseType {
@@ -35,6 +39,10 @@ export class NoneType extends BaseType {
 
     public size(): number {
         return 0;
+    }
+
+    public wasmType(): number {
+        return binaryen.none;
     }
 }
 

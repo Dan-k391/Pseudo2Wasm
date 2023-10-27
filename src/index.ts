@@ -577,7 +577,7 @@ OUTPUT k.i[0] + k.j
 // `
 
 const codes = [
-    code49,
+    code0,
     code1,
     code2,
     code3,

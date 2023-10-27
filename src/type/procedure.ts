@@ -1,3 +1,4 @@
+import { RuntimeError } from "../error";
 import { Type } from "./type";
 
 export class ProcedureType {
@@ -8,6 +9,9 @@ export class ProcedureType {
     }
 
     public getParamType(name: string): Type {
+        if (!this.paramTypes.has(name)) {
+            throw new RuntimeError("Unknown param '" + name + "'");
+        }
         return this.paramTypes.get(name)!;
     }
 }

@@ -27,7 +27,7 @@ export class LengthFunction extends Function {
     // and the corresponding type matches
     constructor(module: binaryen.Module, enclosing: Generator) {
         const params = new Map<string, Param>();
-        params.set("str", new Param(new BasicType(basicKind.STRING), binaryen.i32, 0));
+        params.set("str", new Param(new BasicType(basicKind.STRING), 0));
         const returnType = new BasicType(basicKind.INTEGER);
         super(module, enclosing, "LENGTH", params, returnType, binaryen.i32, true);
     }

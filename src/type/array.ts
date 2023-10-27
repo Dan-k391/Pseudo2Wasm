@@ -1,3 +1,4 @@
+import binaryen from "binaryen";
 import { Dimension } from "../syntax/ast";
 import { BaseType, typeKind, Type } from "./type";
 
@@ -37,5 +38,9 @@ export class ArrayType extends BaseType {
             length *= (dimension.upper.literal - dimension.lower.literal + 1);
         }
         return length;
+    }
+
+    public wasmType(): number {
+        return binaryen.i32;
     }
 }

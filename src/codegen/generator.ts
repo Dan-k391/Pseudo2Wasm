@@ -1,4 +1,6 @@
 // TODO: improve the fking code in generator (statements, expressions, etc.)
+// One very important thing here is to probably pass the scopes in checker
+// to the generator. This way the code can be cleaned up
 
 import binaryen from "binaryen";
 import { Environment } from "../import";
@@ -72,6 +74,7 @@ export class Generator {
     private functions: Map<string, Function>;
     private procedures: Map<string, Procedure>;
     private globals: Map<string, Global>;
+    private types: Map<string, Type>;
     // the global offset(where the stack starts from)
     private offset: number;
     private size: number;
@@ -86,6 +89,7 @@ export class Generator {
         this.procedures = new Map<string, Procedure>();
         // all variables in the body are global variables
         this.globals = new Map<string, Global>();
+        this.types = new Map<string, Type>();
 
         // memory
         this.size = 65536;
@@ -209,9 +213,9 @@ export class Generator {
         return old;
     }
 
-    public setGlobal(name: string, type: Type, wasmType: WasmType): void {
+    public setGlobal(name: string, type: Type): void {
         const offset = this.getOffset(type);
-        this.globals.set(name, new Global(type, wasmType, offset));
+        this.globals.set(name, new Global(type, offset));
     }
 
     public getGlobalType(name: string): Type {
@@ -227,7 +231,7 @@ export class Generator {
             throw new RuntimeError("Unknown variable '" + name + "'");
         }
         // have to use non-null assertion here
-        return this.globals.get(name)!.wasmType;
+        return this.globals.get(name)!.type.wasmType();
     }
 
     // TODO: maybe change to return ExpressionRef
@@ -241,28 +245,44 @@ export class Generator {
 
     public getFunction(name: string): Function {
         if (!this.functions.has(name)) {
-            throw new RuntimeError("Function '" + name + "' is not declared");
+            throw new RuntimeError("FUNCTION '" + name + "' is not declared");
         }
-        return this.functions.get(name) as Function;
+        return this.functions.get(name)!;
     }
 
     public setFunction(name: string, func: Function): void {
-        if (!this.functions.has(name)) {
-            this.functions.set(name, func);
+        if (this.functions.has(name)) {
+            throw new RuntimeError("FUNCTION '" + name + "' is already declared");
         }
+        this.functions.set(name, func);
     }
     
     public getProcedure(name: string): Procedure {
         if (!this.procedures.has(name)) {
-            throw new RuntimeError("Procedure '" + name + "' is not declared");
+            throw new RuntimeError("PROCEDURE '" + name + "' is not declared");
         }
-        return this.procedures.get(name) as Procedure;
+        return this.procedures.get(name)!;
     }
 
     public setProcedure(name: string, proc: Procedure): void {
-        if (!this.procedures.has(name)) {
-            this.procedures.set(name, proc);
+        if (this.procedures.has(name)) {
+            throw new RuntimeError("PROCEDURE '" + name + "' is already declared");
         }
+        this.procedures.set(name, proc);
+    }
+
+    public setType(name: string, type: Type): void {
+        if (this.types.has(name)) {
+            throw new RuntimeError("TYPE '" + name + "' is already declared");
+        }
+        this.types.set(name, type);
+    }
+
+    public getType(name: string): Type {
+        if (!this.types.has(name)) {
+            throw new RuntimeError("TYPE '" + name + "' is not declared");
+        }
+        return this.types.get(name)!;
     }
 
     public load(type: Type, ptr: ExpressionRef): ExpressionRef {
@@ -328,10 +348,9 @@ export class Generator {
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
             // FIXME: only basic types supported
-            const paramType = convertToBasicType(param.type);
-            const wasmType = convertToWasmType(param.type);
+            const paramType = param.type;
             // nethermind the method to set
-            funcParams.set(paramName, new Param(paramType, wasmType, index));
+            funcParams.set(paramName, new Param(paramType, index));
             index++;
         }
 
@@ -340,8 +359,8 @@ export class Generator {
             this,
             funcName,
             funcParams,
-            convertToBasicType(node.type),
-            convertToWasmType(node.type),
+            node.type,
+            node.type.wasmType(),
             node.body
         );
 
@@ -357,9 +376,8 @@ export class Generator {
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
             // FIXME: only basic types supported
-            const paramType = convertToBasicType(param.type);
-            const wasmType = convertToWasmType(param.type);
-            procParams.set(paramName, new Param(paramType, wasmType, index));
+            const paramType = param.type;
+            procParams.set(paramName, new Param(paramType, index));
             index++;
         }
         const proc = new Procedure(this.module, this, procName, procParams, node.body);
@@ -403,7 +421,7 @@ export class Generator {
         }
     }
 
-    private generateLeftValue(expression: Expr): ExpressionRef {
+    private generateAddr(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.VarExprNode:
                 return this.varExpression(expression);
@@ -437,9 +455,10 @@ export class Generator {
     }
 
     public assignExpression(node: AssignNode): ExpressionRef {
-        const rhs = this.generateExpression(node.right);
-        const ptr = this.generateLeftValue(node.left);
-        return this.store(node.left.type, ptr, rhs);
+        const value = this.generateExpression(node.right);
+        const ptr = this.generateAddr(node.left);
+        // the type of assign node is the type of it's left node
+        return this.store(node.type, ptr, value);
     }
 
     public loadVarExpression(node: VarExprNode): ExpressionRef {
@@ -468,7 +487,7 @@ export class Generator {
         }
         const elemType = node.type;
         // the base ptr(head) of the array
-        const base = this.generateLeftValue(node.expr);
+        const base = this.generateAddr(node.expr);
         // if the numbers of dimensions do not match
         if (node.indexes.length != rValType.dimensions.length) {
             throw new RuntimeError("The index dimension numbers do not match for " + rValType.toString());
@@ -690,6 +709,8 @@ export class Generator {
                 return this.varDeclStatement(statement);
             case nodeKind.ArrDeclNode:
                 return this.arrDeclStatement(statement);
+            case nodeKind.TypeDeclNode:
+                return this.typeDeclStatement(statement);
             case nodeKind.PtrDeclNode:
                 return this.pointerDeclStatement(statement);
             case nodeKind.IfNode:
@@ -733,9 +754,8 @@ export class Generator {
     private varDeclStatement(node: VarDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
-        const varType = convertToBasicType(node.type);
-        const wasmType = convertToWasmType(node.type);
-        this.setGlobal(varName, varType, wasmType);
+        const varType = node.type;
+        this.setGlobal(varName, varType);
         // increment stacktop and stackbase
         return this.module.block(null, [
             this.incrementStackBase(varType.size()),
@@ -745,12 +765,9 @@ export class Generator {
 
     private arrDeclStatement(node: ArrDeclNode): ExpressionRef {
         const arrName = node.ident.lexeme;
-        // FIXME: only basic types supported
-        const elemType = convertToBasicType(node.type);
-        // pointer to head
-        const wasmType = binaryen.i32;
+        const elemType = node.type;
         const arrType = new ArrayType(elemType, node.dimensions);
-        this.setGlobal(arrName, arrType, wasmType);
+        this.setGlobal(arrName, arrType);
         // FIXME: set to init pointer
         return this.module.block(null, [
             this.incrementStackBase(arrType.size()),
@@ -758,14 +775,20 @@ export class Generator {
         ]);
     }
 
+    private typeDeclStatement(node: TypeDeclNode): ExpressionRef {
+        this.setType(node.ident.lexeme, node.type);
+        // just a placeholder for ExpressionRef
+        // TODO: maybe remove later
+        return this.module.block(null, []);
+    }
+
     private pointerDeclStatement(node: PtrDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
-        const baseType = convertToBasicType(node.type);
-        const wasmType = binaryen.i32;
+        const baseType = node.type;
         const ptrType = new PointerType(baseType);
-        this.setGlobal(varName, ptrType, wasmType)
-        return this,this.module.block(null, [
+        this.setGlobal(varName, ptrType)
+        return this.module.block(null, [
             this.incrementStackBase(ptrType.size()),
             this.incrementStackTop(ptrType.size())
         ]);

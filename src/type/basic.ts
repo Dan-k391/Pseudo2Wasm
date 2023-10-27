@@ -1,3 +1,4 @@
+import binaryen from "binaryen";
 import { unreachable } from "../util";
 import { BaseType, typeKind } from "./type";
 
@@ -27,6 +28,7 @@ export class BasicType extends BaseType {
     }
 
     public size(): number {
+        // keep this switch, maybe change it later
         switch (this.type) {
             case basicKind.INTEGER:
                 return 4;
@@ -38,6 +40,24 @@ export class BasicType extends BaseType {
                 return 4;
             case basicKind.STRING:
                 return 4;
+            case basicKind.NONE:
+                unreachable();
+        }
+    }
+
+    public wasmType(): number {
+        // keep this switch, maybe change it later
+        switch (this.type) {
+            case basicKind.INTEGER:
+                return binaryen.i32;
+            case basicKind.REAL:
+                return binaryen.f64;
+            case basicKind.CHAR:
+                return binaryen.i32;
+            case basicKind.BOOLEAN:
+                return binaryen.i32;
+            case basicKind.STRING:
+                return binaryen.i32;
             case basicKind.NONE:
                 unreachable();
         }

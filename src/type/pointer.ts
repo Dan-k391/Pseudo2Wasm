@@ -1,3 +1,4 @@
+import binaryen from "binaryen";
 import { BaseType, typeKind, Type } from "./type";
 
 
@@ -17,5 +18,9 @@ export class PointerType extends BaseType {
     public size(): number {
         // ALL pointer type are 4 bytes
         return 4;
+    }
+
+    public wasmType(): number {
+        return binaryen.i32;
     }
 }

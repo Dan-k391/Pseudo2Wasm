@@ -1,0 +1,1 @@
+Just a folder where I preform tests to wasm code

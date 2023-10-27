@@ -13,7 +13,6 @@ type WasmType = binaryen.Type;
 export class Global {
     // all public here is actually very convinient
     public type: Type;
-    public wasmType: WasmType;
     // it is named 'offset' but it is relative to 0 because globals
     // are stored at the start of the memory
     // memory
@@ -24,9 +23,8 @@ export class Global {
     // -----------------------------------------
     public offset: number;
 
-    constructor(type: Type, wasmType: WasmType, offset: number) {
+    constructor(type: Type, offset: number) {
         this.type = type;
-        this.wasmType = wasmType;
         this.offset = offset;
     }
 }

@@ -1,5 +1,9 @@
 /**
  * I tried to use the visitor pattern but I found that it really was not necessary.
+ * 
+ * Some of the statements contain a typeToken and a type.
+ * The typeToken is assigned in the parser storing the token recording the type.
+ * The type is assigned in the checker and is a resolved version with type Type.
  */
 
 import { Token, tokenType } from "../lex/token";
@@ -97,14 +101,15 @@ export class FuncDefNode extends BaseNode {
     public ident: Token;
     public params: Array<ParamNode>;
     // change type
-    public type: Token;
+    public typeToken: Token;
     public body: Array<Stmt>;
+    public type!: Type;
 
-    constructor(ident: Token, params: Array<ParamNode>, type: Token, body: Array<Stmt>) {
+    constructor(ident: Token, params: Array<ParamNode>, typeToken: Token, body: Array<Stmt>) {
         super();
         this.ident = ident;
         this.params = params;
-        this.type = type;
+        this.typeToken = typeToken;
         this.body = body;
     }
 
@@ -389,12 +394,14 @@ export class BoolExprNode extends BaseNode {
 export class VarDeclNode extends BaseNode {
     public readonly kind = nodeKind.VarDeclNode;
     public ident: Token;
-    public type: Token;
+    public typeToken: Token;
+    // records the variable type, assigned in the checker
+    public type!: Type;
 
-    constructor(ident: Token, type: Token) {
+    constructor(ident: Token, typeToken: Token) {
         super();
         this.ident = ident;
-        this.type = type;
+        this.typeToken = typeToken;
     }
 
     public toString(): string {
@@ -410,13 +417,14 @@ export interface Dimension {
 export class ArrDeclNode extends BaseNode {
     public readonly kind = nodeKind.ArrDeclNode;
     public ident: Token;
-    public type: Token;
+    public typeToken: Token;
     public dimensions: Array<Dimension>;
+    public type!: Type;
 
-    constructor(ident: Token, type: Token, dimensions: Array<Dimension>) {
+    constructor(ident: Token, typeToken: Token, dimensions: Array<Dimension>) {
         super();
         this.ident = ident;
-        this.type = type;
+        this.typeToken = typeToken;
         this.dimensions = dimensions;
     }
 
@@ -428,12 +436,14 @@ export class ArrDeclNode extends BaseNode {
 export class PtrDeclNode extends BaseNode {
     public readonly kind = nodeKind.PtrDeclNode;
     public ident: Token;
-    public type: Token;
+    public typeToken: Token;
+    // records what type declared, added in the checker
+    public type!: Type;
 
-    constructor(ident: Token, type: Token) {
+    constructor(ident: Token, typeToken: Token) {
         super();
         this.ident = ident;
-        this.type = type;
+        this.typeToken = typeToken;
     }
 
     public toString(): string {
@@ -445,6 +455,8 @@ export class TypeDeclNode extends BaseNode {
     public readonly kind = nodeKind.TypeDeclNode;
     public ident: Token;
     public body: Array<VarDeclNode | ArrDeclNode>;
+    // records what type declared in the checker
+    public type!: Type;
 
     constructor(ident: Token, body: Array<VarDeclNode | ArrDeclNode>) {
         super();

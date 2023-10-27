@@ -1,3 +1,4 @@
+import binaryen from "binaryen";
 import { RuntimeError } from "../error";
 import { BaseType, typeKind, Type } from "./type";
 
@@ -28,6 +29,13 @@ export class RecordType extends BaseType {
         return total;
     }
 
+    public getField(name: string): Type {
+        if (!this.fields.has(name)) {
+            throw new RuntimeError("No member named " + name + "in " + this.toString);
+        }
+        return this.fields.get(name)!;
+    }
+
     // static caculation (I think it will work fine)
     // returns the offset relative to the start of the record
     public offset(name: string): number {
@@ -43,5 +51,9 @@ export class RecordType extends BaseType {
             offset += value.size();
         }
         return offset;
+    }
+
+    public wasmType(): number {
+        return binaryen.i32;
     }
 }
