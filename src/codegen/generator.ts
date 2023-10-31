@@ -399,7 +399,7 @@ export class Generator {
             case nodeKind.IndexExprNode:
                 return this.loadIndexExpression(expression);
             case nodeKind.SelectExprNode:
-                return this.selectExpression(expression);
+                return this.loadSelectExpression(expression);
             case nodeKind.CallFuncExprNode:
                 return this.callFunctionExpression(expression);
             case nodeKind.CallProcExprNode:
@@ -528,13 +528,18 @@ export class Generator {
         );
     }
 
+    public loadSelectExpression(node: SelectExprNode): ExpressionRef {
+        const ptr = this.selectExpression(node);
+        return this.load(node.type, ptr);
+    }
+
     // TODO: do it
     public selectExpression(node: SelectExprNode): ExpressionRef {
-        const rVal = node.type;
+        const rVal = node.expr.type;
         if (rVal.kind !== typeKind.RECORD) {
             throw new RuntimeError("Cannot perfrom 'select' operation to non RECORD types");
         }
-        const expr = this.generateExpression(node.expr);
+        const expr = this.generateAddr(node.expr);
         return this.module.i32.add(expr, this.generateConstant(binaryen.i32, rVal.offset(node.ident.lexeme)));
     }
 
