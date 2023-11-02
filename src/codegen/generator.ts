@@ -395,11 +395,11 @@ export class Generator {
             case nodeKind.AssignNode:
                 return this.assignExpression(expression);
             case nodeKind.VarExprNode:
-                return this.loadVarExpression(expression);
+                return this.load(expression.type, this.varExpression(expression));
             case nodeKind.IndexExprNode:
-                return this.loadIndexExpression(expression);
+                return this.load(expression.type, this.indexExpression(expression));
             case nodeKind.SelectExprNode:
-                return this.loadSelectExpression(expression);
+                return this.load(expression.type, this.selectExpression(expression));
             case nodeKind.CallFuncExprNode:
                 return this.callFunctionExpression(expression);
             case nodeKind.CallProcExprNode:
@@ -461,21 +461,11 @@ export class Generator {
         return this.store(node.type, ptr, value);
     }
 
-    public loadVarExpression(node: VarExprNode): ExpressionRef {
-        const ptr = this.varExpression(node);
-        return this.load(node.type, ptr);
-    }
-
     // returns the pointer(offset) of the variable
     public varExpression(node: VarExprNode): ExpressionRef {
         const varName = node.ident.lexeme;
         const offset = this.getGlobalOffset(varName);
         return this.generateConstant(binaryen.i32, offset);
-    }
-
-    private loadIndexExpression(node: IndexExprNode): ExpressionRef {
-        const ptr = this.indexExpression(node);
-        return this.load(node.type, ptr);
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -528,12 +518,6 @@ export class Generator {
         );
     }
 
-    public loadSelectExpression(node: SelectExprNode): ExpressionRef {
-        const ptr = this.selectExpression(node);
-        return this.load(node.type, ptr);
-    }
-
-    // TODO: do it
     public selectExpression(node: SelectExprNode): ExpressionRef {
         const rVal = node.expr.type;
         if (rVal.kind !== typeKind.RECORD) {
