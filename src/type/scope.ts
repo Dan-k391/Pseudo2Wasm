@@ -4,6 +4,7 @@ import { ProcedureType } from "./procedure";
 import { RecordType } from "./record";
 import { Type } from "./type";
 
+
 export class Scope {
     // if is function, enable return statement
     public isFunc: boolean;

@@ -57,7 +57,7 @@ type ExpressionRef = binaryen.ExpressionRef;
 type WasmType = binaryen.Type;
 
 /**
- * The parameters are passed in by webassembly funciton parameters
+ * The parameters are passed in by webassembly function parameters
  * At the function start organize every argument onto the stack
  * 
  * Kind of follows the same pattern as assembly calls which store

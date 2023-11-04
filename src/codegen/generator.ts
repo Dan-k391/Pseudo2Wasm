@@ -50,7 +50,8 @@ import { Global } from "./global";
 import { Local } from "./local";
 import { 
     Type,
-    typeKind} from "../type/type";
+    typeKind
+} from "../type/type";
 import { basicKind } from "../type/basic";
 import { PointerType } from "../type/pointer";
 import { RecordType } from "../type/record";

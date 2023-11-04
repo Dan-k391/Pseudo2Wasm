@@ -37,7 +37,7 @@ import {
     CastExprNode
 } from "../syntax/ast";
 import { unreachable } from "../util";
-import { Scope } from "./scopes";
+import { Scope } from "./scope";
 import { NoneType, Type, commonBasicType, compatable, compatableBasic, typeKind } from "./type";
 import { basicKind } from "./basic";
 import { BasicType } from "./basic";
