@@ -90,20 +90,16 @@
     )
    )
   )
-  (block
-   (global.set $__stackTop
-    (i32.add
-     (global.get $__stackTop)
-     (i32.const 4)
-    )
+  (global.set $__stackTop
+   (i32.add
+    (global.get $__stackTop)
+    (i32.const 4)
    )
   )
-  (block
-   (global.set $__stackTop
-    (i32.add
-     (global.get $__stackTop)
-     (i32.const 4)
-    )
+  (global.set $__stackTop
+   (i32.add
+    (global.get $__stackTop)
+    (i32.const 4)
    )
   )
   (block

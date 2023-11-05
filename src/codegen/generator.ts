@@ -833,9 +833,7 @@ export class Generator {
             ]);
         }
         else {
-            return this.module.block(null, [
-                this.incrementStackTop(varType.size())
-            ]);
+            return this.incrementStackTop(varType.size());
         }
     }
 
@@ -852,9 +850,7 @@ export class Generator {
             ]);
         }
         else {
-            return this.module.block(null, [
-                this.incrementStackTop(arrType.size())
-            ]);
+            return this.incrementStackTop(arrType.size());
         }
     }
 
