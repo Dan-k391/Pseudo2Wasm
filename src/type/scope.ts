@@ -1,8 +1,12 @@
+import binaryen from "binaryen";
 import { RuntimeError } from "../error";
 import { FunctionType } from "./function";
 import { ProcedureType } from "./procedure";
 import { RecordType } from "./record";
+import { Symbol } from "./symbol";
 import { Type } from "./type";
+
+type ExpressionRef = binaryen.ExpressionRef;
 
 
 export class Scope {
@@ -10,14 +14,16 @@ export class Scope {
     public isFunc: boolean;
     public parent?: Scope;
     public returnType?: Type;
+    // if is function, returnIndex is the local index of the return value
+    public returnIndex?: number;
     public children: Array<Scope>;
-    public elems: Map<string, Type>;
+    public elems: Map<string, Symbol>;
     public functions: Map<string, FunctionType>;
     public procedures: Map<string, ProcedureType>;
     // RECORDs, ENUMs, and POINTERs
     public types: Map<string, Type>;
 
-    constructor(isFunc: boolean, parent?: Scope, returnType?: Type) {
+    constructor(isFunc: boolean, parent?: Scope, returnType?: Type, returnIndex?: number) {
         this.isFunc = isFunc;
         if (parent) {
             this.parent = parent;
@@ -25,18 +31,29 @@ export class Scope {
         if (returnType) {
             this.returnType = returnType;
         }
+        if (returnIndex) {
+            this.returnIndex = returnIndex;
+        }
         this.children = new Array<Scope>();
-        this.elems = new Map<string, Type>();
+        this.elems = new Map<string, Symbol>();
         this.functions = new Map<string, FunctionType>();
         this.procedures = new Map<string, ProcedureType>();
         this.types = new Map<string, RecordType>;
     }
 
-    public insert(name: string, type: Type) {
-        this.elems.set(name, type);
+    public size(): number {
+        let total: number = 0;
+        for (let symbol of this.elems.values()) {
+            total += symbol.type.size();
+        }
+        return total;
     }
 
-    public lookUp(name: string): Type {
+    public insert(name: string, symbol: Symbol) {
+        this.elems.set(name, symbol);
+    }
+
+    public lookUp(name: string): Symbol {
         if (!this.elems.has(name)) {
             if (!this.parent) {
                 throw new RuntimeError("Unknown variable '" + name + "'");
@@ -44,6 +61,16 @@ export class Scope {
             return this.parent.lookUp(name);
         }
         return this.elems.get(name)!;
+    }
+
+    public setPointer(name: string, ptr: ExpressionRef) {
+        if (!this.elems.has(name)) {
+            if (!this.parent) {
+                throw new RuntimeError("Unknown variable '" + name + "'");
+            }
+            this.parent.setPointer(name, ptr);
+        }
+        this.elems.get(name)!.pointer = ptr;
     }
 
     public insertFunc(name: string, funcType: FunctionType): void {

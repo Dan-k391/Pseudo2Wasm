@@ -12,24 +12,18 @@
  * and an inheratace from base class Function
  */
 
+// 2023/11/6: Now fixed, all type checking is done in the semantic analysis phase
+// this is just a holder fo the wasm builtin function
+
 import binaryen from "binaryen";
-import { Local } from "./local";
-import { basicKind } from "../type/basic";
-import { BasicType } from "../type/basic";
-import { Function } from "./function";
-import { Generator } from "./generator";
-import { Param } from "./param";
 
 
 // TODO: use a better way to store builtin functions
-export class LengthFunction extends Function {
-    // The initialization here is for the type checker to check if arg size and param size match
-    // and the corresponding type matches
-    constructor(module: binaryen.Module, enclosing: Generator) {
-        const params = new Map<string, Param>();
-        params.set("str", new Param(new BasicType(basicKind.STRING), 0));
-        const returnType = new BasicType(basicKind.INTEGER);
-        super(module, enclosing, "LENGTH", params, returnType, binaryen.i32, true);
+export class LengthFunction {
+    private module: binaryen.Module;
+
+    constructor(module: binaryen.Module) {
+        this.module = module;
     }
 
     public generate(): void {

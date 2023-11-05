@@ -43,9 +43,7 @@ import {
 } from "../syntax/ast";
 import { ParamNode } from "../syntax/param";
 
-import { Function, DefinedFunction } from "./function";
-import { Procedure } from "./procedure";
-import { convertToBasicType, convertToWasmType, unreachable } from "../util";
+import { unreachable } from "../util";
 import { Global } from "./global";
 import { Local } from "./local";
 import { 
@@ -61,6 +59,8 @@ import { commonBasicType } from "../type/type";
 import { String } from "./string";
 import { LengthFunction } from "./builtin";
 import { Param } from "./param";
+import { Symbol, symbolKind } from "../type/symbol";
+import { Scope } from "../type/scope";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -72,12 +72,13 @@ type WasmType = binaryen.Type;
 export class Generator {
     private ast: ProgramNode;
     private module: binaryen.Module;
-    private functions: Map<string, Function>;
-    private procedures: Map<string, Procedure>;
-    private globals: Map<string, Global>;
-    private types: Map<string, Type>;
-    // the global offset(where the stack starts from)
-    private offset: number;
+    private global: Scope;
+    private curScope: Scope;
+    // the global offset (where the stack starts from)
+    private globalOffset: number;
+    // the local offset (relative to the stackbase)
+    // set to 0 when entering a new scope
+    private localOffset: number;
     private size: number;
     private label: number;
     public strings: Array<String>;
@@ -86,15 +87,14 @@ export class Generator {
         this.ast = ast;
         this.module = new binaryen.Module();
 
-        this.functions = new Map<string, Function>();
-        this.procedures = new Map<string, Procedure>();
         // all variables in the body are global variables
-        this.globals = new Map<string, Global>();
-        this.types = new Map<string, Type>();
+        this.global = this.ast.global;
+        this.curScope = this.global;
 
         // memory
         this.size = 65536;
-        this.offset = 0;
+        this.globalOffset = 0;
+        this.localOffset = 0; 
 
         // all the strings are set together so record them
         this.strings = new Array<String>();
@@ -125,16 +125,15 @@ export class Generator {
                 offset: str.offset,
                 data: encoder.encode(str.value + '\0'),
                 passive: false
-            })), 
-        false);
+            })), false
+        );
 
         this.module.addMemoryImport("0", "env", "buffer");
         return this.module;
     }
 
-    public generateBuiltins() {
-        this.setFunction("LENGTH", new LengthFunction(this.module, this));
-        this.getFunction("LENGTH").generate();
+    public generateBuiltins(): void {
+        new LengthFunction(this.module).generate();
     }
 
     // basically, all the constant value which are generated are numbers, either i32 or f64
@@ -208,82 +207,54 @@ export class Generator {
     //     ]);
     // }
 
-    public getOffset(type: Type): number {
-        const old = this.offset;
-        this.offset += type.size();
+    public enterScope(scope: Scope): void {
+        this.curScope = scope;
+        this.localOffset = 0;
+    }
+
+    public leaveScope(): void {
+        // FIXME: check whether the scope is the global scope
+        this.curScope = this.curScope.parent!;
+        this.localOffset = 0;
+    }
+
+    public getGlobalOffset(type: Type): number {
+        const old = this.globalOffset;
+        this.globalOffset += type.size();
         return old;
     }
 
-    public setGlobal(name: string, type: Type): void {
-        const offset = this.getOffset(type);
-        this.globals.set(name, new Global(type, offset));
+    public getLocalOffset(type: Type): number {
+        const old = this.localOffset;
+        this.localOffset += type.size();
+        return old;
     }
 
-    public getGlobalType(name: string): Type {
-        if (!this.globals.has(name)) {
-            throw new RuntimeError("Unknown variable '" + name + "'");
+    public setPointer(name: string, type: Type): void {
+        const kind = this.curScope.lookUp(name).kind;
+        // pointer of global variables: offset
+        if (kind === symbolKind.GLOBAL) {
+            const offset = this.getGlobalOffset(type);
+            this.curScope.setPointer(
+                name,
+                this.generateConstant(binaryen.i32, offset)
+            );
         }
-        // have to use non-null assertion here
-        return this.globals.get(name)!.type;
+        // pointer of local variables: stackbase + offset
+        else {
+            const offset = this.getLocalOffset(type);
+            this.curScope.setPointer(
+                name,
+                this.module.i32.add(
+                    this.module.global.get("__stackBase", binaryen.i32),
+                    this.generateConstant(binaryen.i32, offset)
+                )
+            );
+        }
     }
 
-    public getGlobalWasmType(name: string): WasmType {
-        if (!this.globals.has(name)) {
-            throw new RuntimeError("Unknown variable '" + name + "'");
-        }
-        // have to use non-null assertion here
-        return this.globals.get(name)!.type.wasmType();
-    }
-
-    // TODO: maybe change to return ExpressionRef
-    public getGlobalOffset(name: string): number {
-        if (!this.globals.has(name)) {
-            throw new RuntimeError("Unknown variable '" + name + "'");
-        }
-        // have to use non-null assertion here
-        return this.globals.get(name)!.offset;
-    }
-
-    public getFunction(name: string): Function {
-        if (!this.functions.has(name)) {
-            throw new RuntimeError("FUNCTION '" + name + "' is not declared");
-        }
-        return this.functions.get(name)!;
-    }
-
-    public setFunction(name: string, func: Function): void {
-        if (this.functions.has(name)) {
-            throw new RuntimeError("FUNCTION '" + name + "' is already declared");
-        }
-        this.functions.set(name, func);
-    }
-    
-    public getProcedure(name: string): Procedure {
-        if (!this.procedures.has(name)) {
-            throw new RuntimeError("PROCEDURE '" + name + "' is not declared");
-        }
-        return this.procedures.get(name)!;
-    }
-
-    public setProcedure(name: string, proc: Procedure): void {
-        if (this.procedures.has(name)) {
-            throw new RuntimeError("PROCEDURE '" + name + "' is already declared");
-        }
-        this.procedures.set(name, proc);
-    }
-
-    public setType(name: string, type: Type): void {
-        if (this.types.has(name)) {
-            throw new RuntimeError("TYPE '" + name + "' is already declared");
-        }
-        this.types.set(name, type);
-    }
-
-    public getType(name: string): Type {
-        if (!this.types.has(name)) {
-            throw new RuntimeError("TYPE '" + name + "' is not declared");
-        }
-        return this.types.get(name)!;
+    public getPointer(name: string): ExpressionRef {
+        return this.curScope.lookUp(name).pointer;
     }
 
     public load(type: Type, ptr: ExpressionRef): ExpressionRef {
@@ -341,55 +312,133 @@ export class Generator {
         return mainFunciton;
     }
 
-    private generateFunctionDefinition(node: FuncDefNode): void {
-        const funcName = node.ident.lexeme;
-        const funcParams = new Map<string, Param>();
+    protected callablePrologue(): ExpressionRef {
+        return this.module.block("__callablePrologue", [
+            this.module.i32.store(0, 1, 
+                this.module.global.get("__stackTop", binaryen.i32),
+                this.module.global.get("__stackBase", binaryen.i32),
+                "0"
+            ),
+            this.incrementStackTop(4),
+            this.module.global.set(
+                "__stackBase",
+                this.module.global.get("__stackTop", binaryen.i32)
+            )
+        ]);
+    }
 
+    // a very confusing concept here is that the stack starts from lower address to higher address
+    // it grows uppwards
+    // therefore, the pop a operation can be transformsed into 2 operations
+    // sub rsp, 4
+    // load b, rsp
+    // At first subtract the stacktop and then load
+    protected callableEpilogue(): ExpressionRef {
+        return this.module.block("__callableEpilogue", [
+            this.module.global.set(
+                "__stackTop",
+                this.module.global.get("__stackBase", binaryen.i32)
+            ),
+            this.decrementStackTop(4),
+            this.module.global.set(
+                "__stackBase",
+                this.module.i32.load(0, 1, 
+                    this.module.global.get("__stackTop", binaryen.i32), "0"
+                )
+            )
+        ]);
+    }
+
+    // for callables
+    private initParams(params: Array<ParamNode>): ExpressionRef {
+        const statements = new Array<ExpressionRef>();
+        let totalSize = 0;
         let index = 0;
-        for (const param of node.params) {
+        for (const param of params) {
             const paramName = param.ident.lexeme;
-            // FIXME: only basic types supported
             const paramType = param.type;
-            // nethermind the method to set
-            funcParams.set(paramName, new Param(paramType, index));
+            this.setPointer(paramName, paramType);
+            if (paramType.kind !== typeKind.BASIC) {
+                throw new RuntimeError("not implemented");
+            }
+            totalSize += paramType.size();
+            const ptr = this.getPointer(paramName);
+            const wasmType = paramType.wasmType();
+            statements.push(this.store(
+                paramType,
+                ptr,
+                this.module.local.get(index, wasmType)
+            ));
             index++;
         }
+        // grow the stack at the total param size
+        statements.push(this.incrementStackTop(totalSize));
+        return this.module.block("__paramInit", statements);
+    }
 
-        const func = new DefinedFunction(
-            this.module,
-            this,
+    private generateFunctionDefinition(node: FuncDefNode): void {
+        this.enterScope(node.local);
+
+        const funcName = node.ident.lexeme;
+        const paramWasmTypes = new Array<WasmType>();
+
+        for (const value of node.params) {
+            paramWasmTypes.push(value.type.wasmType());
+        }
+
+        const paramType = binaryen.createType(paramWasmTypes);
+
+        const funcBody = [
+            this.callablePrologue(),
+            this.initParams(node.params),
+            ...this.generateStatements(node.body),
+            this.callableEpilogue(),
+        ];
+
+        // FIXME: single returnType has problem here
+        // the only local variable: the return value variable
+        this.module.addFunction(
             funcName,
-            funcParams,
-            node.type,
+            paramType,
             node.type.wasmType(),
-            node.body
+            [node.type.wasmType()],
+            this.module.block(null, funcBody)
         );
-
-        this.setFunction(funcName, func);
-        this.getFunction(funcName).generate();
+        this.leaveScope();
     }
 
     private generateProcedureDefinition(node: ProcDefNode): void {
+        this.enterScope(node.local);
         const procName = node.ident.lexeme;
-        const procParams = new Map<string, Param>();
+        const paramWasmTypes = new Array<WasmType>();
 
-        let index = 0;
-        for (const param of node.params) {
-            const paramName = param.ident.lexeme;
-            // FIXME: only basic types supported
-            const paramType = param.type;
-            procParams.set(paramName, new Param(paramType, index));
-            index++;
+        for (const value of node.params) {
+            paramWasmTypes.push(value.type.wasmType());
         }
-        const proc = new Procedure(this.module, this, procName, procParams, node.body);
 
-        this.setProcedure(procName, proc);
-        this.getProcedure(procName).generate();
+        const paramType = binaryen.createType(paramWasmTypes);
+
+        const procBody = [
+            this.callablePrologue(),
+            this.initParams(node.params),
+            ...this.generateStatements(node.body),
+            this.callableEpilogue(),
+        ];
+
+        // empty local variable array
+        this.module.addFunction(
+            procName,
+            paramType,
+            binaryen.none,
+            [],
+            this.module.block(null, procBody)
+        );
+        this.leaveScope();
     }
 
     // Expressions
     // specifically right values
-    private generateExpression(expression: Expr): ExpressionRef {
+    public generateExpression(expression: Expr): ExpressionRef {
         switch (expression.kind) {
             case nodeKind.CastExprNode:
                 return this.castExpression(expression);
@@ -465,8 +514,7 @@ export class Generator {
     // returns the pointer(offset) of the variable
     public varExpression(node: VarExprNode): ExpressionRef {
         const varName = node.ident.lexeme;
-        const offset = this.getGlobalOffset(varName);
-        return this.generateConstant(binaryen.i32, offset);
+        return this.getPointer(varName);
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -537,7 +585,7 @@ export class Generator {
                 const arg = node.args[i];
                 funcArgs.push(this.generateExpression(arg));
             }
-            const returnType = this.getFunction(funcName).wasmReturnType;
+            const returnType = node.type.wasmType();
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
@@ -658,9 +706,10 @@ export class Generator {
     }
 
     // use null-terminated strings
+    // strings are stored in the global memory section
     public stringExpression(node: StringExprNode): ExpressionRef {
-        const stringIndex = this.offset;
-        this.offset += node.value.length + 1;
+        const stringIndex = this.globalOffset;
+        this.globalOffset += node.value.length + 1;
         // add this string to strings with type interface String Lol
         this.strings.push({offset: this.generateConstant(binaryen.i32, stringIndex), value: node.value});
         return this.module.i32.const(stringIndex);
@@ -671,7 +720,7 @@ export class Generator {
         return this.module.block(null, this.generateStatements(statements));
     }
 
-    private generateStatements(statements: Array<Stmt>): Array<ExpressionRef> {
+    public generateStatements(statements: Array<Stmt>): Array<ExpressionRef> {
         const stmts = new Array<ExpressionRef>();
         for (const statement of statements) {
             if (statement.kind === nodeKind.FuncDefNode) {
@@ -687,12 +736,13 @@ export class Generator {
         return stmts;
     }
 
-    protected generateStatement(statement: Stmt): ExpressionRef {
+    public generateStatement(statement: Stmt): ExpressionRef {
         switch (statement.kind) {
             case nodeKind.ExprStmtNode:
                 return this.generateExpression(statement.expr);
             case nodeKind.ReturnNode:
-                throw new RuntimeError("Really? What were you expecting it to return?");
+                // return validation is done in checker
+                return this.returnStatement(statement);
             case nodeKind.OutputNode:
                 return this.outputStatement(statement);
             case nodeKind.VarDeclNode:
@@ -714,6 +764,34 @@ export class Generator {
             default:
                 throw new RuntimeError("Not implemented yet");
         }
+    }
+
+    private returnStatement(node: ReturnNode): ExpressionRef {
+        const returnVal = this.generateExpression(node.expr);
+        return this.module.block(null, [
+            this.module.local.set(
+                // definitely exists
+                this.curScope.returnIndex!,
+                returnVal
+            ),
+            this.module.global.set(
+                "__stackTop",
+                this.module.global.get("__stackBase", binaryen.i32)
+            ),
+            this.decrementStackTop(4),
+            this.module.global.set(
+                "__stackBase",
+                this.module.i32.load(0, 1, 
+                    this.module.global.get("__stackTop", binaryen.i32), "0"
+                )
+            ),
+            this.module.return(
+                this.module.local.get(
+                    this.curScope.returnIndex!,
+                    node.expr.type.wasmType()
+                )
+            )
+        ]);
     }
 
     private outputStatement(node: OutputNode): ExpressionRef {
@@ -745,28 +823,42 @@ export class Generator {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
         const varType = node.type;
-        this.setGlobal(varName, varType);
-        // increment stacktop and stackbase
-        return this.module.block(null, [
-            this.incrementStackBase(varType.size()),
-            this.incrementStackTop(varType.size())
-        ]);
+        this.setPointer(varName, varType);
+        // increment stacktop and stackbase if the variable is global
+        const kind = this.curScope.lookUp(varName).kind;
+        if (kind === symbolKind.GLOBAL) {
+            return this.module.block(null, [
+                this.incrementStackBase(varType.size()),
+                this.incrementStackTop(varType.size())
+            ]);
+        }
+        else {
+            return this.module.block(null, [
+                this.incrementStackTop(varType.size())
+            ]);
+        }
     }
 
     private arrDeclStatement(node: ArrDeclNode): ExpressionRef {
         const arrName = node.ident.lexeme;
-        const elemType = node.type;
-        const arrType = new ArrayType(elemType, node.dimensions);
-        this.setGlobal(arrName, arrType);
+        const arrType = node.type;
+        this.setPointer(arrName, arrType);
         // FIXME: set to init pointer
-        return this.module.block(null, [
-            this.incrementStackBase(arrType.size()),
-            this.incrementStackTop(arrType.size())
-        ]);
+        const kind = this.curScope.lookUp(arrName).kind;
+        if (kind === symbolKind.GLOBAL) {
+            return this.module.block(null, [
+                this.incrementStackBase(arrType.size()),
+                this.incrementStackTop(arrType.size())
+            ]);
+        }
+        else {
+            return this.module.block(null, [
+                this.incrementStackTop(arrType.size())
+            ]);
+        }
     }
 
     private typeDeclStatement(node: TypeDeclNode): ExpressionRef {
-        this.setType(node.ident.lexeme, node.type);
         // just a placeholder for ExpressionRef
         // TODO: maybe remove later
         return this.module.block(null, []);
@@ -777,7 +869,7 @@ export class Generator {
         // FIXME: only basic types supported
         const baseType = node.type;
         const ptrType = new PointerType(baseType);
-        this.setGlobal(varName, ptrType)
+        this.setPointer(varName, ptrType)
         return this.module.block(null, [
             this.incrementStackBase(ptrType.size()),
             this.incrementStackTop(ptrType.size())
@@ -855,20 +947,19 @@ export class Generator {
         //  )
         // )
         const varName = node.ident.lexeme;
-        const varOffset = this.getGlobalOffset(varName);
+        const ptr = this.getPointer(varName);
 
         const initExpr = this.generateExpression(node.start);
 
         // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
         // fuck it, just do not use the load function
-        const init = this.module.i32.store(0, 1, this.generateConstant(binaryen.i32, varOffset), initExpr, "0");
+        const init = this.module.i32.store(0, 1, ptr, initExpr, "0");
 
         const statements = this.generateStatements(node.body);
-        const variable = this.module.i32.load(0, 1, this.generateConstant(binaryen.i32, varOffset), "0");
+        const variable = this.module.i32.load(0, 1, ptr, "0");
 
         const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
-        const step = this.module.i32.store(0, 1,
-            this.generateConstant(binaryen.i32, varOffset),
+        const step = this.module.i32.store(0, 1, ptr,
             this.module.i32.add(
                 variable,
                 this.generateExpression(node.step)

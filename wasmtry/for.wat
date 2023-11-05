@@ -90,21 +90,28 @@
     )
    )
   )
-  (global.set $__stackTop
-   (i32.add
-    (global.get $__stackTop)
-    (i32.const 4)
+  (block
+   (global.set $__stackTop
+    (i32.add
+     (global.get $__stackTop)
+     (i32.const 4)
+    )
    )
   )
-  (global.set $__stackTop
-   (i32.add
-    (global.get $__stackTop)
-    (i32.const 4)
+  (block
+   (global.set $__stackTop
+    (i32.add
+     (global.get $__stackTop)
+     (i32.const 4)
+    )
    )
   )
   (block
    (i32.store align=1
-    (i32.const 4)
+    (i32.add
+     (global.get $__stackBase)
+     (i32.const 4)
+    )
     (i32.const 1)
    )
    (loop $1
@@ -117,7 +124,10 @@
        )
       )
       (i32.load align=1
-       (i32.const 4)
+       (i32.add
+        (global.get $__stackBase)
+        (i32.const 4)
+       )
       )
      )
      (block
@@ -134,10 +144,16 @@
        )
       )
       (i32.store align=1
-       (i32.const 4)
+       (i32.add
+        (global.get $__stackBase)
+        (i32.const 4)
+       )
        (i32.add
         (i32.load align=1
-         (i32.const 4)
+         (i32.add
+          (global.get $__stackBase)
+          (i32.const 4)
+         )
         )
         (i32.const 1)
        )

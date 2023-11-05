@@ -2,7 +2,8 @@
 import binaryen from "binaryen";
 import { 
     Type,
-    typeKind} from "../type/type";
+    typeKind
+} from "../type/type";
 import { basicKind } from "../type/basic";
 import { RecordType } from "../type/record";
 import { ArrayType } from "../type/array";

@@ -7,6 +7,7 @@
  */
 
 import { Token, tokenType } from "../lex/token";
+import { Scope } from "../type/scope";
 import { Type } from "../type/type";
 import { ParamNode } from "./param";
 
@@ -89,6 +90,7 @@ export type Stmt = ProgramNode |
 export class ProgramNode extends BaseNode {
     public readonly kind = nodeKind.ProgramNode;
     public body: Array<Stmt>;
+    public global!: Scope;
 
     constructor(body: Array<Stmt>) {
         super();
@@ -104,6 +106,7 @@ export class FuncDefNode extends BaseNode {
     public typeToken: Token;
     public body: Array<Stmt>;
     public type!: Type;
+    public local!: Scope;
 
     constructor(ident: Token, params: Array<ParamNode>, typeToken: Token, body: Array<Stmt>) {
         super();
@@ -123,6 +126,7 @@ export class ProcDefNode extends BaseNode {
     public ident: Token;
     public params: Array<ParamNode>;
     public body: Array<Stmt>;
+    public local!: Scope;
 
     constructor(ident: Token, params: Array<ParamNode>, body: Array<Stmt>) {
         super();

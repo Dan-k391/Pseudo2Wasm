@@ -46,11 +46,13 @@ import { ArrayType } from "./array";
 import { PointerType } from "./pointer";
 import { ProcedureType } from "./procedure";
 import { RecordType } from "./record";
+import { Symbol, symbolKind } from "./symbol";
 
 
 export class Checker {
     public ast: ProgramNode;
     public global: Scope;
+    // current scope
     public curScope: Scope;
 
     constructor(ast: ProgramNode) {
@@ -79,12 +81,14 @@ export class Checker {
     private visit(): void {
         this.init();
         this.visitStmts(this.ast.body);
+        // assign global to ast
+        this.ast.global = this.global;
     }
 
-    private beginScope(isFunc: boolean, returnType?: Type): void {
+    private beginScope(isFunc: boolean, returnType?: Type, returnIndex?: number): void {
         let scope: Scope;
         if (returnType) {
-            scope = new Scope(isFunc, this.global, returnType);
+            scope = new Scope(isFunc, this.global, returnType, returnIndex);
         }
         else {
             scope = new Scope(isFunc, this.global);
@@ -97,12 +101,17 @@ export class Checker {
         this.curScope = this.curScope.parent!;
     }
 
-    private insert(name: Token, type: Type): void {
-        this.curScope.insert(name.lexeme, type);
+    private isGlobal(): boolean {
+        return this.curScope === this.global;
     }
 
+    private insert(name: Token, type: Type, kind: symbolKind): void {
+        this.curScope.insert(name.lexeme, new Symbol(type, kind));
+    }
+
+    // return the look up type in the current scope
     private lookUp(name: Token): Type {
-        return this.curScope.lookUp(name.lexeme);
+        return this.curScope.lookUp(name.lexeme).type;
     }
 
     private getFuncType(name: Token): FunctionType {
@@ -193,12 +202,14 @@ export class Checker {
 
     private visitFuncDef(node: FuncDefNode) {
         // Return type already determined in function declaration
-        this.beginScope(true, node.type);
+        this.beginScope(true, node.type, node.params.length);
         for (const param of node.params) {
             // type of param already determined in function declaration
-            this.insert(param.ident, param.type);
+            this.insert(param.ident, param.type, symbolKind.LOCAL);
         }
         this.visitStmts(node.body);
+        // set the local scope of the function
+        node.local = this.curScope;
         this.endScope();
     }
 
@@ -206,9 +217,11 @@ export class Checker {
         this.beginScope(false);
         for (const param of node.params) {
             // type of param already determined in procedure declaration
-            this.insert(param.ident, param.type);
+            this.insert(param.ident, param.type, symbolKind.LOCAL);
         }
         this.visitStmts(node.body);
+        // set the local scope of the procedure
+        node.local = this.curScope;
         this.endScope();
     }
 
@@ -544,16 +557,23 @@ export class Checker {
     private visitVarDeclStmt(node: VarDeclNode): void {
         // assign the type resolved to the node
         node.type = this.resolveType(node.typeToken);
-        this.insert(node.ident, node.type);
+        if (this.isGlobal()) {
+            this.insert(node.ident, node.type, symbolKind.GLOBAL);
+        }
+        else {
+            this.insert(node.ident, node.type, symbolKind.LOCAL);
+        }
     }
 
     private visitArrDeclStmt(node: ArrDeclNode): void {
         const elemType = this.resolveType(node.typeToken);
         node.type = new ArrayType(elemType, node.dimensions);
-        this.insert(
-            node.ident,
-            node.type
-        );
+        if (this.isGlobal()) {
+            this.insert(node.ident, node.type, symbolKind.GLOBAL);
+        }
+        else {
+            this.insert(node.ident, node.type, symbolKind.LOCAL);
+        }
     }
 
     private visitTypeDeclStmt(node: TypeDeclNode): void {
