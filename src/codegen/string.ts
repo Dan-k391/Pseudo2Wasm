@@ -3,6 +3,6 @@ import binaryen from "binaryen";
 type ExpressionRef = binaryen.ExpressionRef;
 
 export interface String {
-    offset: ExpressionRef;
+    ptr: ExpressionRef;
     value: string;
 };

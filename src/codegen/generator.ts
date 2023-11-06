@@ -91,10 +91,11 @@ export class Generator {
         this.global = this.ast.global;
         this.curScope = this.global;
 
-        // memory
-        this.size = 65536;
+        // memory size, not used for now
+        this.size = 65536 * 2;
+        // first page is data section, second page is stack and heap (maybe)
         this.globalOffset = 0;
-        this.localOffset = 0; 
+        this.localOffset = 65536; 
 
         // all the strings are set together so record them
         this.strings = new Array<String>();
@@ -110,10 +111,10 @@ export class Generator {
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
 
         // The stack grows upwards
-        // stacktop
-        this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
-        // stackbase
-        this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, 0));
+        // stacktop, starts from 65536
+        this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, 65536));
+        // stackbase, starts from 65536
+        this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, 65536));
 
         this.generateBuiltins();
         this.module.setStart(this.generateBody(this.ast.body));
@@ -122,7 +123,7 @@ export class Generator {
         const encoder = new TextEncoder();
         this.module.setMemory(0, 65536, null, 
             this.strings.map(str => ({
-                offset: str.offset,
+                offset: str.ptr,
                 data: encoder.encode(str.value + '\0'),
                 passive: false
             })), false
@@ -589,6 +590,7 @@ export class Generator {
             return this.module.call(funcName, funcArgs, returnType);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
+        // closures and function pointers are not supported
         throw new RuntimeError("Not implemented yet");
     }
 
@@ -604,6 +606,7 @@ export class Generator {
             return this.module.call(procName, procArgs, binaryen.none);
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
+        // closures and function pointers are not supported
         throw new RuntimeError("Not implemented yet");
     }
 
@@ -711,7 +714,7 @@ export class Generator {
         const stringIndex = this.globalOffset;
         this.globalOffset += node.value.length + 1;
         // add this string to strings with type interface String Lol
-        this.strings.push({offset: this.generateConstant(binaryen.i32, stringIndex), value: node.value});
+        this.strings.push({ptr: this.generateConstant(binaryen.i32, stringIndex), value: node.value});
         return this.module.i32.const(stringIndex);
     }
 
@@ -819,6 +822,8 @@ export class Generator {
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
     }
 
+    // for declaration, unlike regular assembly which allocates the stack at the very start of a function
+    // here the stack is allocated when the variable is declared
     private varDeclStatement(node: VarDeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
@@ -827,10 +832,8 @@ export class Generator {
         // increment stacktop and stackbase if the variable is global
         const kind = this.curScope.lookUp(varName).kind;
         if (kind === symbolKind.GLOBAL) {
-            return this.module.block(null, [
-                this.incrementStackBase(varType.size()),
-                this.incrementStackTop(varType.size())
-            ]);
+            // do nothing, just set the pointer
+            return this.module.block(null, []);
         }
         else {
             return this.incrementStackTop(varType.size());
@@ -844,10 +847,8 @@ export class Generator {
         // FIXME: set to init pointer
         const kind = this.curScope.lookUp(arrName).kind;
         if (kind === symbolKind.GLOBAL) {
-            return this.module.block(null, [
-                this.incrementStackBase(arrType.size()),
-                this.incrementStackTop(arrType.size())
-            ]);
+            // do nothing, just set the pointer
+            return this.module.block(null, []);
         }
         else {
             return this.incrementStackTop(arrType.size());

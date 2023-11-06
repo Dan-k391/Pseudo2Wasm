@@ -82,8 +82,8 @@ export class Compiler {
         // console.log(wasm);
 
         // initialize import objects
-        const memory = new WebAssembly.Memory({ initial: 1, maximum: 2 });
-        const maxSize = 65535;
+        const memory = new WebAssembly.Memory({ initial: 2, maximum: 10 });
+        const maxSize = 65536 * 2 - 1;
         // TODO: currently import many log functions, change to only logString later
         const importObect = {
             env: {

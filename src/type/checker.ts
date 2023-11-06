@@ -146,7 +146,7 @@ export class Checker {
             case tokenType.IDENTIFIER:
                 return this.getType(name);
             default:
-                unreachable();
+                throw new RuntimeError("There is no type '" + name.lexeme + "'");
         }
     }
 
