@@ -4,7 +4,7 @@
  * It uses the webassembly traditional params calling and perform operations to
  * the params directly.
  * 
- * (I would probaby rewrite the builtin functions in pseudocode, but thats later stuff)
+ * (I would probably rewrite the builtin functions in pseudocode, but thats later stuff)
  * 
  * Also, the functions are totally static
  * it depends on none of the class properties
@@ -18,11 +18,15 @@
 import binaryen from "binaryen";
 
 
+export abstract class BuiltinFunction {
+}
+
 // TODO: use a better way to store builtin functions
-export class LengthFunction {
+export class Length extends BuiltinFunction {
     private module: binaryen.Module;
 
     constructor(module: binaryen.Module) {
+        super();
         this.module = module;
     }
 

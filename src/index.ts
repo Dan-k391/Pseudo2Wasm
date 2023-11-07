@@ -560,6 +560,18 @@ k.j <- 3
 OUTPUT k.i[0] + k.j
 `
 
+const code51 = `TYPE nums 
+    DECLARE i: ARRAY[0: 7] OF INTEGER
+    DECLARE j: INTEGER
+ENDTYPE
+
+DECLARE k: ARRAY[0: 7] OF nums
+k[0].i[0] <- 8
+k[0].j <- 9
+
+OUTPUT k[0].i[0] + k[0].j
+`
+
 // const code11 = `TYPE a = ^INTEGER
 // DECLARE i: INTEGER
 
@@ -627,7 +639,8 @@ const codes = [
     code47,
     code48,
     code49,
-    code50
+    code50,
+    code51
 ];
 const expected = [
     10,
@@ -680,7 +693,8 @@ const expected = [
     288,
     19,
     12,
-    11
+    11,
+    17
 ];
 let total = codes.length;
 let compileCount = 0;

@@ -41,11 +41,9 @@ import {
     InputNode,
     CastExprNode
 } from "../syntax/ast";
-import { ParamNode } from "../syntax/param";
+import { ParamNode, passType } from "../syntax/param";
 
 import { unreachable } from "../util";
-import { Global } from "./global";
-import { Local } from "./local";
 import { 
     Type,
     typeKind
@@ -57,8 +55,7 @@ import { ArrayType } from "../type/array";
 import { BasicType } from "../type/basic";
 import { commonBasicType } from "../type/type";
 import { String } from "./string";
-import { LengthFunction } from "./builtin";
-import { Param } from "./param";
+import { Length } from "./std/builtin";
 import { Symbol, symbolKind } from "../type/symbol";
 import { Scope } from "../type/scope";
 
@@ -74,7 +71,13 @@ export class Generator {
     private module: binaryen.Module;
     private global: Scope;
     private curScope: Scope;
-    // the global offset (where the stack starts from)
+    // memory
+    //            stackbase (starts from 65536)
+    //                ⬇
+    // ----------------------------------------------
+    // | data section | stack->       <-heap(maybe) |
+    // ----------------------------------------------
+    // the global offset
     private globalOffset: number;
     // the local offset (relative to the stackbase)
     // set to 0 when entering a new scope
@@ -134,7 +137,7 @@ export class Generator {
     }
 
     public generateBuiltins(): void {
-        new LengthFunction(this.module).generate();
+        new Length(this.module).generate();
     }
 
     // basically, all the constant value which are generated are numbers, either i32 or f64
@@ -231,12 +234,16 @@ export class Generator {
         return old;
     }
 
-    public setPointer(name: string, type: Type): void {
+    public setPointer(name: string, ptr: ExpressionRef): void {
+        this.curScope.setPointer(name, ptr);
+    }
+
+    public addVar(name: string, type: Type): void {
         const kind = this.curScope.lookUp(name).kind;
         // pointer of global variables: offset
         if (kind === symbolKind.GLOBAL) {
             const offset = this.getGlobalOffset(type);
-            this.curScope.setPointer(
+            this.setPointer(
                 name,
                 this.generateConstant(binaryen.i32, offset)
             );
@@ -358,10 +365,10 @@ export class Generator {
         for (const param of params) {
             const paramName = param.ident.lexeme;
             const paramType = param.type;
-            this.setPointer(paramName, paramType);
             if (paramType.kind !== typeKind.BASIC) {
                 throw new RuntimeError("not implemented");
             }
+            this.addVar(paramName, paramType);
             totalSize += paramType.size();
             const ptr = this.getPointer(paramName);
             const wasmType = paramType.wasmType();
@@ -828,7 +835,7 @@ export class Generator {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
         const varType = node.type;
-        this.setPointer(varName, varType);
+        this.addVar(varName, varType);
         // increment stacktop and stackbase if the variable is global
         const kind = this.curScope.lookUp(varName).kind;
         if (kind === symbolKind.GLOBAL) {
@@ -843,7 +850,7 @@ export class Generator {
     private arrDeclStatement(node: ArrDeclNode): ExpressionRef {
         const arrName = node.ident.lexeme;
         const arrType = node.type;
-        this.setPointer(arrName, arrType);
+        this.addVar(arrName, arrType);
         // FIXME: set to init pointer
         const kind = this.curScope.lookUp(arrName).kind;
         if (kind === symbolKind.GLOBAL) {
@@ -866,7 +873,7 @@ export class Generator {
         // FIXME: only basic types supported
         const baseType = node.type;
         const ptrType = new PointerType(baseType);
-        this.setPointer(varName, ptrType)
+        this.addVar(varName, ptrType)
         return this.module.block(null, [
             this.incrementStackBase(ptrType.size()),
             this.incrementStackTop(ptrType.size())

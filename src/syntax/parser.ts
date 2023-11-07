@@ -43,10 +43,9 @@ import {
     AssignNode,
     Dimension
 } from "./ast";
-import { ParamNode } from "./param";
+import { passType, ParamNode } from "./param";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../lex/token";
-import { passType } from "./passtype";
 
 
 export class Parser {

@@ -1,7 +1,10 @@
 import { Token } from "../lex/token";
 import { Type } from "../type/type";
-import { passType } from "./passtype";
 
+
+export const enum passType {
+    BYVAL, BYREF
+}
 
 export class ParamNode {
     // default passtype will be done in the parser
