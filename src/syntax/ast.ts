@@ -293,11 +293,11 @@ export class BinaryExprNode extends BaseNode {
 export class DerefExprNode extends BaseNode {
     public readonly kind = nodeKind.DerefExprNode;
     public type!: Type;
-    public leftValue: Expr;
+    public lVal: Expr;
 
-    constructor(leftValue: Expr) {
+    constructor(lVal: Expr) {
         super();
-        this.leftValue = leftValue;
+        this.lVal = lVal;
     }
 
     public toString(): string {
@@ -308,11 +308,11 @@ export class DerefExprNode extends BaseNode {
 export class AddrExprNode extends BaseNode {
     public readonly kind = nodeKind.AddrExprNode;
     public type!: Type;
-    public leftValue: Expr;
+    public lVal: Expr;
 
-    constructor(leftValue: Expr) {
+    constructor(lVal: Expr) {
         super();
-        this.leftValue = leftValue;
+        this.lVal = lVal;
     }
 
     public toString(): string {

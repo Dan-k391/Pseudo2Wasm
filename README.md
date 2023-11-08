@@ -148,7 +148,7 @@ ENDFUNCTION
 
 // BYREF passes the reference of the object
 PROCEDURE foo (BYREF: i: INTEGER)
-    i <-> i + 1
+    i <- i + 1
 ENDPROCEDURE
 ```
 

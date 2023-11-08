@@ -53,7 +53,6 @@ import { PointerType } from "../type/pointer";
 import { RecordType } from "../type/record";
 import { ArrayType } from "../type/array";
 import { BasicType } from "../type/basic";
-import { commonBasicType } from "../type/type";
 import { String } from "./string";
 import { Length } from "./std/builtin";
 import { Symbol, symbolKind } from "../type/symbol";
@@ -266,41 +265,29 @@ export class Generator {
     }
 
     public load(type: Type, ptr: ExpressionRef): ExpressionRef {
-        if (type.kind !== typeKind.BASIC) {
-            throw new RuntimeError("not implemented"); 
+        if (type.size() === 4) {
+            return this.module.i32.load(0, 1, ptr, "0");
         }
-        switch (type.type) {
-            case basicKind.INTEGER:
-            case basicKind.CHAR:
-            case basicKind.BOOLEAN:
-            case basicKind.STRING:
-                return this.module.i32.load(0, 1, ptr, "0");
-            case basicKind.REAL:
-                return this.module.f64.load(0, 1, ptr, "0");
+        else if (type.size() === 8) {
+            return this.module.f64.load(0, 1, ptr, "0");
         }
-        unreachable();
+        throw new RuntimeError("Cannot load '" + type + "'");
     }
 
     public store(type: Type, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
-        if (type.kind !== typeKind.BASIC) {
-            throw new RuntimeError("not implemented"); 
+        if (type.size() === 4) {
+            return this.module.i32.store(0, 1, ptr, value, "0");
         }
-        switch (type.type) {
-            case basicKind.INTEGER:
-            case basicKind.CHAR:
-            case basicKind.BOOLEAN:
-            case basicKind.STRING:
-                return this.module.i32.store(0, 1, ptr, value, "0");
-            case basicKind.REAL:
-                return this.module.f64.store(0, 1, ptr, value, "0");
+        else if (type.size() === 8) {
+            return this.module.f64.store(0, 1, ptr, value, "0");
         }
-        unreachable();
+        throw new RuntimeError("Cannot store '" + type + "'");
     }
 
     // private generateMainFunction(statements: Array<Stmt>): void {
     //     // prevent overlapping of variables
     //     const block = this.generateBlock(statements);
-    //     const vars = new Array<WasmType>();
+    //     const vars = new Array<Wasmype>();
 
     //     for (const symbol of this.symbols.values()) {
     //         vars.push(symbol.type);
@@ -466,6 +453,10 @@ export class Generator {
                 return this.unaryExpression(expression);
             case nodeKind.BinaryExprNode:
                 return this.binaryExpression(expression);
+            case nodeKind.DerefExprNode:
+                return this.load(expression.type, this.generateExpression(expression.lVal));
+            case nodeKind.AddrExprNode:
+                return this.generateAddr(expression.lVal);
             case nodeKind.IntegerExprNode:
                 return this.integerExpression(expression);
             case nodeKind.RealExprNode:
@@ -869,15 +860,9 @@ export class Generator {
     }
 
     private pointerDeclStatement(node: PtrDeclNode): ExpressionRef {
-        const varName = node.ident.lexeme;
-        // FIXME: only basic types supported
-        const baseType = node.type;
-        const ptrType = new PointerType(baseType);
-        this.addVar(varName, ptrType)
-        return this.module.block(null, [
-            this.incrementStackBase(ptrType.size()),
-            this.incrementStackTop(ptrType.size())
-        ]);
+        // just a placeholder for ExpressionRef
+        // TODO: maybe remove later
+        return this.module.block(null, []);
     }
 
     private ifStatement(node: IfNode): ExpressionRef {

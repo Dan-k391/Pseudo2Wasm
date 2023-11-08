@@ -34,11 +34,13 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode,
-    CastExprNode
+    CastExprNode,
+    DerefExprNode,
+    AddrExprNode
 } from "../syntax/ast";
 import { unreachable } from "../util";
 import { Scope } from "./scope";
-import { NoneType, Type, commonBasicType, compatable, compatableBasic, typeKind } from "./type";
+import { NoneType, Type, typeKind } from "./type";
 import { basicKind } from "./basic";
 import { BasicType } from "./basic";
 import { FunctionType } from "./function";
@@ -99,6 +101,79 @@ export class Checker {
 
     private endScope(): void {
         this.curScope = this.curScope.parent!;
+    }
+
+    private static compatableBasic(leftBasicType: basicKind, rightBasicType: basicKind): boolean {
+        if (leftBasicType === basicKind.STRING &&
+            rightBasicType !== basicKind.STRING) {
+            return false;
+        }
+        if (leftBasicType !== basicKind.STRING &&
+            rightBasicType === basicKind.STRING) {
+            return false;
+        }
+        // compatable if both are not strings
+        return true;
+    }
+
+    private static compatable(leftType: Type, rightType: Type): boolean {
+        if (leftType === rightType) {
+            return true;
+        }
+    
+        switch (leftType.kind) {
+            case typeKind.BASIC:
+                if (rightType.kind !== typeKind.BASIC) {
+                    return false;
+                }
+                return Checker.compatableBasic(leftType.type, rightType.type);
+            case typeKind.ARRAY:
+                if (rightType.kind !== typeKind.ARRAY) {
+                    return false;
+                }
+                // if the element types are same ARRAYs are compatable
+                return Checker.compatable(leftType.elem, rightType.elem);
+            case typeKind.RECORD:
+                if (rightType.kind !== typeKind.RECORD) {
+                    return false;
+                }
+                if (leftType.fields.size !== rightType.fields.size) {
+                    return false;
+                }
+                for (let i = 0,
+                    leftFields = Array.from(leftType.fields.values()),
+                    rightFields = Array.from(leftType.fields.values());
+                    i < leftType.fields.size; i++) {
+                    if (!Checker.compatable(leftFields[i], rightFields[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            case typeKind.POINTER:
+                if (rightType.kind !== typeKind.POINTER) {
+                    return false;
+                }
+                return Checker.compatable(leftType.base, rightType.base);
+            default:
+                unreachable();
+        }
+    }
+
+    private static commonBasicType(leftBasicType: basicKind, rightBasicType: basicKind): basicKind {
+        if (leftBasicType === basicKind.STRING) {
+            if (rightBasicType !== basicKind.STRING) {
+                throw new RuntimeError("Cannot convert " + leftBasicType + " to " + leftBasicType);
+            }
+            return basicKind.STRING;
+        }
+        else if (rightBasicType === basicKind.STRING) {
+            throw new RuntimeError("Cannot convert " + leftBasicType + " to " + leftBasicType);
+        }
+        else if (leftBasicType === basicKind.REAL ||
+            rightBasicType === basicKind.REAL) {
+            return basicKind.REAL;
+        }
+        return basicKind.INTEGER;
     }
 
     private isGlobal(): boolean {
@@ -250,6 +325,10 @@ export class Checker {
                 return this.unaryExpr(expr);
             case nodeKind.BinaryExprNode:
                 return this.binaryExpr(expr);
+            case nodeKind.DerefExprNode:
+                return this.derefExpr(expr);
+            case nodeKind.AddrExprNode:
+                return this.addrExpr(expr);
             case nodeKind.IntegerExprNode:
                 return this.integerExpr(expr);
             case nodeKind.RealExprNode:
@@ -268,19 +347,17 @@ export class Checker {
     private assignExpr(node: AssignNode): Type {
         const leftType = this.visitExpr(node.left);
         const rightType = this.visitExpr(node.right);
-        // FIXME: fix soon
-        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
-            throw new RuntimeError("not implemented");
-        }
-        
-        const leftBasicType = leftType.type;
-        const rightBasicType = rightType.type;
 
-        if (!compatableBasic(leftBasicType, rightBasicType)) {
-            throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
+        if (!Checker.compatable(leftType, rightType)) {
+            throw new RuntimeError("Cannot convert " + leftType + " to " + rightType);
         }
 
-        node.right = this.arithConv(node.right, leftBasicType);
+        if (leftType.kind === typeKind.BASIC && rightType.kind === typeKind.BASIC) {
+            const leftBasicType = leftType.type;
+            const rightBasicType = rightType.type;
+            node.right = this.arithConv(node.right, leftBasicType);
+        }
+
         // let type for assignnode be the left type
         node.type = leftType;
         return node.type;
@@ -326,7 +403,7 @@ export class Checker {
                 const arg = node.args[i]; 
                 const argType = this.visitExpr(arg);
                 const paramType = func.getParamType(paramNames[i]);
-                if (!compatable(argType, paramType)) {
+                if (!Checker.compatable(argType, paramType)) {
                     throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
                 }
                 if (argType.kind !== typeKind.BASIC || paramType.kind !== typeKind.BASIC) {
@@ -352,7 +429,7 @@ export class Checker {
                 const arg = node.args[i]; 
                 const argType = this.visitExpr(arg);
                 const paramType = proc.getParamType(paramNames[i]);
-                if (!compatable(argType, paramType)) {
+                if (!Checker.compatable(argType, paramType)) {
                     throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
                 }
                 if (argType.kind !== typeKind.BASIC || paramType.kind !== typeKind.BASIC) {
@@ -399,7 +476,7 @@ export class Checker {
                     rightBasicType === basicKind.STRING) {
                     throw new RuntimeError("Cannot perform arithmetic operations to STRINGs")
                 }
-                const type = commonBasicType(leftBasicType, rightBasicType);
+                const type = Checker.commonBasicType(leftBasicType, rightBasicType);
                 node.type = new BasicType(type);
                 node.left = this.arithConv(node.left, type);
                 node.right = this.arithConv(node.right, type);
@@ -416,11 +493,11 @@ export class Checker {
                     rightBasicType === basicKind.STRING) {
                     throw new RuntimeError("Cannot perform logical operations to STRINGs")
                 }
-                if (!compatableBasic(leftBasicType, rightBasicType)) {
+                if (!Checker.compatableBasic(leftBasicType, rightBasicType)) {
                     throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
                 }
                 node.type = new BasicType(basicKind.BOOLEAN);
-                const type = commonBasicType(leftBasicType, rightBasicType);
+                const type = Checker.commonBasicType(leftBasicType, rightBasicType);
                 node.left = this.arithConv(node.left, type);
                 node.right = this.arithConv(node.right, type);
                 break;
@@ -435,6 +512,21 @@ export class Checker {
             default:
                 unreachable();
         }
+        return node.type;
+    }
+
+    private derefExpr(node: DerefExprNode): Type {
+        node.type = this.visitExpr(node.lVal);
+        if (node.type.kind !== typeKind.POINTER) {
+            throw new RuntimeError("Cannot dereference none POINTER types");
+        }
+        node.type = node.type.base;
+        return node.type;
+    }
+
+    private addrExpr(node: AddrExprNode): Type {
+        node.type = this.visitExpr(node.lVal);
+        node.type = new PointerType(node.type);
         return node.type;
     }
 
@@ -542,7 +634,7 @@ export class Checker {
         const leftBasicType = leftType.type;
         const rightBasicType = rightType.type;
 
-        if (!compatableBasic(leftBasicType, rightBasicType)) {
+        if (!Checker.compatableBasic(leftBasicType, rightBasicType)) {
             throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
         }
 
@@ -582,7 +674,7 @@ export class Checker {
 
     private visitPtrDeclStmt(node: PtrDeclNode): void {
         const elemType = this.resolveType(node.typeToken);
-        node.type = new PointerType(elemType)
+        node.type = new PointerType(elemType);
         this.insertType(
             node.ident,
             node.type

@@ -572,21 +572,23 @@ k[0].j <- 9
 OUTPUT k[0].i[0] + k[0].j
 `
 
-// const code11 = `TYPE a = ^INTEGER
-// DECLARE i: INTEGER
+const code52 = `TYPE intptr = ^INTEGER
+DECLARE i: INTEGER
+DECLARE a: intptr
 
-// i <- 9
-// a <- ^i
-// OUTPUT a^
-// `
+i <- 19
+a <- ^i
+OUTPUT a^
+`
 
-// const code12 = `TYPE a = ^INTEGER
-// DECLARE i: INTEGER
+const code53 = `TYPE intptr = ^INTEGER
+DECLARE i: INTEGER
+DECLARE a: intptr
 
-// i <- 9
-// a <- ^^^^i^^^
-// OUTPUT a^
-// `
+i <- 21
+a <- ^^^^i^^^
+OUTPUT a^
+`
 
 const codes = [
     code0,
@@ -640,7 +642,9 @@ const codes = [
     code48,
     code49,
     code50,
-    code51
+    code51,
+    code52,
+    code53
 ];
 const expected = [
     10,
@@ -694,7 +698,9 @@ const expected = [
     19,
     12,
     11,
-    17
+    17,
+    19,
+    21
 ];
 let total = codes.length;
 let compileCount = 0;
