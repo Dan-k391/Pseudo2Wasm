@@ -3,24 +3,21 @@ import {
 
     Expr,
     Stmt,
-    Param,
     ProgramNode,
     FuncDefNode,
     ProcDefNode,
     ReturnNode,
     VarDeclNode,
     ArrDeclNode,
-    TypeDefNode,
-    VarAssignNode,
-    ArrAssignNode,
+    TypeDeclNode,
     IfNode,
     WhileNode,
     RepeatNode,
     ForNode,
     ExprStmtNode,
     VarExprNode,
-    CallFunctionExprNode,
-    CallProcedureExprNode,
+    CallFuncExprNode,
+    CallProcExprNode,
     UnaryExprNode,
     BinaryExprNode,
     IntegerExprNode,
@@ -30,7 +27,8 @@ import {
     BoolExprNode,
     OutputNode,
     InputNode
-} from "../ast";
+} from "../syntax/ast";
+import { ParamNode } from "../syntax/param";
 
 
 export class Resolver {

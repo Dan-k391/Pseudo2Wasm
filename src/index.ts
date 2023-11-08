@@ -1,9 +1,10 @@
 // TODO: add ts type to every statement
 
 import { Compiler } from "./compiler";
-import { Scanner } from "./scanning/scanner";
-import { Parser } from "./parsing/parser";
-import { Generator } from "./codegenerating/generator";
+import { Scanner } from "./lex/scanner";
+import { Parser } from "./syntax/parser";
+import { Checker } from "./type/checker";
+import { Generator } from "./codegen/generator";
 
 export async function runCode(
     code: string,
@@ -61,5 +62,6 @@ export const keyWords = [
 
 export { Scanner };
 export { Parser };
+export { Checker };
 export { Generator };
 
