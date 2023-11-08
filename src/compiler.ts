@@ -18,6 +18,7 @@ export class Compiler {
         const tokens = scanner.scan();
         const parser = new Parser(tokens);
         const ast = parser.parse();
+        console.log(ast);
         const checker = new Checker(ast);
         const typedAst = checker.check();
         if (log) {

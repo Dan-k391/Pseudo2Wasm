@@ -287,7 +287,7 @@ export class Generator {
     // private generateMainFunction(statements: Array<Stmt>): void {
     //     // prevent overlapping of variables
     //     const block = this.generateBlock(statements);
-    //     const vars = new Array<Wasmype>();
+    //     const vars = new Array<WasmType>();
 
     //     for (const symbol of this.symbols.values()) {
     //         vars.push(symbol.type);

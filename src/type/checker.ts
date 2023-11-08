@@ -525,6 +525,9 @@ export class Checker {
     }
 
     private addrExpr(node: AddrExprNode): Type {
+        // if (node.lVal.kind === nodeKind.DerefExprNode) {
+        //     node = node.lVal.lVal;
+        // }
         node.type = this.visitExpr(node.lVal);
         node.type = new PointerType(node.type);
         return node.type;

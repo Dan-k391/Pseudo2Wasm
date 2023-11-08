@@ -41,9 +41,9 @@ The semantic analysis is very basic and currently only has type check and valida
 比如在wasm中判断是否越界就又要考虑报错方法加入abort函数
 然后考虑是否将整个过程整合成单独的wasm函数，实在不伦不类
 所以目前的数组是静态的，所有的长度以及大小都是固定生成
-- [ ] 指针
+- [x] 指针
 - [ ] 文件操作
-- [ ] 结构体
+- [x] 结构体
 
 - [ ] INPUT
 
@@ -74,11 +74,18 @@ This is **ALLOWED** for this compiler.
 ```
 
 #### Declarations
+
+***Look for examples here***
+
 ```
 // Variable declaration
 DECLARE <Identifier>: <Type>
 // Array declaration
 DECLARE <Identifier>: ARRAY[<Upper>: <Lower>] OF <Type>
+
+// Examples
+DECLARE i: INTEGER
+DECLARE j: ARRAY[0: 9] OF INTEGER
 ```
 Only supports static length arrays.
 
@@ -86,20 +93,19 @@ Only supports static length arrays.
 ```
 <Expression> <- <Expression>
 
+// Examples
 i <- 9
 j[2] <- 3
 k.y <- 4.1
-f = 'd'
+f <- 'd'
 ```
 The type of right side of the assignment is resolved and the compiler attempts to convert it to the type of the left hand side and assigns the value to it.
 
 **Implicit type conversion**
-INTEGER -> REAL, CHAR, BOOLEAN
-REAL -> INTEGER
-CHAR -> INTEGER, BOOLEAN
-BOOL -> INTEGER, CHAR
 
-INTEGER, CHAR and BOOLEAN are all i32 types after converted to wasm.
+All basic types except STRINGs (INTEGER, REAL, CHAR, BOOLEAN) can interconvert with each other.
+
+INTEGER, CHAR and BOOLEAN are all i32 types after converted to wasm. REAL is f64.
 
 #### If statements
 ```
@@ -108,6 +114,13 @@ IF <Expression> THEN
 ELSE
     <Statements>
 ENDIF
+
+// Examples
+IF 1 > 2 THEN
+    OUTPUT 'a'
+ELSE
+    OUTPUT 'b'
+ENDIF
 ```
 
 #### While loop
@@ -115,21 +128,38 @@ ENDIF
 WHILE <Expression>
     <Statements>
 ENDWHILE
+
+// Examples
+WHILE i < 10
+    OUTPUT i
+    i <- i + 1
+ENDWHILE
 ```
 
 #### For loop
 ```
-// Without step the default step is 1
-FOR <Identifier> <- <Int_Const> TO <Int_Const>
+// The default step is 1
+FOR <Identifier> <- <Int_Expr> TO <Int_Expr>
     <Statements>
 NEXT <Identifier>
 
 // Use step
-FOR <Identifier> <- <Int_Const> TO <Int_Const> STEP <Int_Const>
+FOR <Identifier> <- <Int_Expr> TO <Int_Expr> STEP <Int_Expr>
     <Statements>
 NEXT <Identifier>
+
+// Examples
+FOR i <- 0 TO 10
+    OUTPUT i
+NEXT i
+
+FOR i <- 0 TO 10 STEP 2
+    OUTPUT i
+NEXT i
 ```
-Before performing a for loop on a variable, you have to declare it first
+Before performing a for loop on a variable, you have to declare it first.
+
+The start and end of the loop are inclusive, and has to be integer expressions.
 
 #### Function/Procedure definitions
 ```
@@ -150,11 +180,56 @@ ENDFUNCTION
 PROCEDURE foo (BYREF: i: INTEGER)
     i <- i + 1
 ENDPROCEDURE
+
+// Examples
+FUNCTION foo (i: INTEGER, j: INTEGER) RETURNS INTEGER
+    RETURN i + j
+ENDFUNCTION
+
+PROCEDURE foo (i: INTEGER, j: INTEGER)
+    OUTPUT i + j
+ENDPROCEDURE
+```
+
+#### User-defined data types
+RECORDs:
+```
+TYPE <Identifier> 
+    <Declarations>
+ENDTYPE
+
+// Examples
+TYPE Point
+    DECLARE x: INTEGER
+    DECLARE y: INTEGER
+ENDTYPE
+
+DECLARE p: Point
+p.x <- 1
+p.y <- 2
+
+OUTPUT p.x + p.y
+```
+POINTERs:
+```
+TYPE <Identifier> = ^<TYPE>
+
+// Examples
+TYPE intptr = ^INTEGER
+DECLARE i: INTEGER
+DECLARE a: intptr
+
+i <- 19
+a <- ^i
+OUTPUT a^
 ```
 
 #### Output
 ```
 OUTPUT <Expression>
+
+// Examples
+OUTPUT 'a'
 ```
 Currently OUTPUT supports whatever basic type.
 

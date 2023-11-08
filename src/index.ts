@@ -590,6 +590,39 @@ a <- ^^^^i^^^
 OUTPUT a^
 `
 
+const code54 = `TYPE intptr = ^INTEGER
+TYPE intptrptr = ^intptr
+
+DECLARE i: INTEGER
+DECLARE a: intptr
+DECLARE b: intptrptr
+
+i <- 34
+a <- ^i
+b <- ^a
+OUTPUT b^^
+`
+
+const code55 = `TYPE nums 
+    DECLARE i: INTEGER
+    DECLARE j: REAL
+ENDTYPE
+DECLARE k: nums
+k.i <- 9
+k.j <- 3.88
+
+OUTPUT k.i + k.j
+`
+
+const code56 = `TYPE nums
+    DECLARE j: STRING
+ENDTYPE
+DECLARE k: nums
+k.j <- "Type test"
+
+OUTPUT k.j
+`
+
 const codes = [
     code0,
     code1,
@@ -644,7 +677,10 @@ const codes = [
     code50,
     code51,
     code52,
-    code53
+    code53,
+    code54,
+    code55,
+    code56,
 ];
 const expected = [
     10,
@@ -700,7 +736,10 @@ const expected = [
     11,
     17,
     19,
-    21
+    21,
+    34,
+    9 + 3.88 /*floating point inaccuracy*/,
+    "Type test",
 ];
 let total = codes.length;
 let compileCount = 0;
