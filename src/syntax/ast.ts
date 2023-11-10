@@ -46,11 +46,14 @@ export const enum nodeKind {
     ForNode,
     ExprStmtNode,
     OutputNode,
-    InputNode
+    InputNode,
+    ParamNode
 }
 
 export abstract class BaseNode {
     public abstract readonly kind: nodeKind;
+
+    public abstract toString(): string;
 }
 
 // every Expr has type property
@@ -95,6 +98,10 @@ export class ProgramNode extends BaseNode {
     constructor(body: Array<Stmt>) {
         super();
         this.body = body;
+    }
+
+    public toString(): string {
+        return "ProgramNode";
     }
 }
 

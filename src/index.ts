@@ -624,13 +624,18 @@ OUTPUT k.j
 `
 
 const code57 = `TYPE nums
-    DECLARE j: INTEGER
+    DECLARE j: STRING
 ENDTYPE
 
 TYPE numptr = ^nums
 
+DECLARE i: nums
 DECLARE k: numptr
-(k^).j <- 12
+k <- ^i
+// placeholder, the parser has bugs
+// FIXME: bug here, ^b\\n^a will be parsed into ^b^ a
+DECLARE j: INTEGER
+(k^).j <- "test"
 
 OUTPUT (k^).j
 `
