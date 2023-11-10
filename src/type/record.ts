@@ -31,7 +31,7 @@ export class RecordType extends BaseType {
 
     public getField(name: string): Type {
         if (!this.fields.has(name)) {
-            throw new RuntimeError("No member named " + name + "in " + this.toString);
+            throw new RuntimeError("No member named " + name + "in " + this.toString());
         }
         return this.fields.get(name)!;
     }
@@ -40,7 +40,7 @@ export class RecordType extends BaseType {
     // returns the offset relative to the start of the record
     public offset(name: string): number {
         if (!this.fields.has(name)) {
-            throw new RuntimeError("No member named " + name + "in " + this.toString);
+            throw new RuntimeError("No member named " + name + "in " + this.toString());
         }
         // find the offset of the value by going over every field before it
         let offset: number = 0;

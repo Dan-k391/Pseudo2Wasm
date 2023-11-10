@@ -623,6 +623,28 @@ k.j <- "Type test"
 OUTPUT k.j
 `
 
+const code57 = `TYPE nums
+    DECLARE j: INTEGER
+ENDTYPE
+
+TYPE numptr = ^nums
+
+DECLARE k: numptr
+(k^).j <- 12
+
+OUTPUT (k^).j
+`
+
+// FIXME: bug here, ^b\n^a will be parsed into ^b^ a
+const code58 = `TYPE intptr = ^INTEGER
+DECLARE a: intptr
+DECLARE b: INTEGER
+
+a <- ^b
+^a <- 4
+OUTPUT a^
+`
+
 const codes = [
     code0,
     code1,
@@ -681,6 +703,8 @@ const codes = [
     code54,
     code55,
     code56,
+    code57,
+    code58,
 ];
 const expected = [
     10,
@@ -740,6 +764,8 @@ const expected = [
     34,
     9 + 3.88 /*floating point inaccuracy*/,
     "Type test",
+    "test",
+    4,
 ];
 let total = codes.length;
 let compileCount = 0;

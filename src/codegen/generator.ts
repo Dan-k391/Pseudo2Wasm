@@ -478,8 +478,10 @@ export class Generator {
                 return this.indexExpression(expression);
             case nodeKind.SelectExprNode:
                 return this.selectExpression(expression);
+            case nodeKind.DerefExprNode:
+                return this.generateExpression(expression.lVal);
             default:
-                throw new RuntimeError(expression.toString() + "cannot be a left value");
+                throw new RuntimeError(expression.toString() + " cannot be a left value");
         }
     }
 

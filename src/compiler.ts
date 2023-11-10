@@ -16,6 +16,7 @@ export class Compiler {
     compile(log: boolean): binaryen.Module {
         const scanner = new Scanner(this.input);
         const tokens = scanner.scan();
+        console.log(tokens);
         const parser = new Parser(tokens);
         const ast = parser.parse();
         console.log(ast);
