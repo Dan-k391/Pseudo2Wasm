@@ -126,7 +126,7 @@ export class Scanner {
             case ' ': break;
             case '\r': break;
             case '\t': break;
-            case '\n': this.line++; this.startColumn = 0; this.endColumn = 0; break;
+            case '\n': this.addToken(tokenType.NEWLINE); this.line++; this.startColumn = 0; this.endColumn = 0; break;
             default: 
                 if (this.isDigit(c)) {
                     this.number();

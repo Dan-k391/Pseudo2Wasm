@@ -31,7 +31,7 @@ export const enum tokenType {
     // types
     INTEGER, REAL, CHAR, STRING, BOOLEAN,
 
-    EOF
+    NEWLINE, EOF
 };
 
 export class Token {

@@ -467,9 +467,23 @@ export class Parser {
         if (!this.isAtEnd()) this.current++;
         return this.previous();
     }
+    
+    // FIXME: Ugly implementation, but works fine lol
+    private skipNewlines(): void {
+        while (this.isNewLine()) {
+            // instead of using this.advance(), we use this.current++ here
+            // because otherwise we will get an infinite loop
+            if (!(this.peek().type === tokenType.EOF)) this.current++;
+        }
+    }
 
     private isAtEnd(): boolean {
+        this.skipNewlines();
         return this.peek().type === tokenType.EOF;
+    }
+
+    private isNewLine(): boolean {
+        return this.peek().type === tokenType.NEWLINE;
     }
 
     private peek(): Token {

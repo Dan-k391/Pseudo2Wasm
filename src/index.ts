@@ -632,8 +632,6 @@ TYPE numptr = ^nums
 DECLARE i: nums
 DECLARE k: numptr
 k <- ^i
-// placeholder, the parser has bugs
-// FIXME: bug here, ^b\\n^a will be parsed into ^b^ a
 DECLARE j: INTEGER
 (k^).j <- "test"
 
@@ -646,7 +644,7 @@ DECLARE a: intptr
 DECLARE b: INTEGER
 
 a <- ^b
-^a <- 4
+a^ <- 4
 OUTPUT a^
 `
 
