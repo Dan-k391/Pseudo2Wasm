@@ -352,9 +352,6 @@ export class Generator {
         for (const param of params) {
             const paramName = param.ident.lexeme;
             const paramType = param.type;
-            if (paramType.kind !== typeKind.BASIC) {
-                throw new RuntimeError("not implemented");
-            }
             this.addVar(paramName, paramType);
             totalSize += paramType.size();
             const ptr = this.getPointer(paramName);

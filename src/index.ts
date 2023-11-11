@@ -337,7 +337,7 @@ const code35 = `FUNCTION print() RETURNS STRING
 ENDFUNCTION
 
 OUTPUT print()
-`
+`;
 
 const code36 = `PROCEDURE print()
     DECLARE str: STRING
@@ -346,7 +346,7 @@ const code36 = `PROCEDURE print()
 ENDPROCEDURE
 
 CALL print()
-`
+`;
 
 const code37 = `FUNCTION sum() RETURNS INTEGER
     DECLARE sum: INTEGER
@@ -363,7 +363,7 @@ const code37 = `FUNCTION sum() RETURNS INTEGER
 ENDFUNCTION
 
 OUTPUT sum()
-`
+`;
 
 const code38 = `FUNCTION sum(arr: ARRAY) RETURNS INTEGER
     DECLARE sum: INTEGER
@@ -382,18 +382,18 @@ FOR i <- 0 TO 10
 NEXT i
 
 OUTPUT sum(arr)
-`
+`;
 
 const code39 = `PROCEDURE print(str: STRING)
     OUTPUT str
 ENDPROCEDURE
 
 CALL print("procedure")
-`
+`;
 
-const code40 = `OUTPUT LENGTH("Happy Days") + LENGTH("Hi")`
+const code40 = `OUTPUT LENGTH("Happy Days") + LENGTH("Hi")`;
 
-const code41 = `OUTPUT LENGTH("你好")`
+const code41 = `OUTPUT LENGTH("你好")`;
 
 const code42 = `DECLARE i: ARRAY[2: 5] OF INTEGER
 
@@ -402,7 +402,7 @@ i[3] <- 10
 i[4] <- 3
 
 OUTPUT i[2] + i[3] + i[4]
-`
+`;
 
 const code43 = `DECLARE arr: ARRAY[0: 3, 0: 3] OF INTEGER
 DECLARE i: INTEGER
@@ -423,7 +423,7 @@ FOR i <- 0 TO 3
 NEXT i
 
 OUTPUT sum
-`
+`;
 
 const code44 = `DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
 DECLARE i: INTEGER
@@ -449,7 +449,7 @@ FOR i <- 0 TO 3
 NEXT i
 
 OUTPUT sum
-`
+`;
 
 const code45 = `DECLARE arr: ARRAY[1: 4, 1: 4] OF INTEGER
 DECLARE i: INTEGER
@@ -470,7 +470,7 @@ FOR i <- 1 TO 4
 NEXT i
 
 OUTPUT sum
-`
+`;
 
 const code46 = `PROCEDURE temp()
     DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
@@ -499,7 +499,7 @@ const code46 = `PROCEDURE temp()
 ENDPROCEDURE
 
 CALL temp()
-`
+`;
 
 const code47 = `FUNCTION temp() RETURNS INTEGER
     DECLARE arr: ARRAY[0: 3, 0: 3, 0: 3] OF INTEGER
@@ -528,7 +528,7 @@ const code47 = `FUNCTION temp() RETURNS INTEGER
 ENDFUNCTION
 
 OUTPUT temp()
-`
+`;
 
 const code48 = `DECLARE i: STRING
 DECLARE j: STRING
@@ -536,7 +536,7 @@ i <- "Happy Days"
 j <- "Not happy"
 
 OUTPUT LENGTH(i) + LENGTH(j)
-`
+`;
 
 const code49 = `TYPE nums 
     DECLARE i: INTEGER
@@ -547,7 +547,7 @@ k.i <- 9
 k.j <- 3
 
 OUTPUT k.i + k.j
-`
+`;
 
 const code50 = `TYPE nums 
     DECLARE i: ARRAY[0: 7] OF INTEGER
@@ -558,7 +558,7 @@ k.i[0] <- 8
 k.j <- 3
 
 OUTPUT k.i[0] + k.j
-`
+`;
 
 const code51 = `TYPE nums 
     DECLARE i: ARRAY[0: 7] OF INTEGER
@@ -570,7 +570,7 @@ k[0].i[0] <- 8
 k[0].j <- 9
 
 OUTPUT k[0].i[0] + k[0].j
-`
+`;
 
 const code52 = `TYPE intptr = ^INTEGER
 DECLARE i: INTEGER
@@ -579,7 +579,7 @@ DECLARE a: intptr
 i <- 19
 a <- ^i
 OUTPUT a^
-`
+`;
 
 const code53 = `TYPE intptr = ^INTEGER
 DECLARE i: INTEGER
@@ -588,7 +588,7 @@ DECLARE a: intptr
 i <- 21
 a <- ^^^^i^^^
 OUTPUT a^
-`
+`;
 
 const code54 = `TYPE intptr = ^INTEGER
 TYPE intptrptr = ^intptr
@@ -601,7 +601,7 @@ i <- 34
 a <- ^i
 b <- ^a
 OUTPUT b^^
-`
+`;
 
 const code55 = `TYPE nums 
     DECLARE i: INTEGER
@@ -612,7 +612,7 @@ k.i <- 9
 k.j <- 3.88
 
 OUTPUT k.i + k.j
-`
+`;
 
 const code56 = `TYPE nums
     DECLARE j: STRING
@@ -621,7 +621,7 @@ DECLARE k: nums
 k.j <- "Type test"
 
 OUTPUT k.j
-`
+`;
 
 const code57 = `TYPE nums
     DECLARE j: STRING
@@ -635,7 +635,7 @@ k <- ^i
 (k^).j <- "test"
 
 OUTPUT (k^).j
-`
+`;
 
 const code58 = `TYPE intptr = ^INTEGER
 DECLARE a: intptr
@@ -644,7 +644,30 @@ DECLARE b: INTEGER
 a <- ^b
 a^ <- 4
 OUTPUT a^
-`
+`;
+
+const code59 = `TYPE intptr = ^INTEGER
+
+FUNCTION deref(i: intptr) RETURNS INTEGER
+    RETURN i^
+ENDFUNCTION
+
+DECLARE a: INTEGER
+a <- 33
+OUTPUT deref(^a)
+`;
+
+const code60 = `TYPE intptr = ^INTEGER
+
+PROCEDURE change(i: intptr)
+    i^ <- 31
+ENDPROCEDURE
+
+DECLARE a: INTEGER
+a <- 33
+CALL change(^a)
+OUTPUT a
+`;
 
 const codes = [
     code0,
@@ -706,6 +729,8 @@ const codes = [
     code56,
     code57,
     code58,
+    code59,
+    code60,
 ];
 const expected = [
     10,
@@ -767,6 +792,8 @@ const expected = [
     "Type test",
     "test",
     4,
+    33,
+    31,
 ];
 let total = codes.length;
 let compileCount = 0;

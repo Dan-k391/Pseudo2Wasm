@@ -406,14 +406,14 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.ARRAY);
+                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
                 // function only supports BYVAL
                 params.push(new ParamNode(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));
         }
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
         this.consume("Expected 'RETURNS'", tokenType.RETURNS);
-        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDFUNCTION) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
@@ -445,7 +445,7 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
                 // default passType is BYVAL
                 params.push(new ParamNode(ident, type, _passType));
             } while (this.match(tokenType.COMMA));
