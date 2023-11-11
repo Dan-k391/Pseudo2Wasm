@@ -632,13 +632,11 @@ TYPE numptr = ^nums
 DECLARE i: nums
 DECLARE k: numptr
 k <- ^i
-DECLARE j: INTEGER
 (k^).j <- "test"
 
 OUTPUT (k^).j
 `
 
-// FIXME: bug here, ^b\n^a will be parsed into ^b^ a
 const code58 = `TYPE intptr = ^INTEGER
 DECLARE a: intptr
 DECLARE b: INTEGER

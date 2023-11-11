@@ -60,7 +60,9 @@ export class Parser {
     public parse(): ProgramNode {
         const statements: Array<Stmt> = new Array<Stmt>();
         while (!this.isAtEnd()) {
-            if (this.match(tokenType.FUNCTION)) statements.push(this.funcDefinition());
+            // FIXME: is there a better way to do this?
+            if (this.isNewLine()) this.advance(); // ignore newline 
+            else if (this.match(tokenType.FUNCTION)) statements.push(this.funcDefinition());
             else if (this.match(tokenType.PROCEDURE)) statements.push(this.procDefinition());
             else statements.push(this.statement());
         }
@@ -302,8 +304,11 @@ export class Parser {
         }
         const component: Array<VarDeclNode | ArrDeclNode> = new Array<VarDeclNode | ArrDeclNode>();
         while (!this.check(tokenType.ENDTYPE) && !this.isAtEnd()) {
-            this.consume("Expected Declaration", tokenType.DECLARE);
-            component.push(this.declaration());
+            if (this.isNewLine()) this.advance();
+            else {
+                this.consume("Expected Declaration", tokenType.DECLARE);
+                component.push(this.declaration());
+            }
         }
         this.consume("Expected 'ENDTYPE'", tokenType.ENDTYPE);
         return new TypeDeclNode(ident, component);
@@ -314,12 +319,14 @@ export class Parser {
         this.consume("Expected 'THEN'", tokenType.THEN);
         const thenBranch: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ELSE) && !this.check(tokenType.ENDIF) && !this.isAtEnd()) {
-            thenBranch.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else thenBranch.push(this.statement());
         }
         const elseBranch: Array<Stmt> = new Array<Stmt>();
         if (this.match(tokenType.ELSE)) {
             while (!this.check(tokenType.ENDIF) && !this.isAtEnd()) {
-                elseBranch.push(this.statement());
+                if (this.isNewLine()) this.advance();
+                else elseBranch.push(this.statement());
             }
         }
         this.consume("Expected 'ENDIF'", tokenType.ENDIF);
@@ -336,7 +343,8 @@ export class Parser {
         const condition: Expr = this.expression();
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDWHILE) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'ENDWHILE'", tokenType.ENDWHILE);
         return new WhileNode(condition, body);
@@ -345,7 +353,8 @@ export class Parser {
     private repeatStatement(): RepeatNode {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.UNTIL) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'UNTIL'", tokenType.UNTIL);
         const condition: Expr = this.expression();
@@ -367,7 +376,8 @@ export class Parser {
 
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.NEXT) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'NEXT'", tokenType.NEXT);
         const ident2: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
@@ -406,7 +416,8 @@ export class Parser {
         const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDFUNCTION) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'ENDFUNCTION'", tokenType.ENDFUNCTION);
         return new FuncDefNode(ident, params, type, body);
@@ -442,7 +453,8 @@ export class Parser {
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDPROCEDURE) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'ENDPROCEDURE'", tokenType.ENDPROCEDURE);
         return new ProcDefNode(ident, params, body);
@@ -467,18 +479,8 @@ export class Parser {
         if (!this.isAtEnd()) this.current++;
         return this.previous();
     }
-    
-    // FIXME: Ugly implementation, but works fine lol
-    private skipNewlines(): void {
-        while (this.isNewLine()) {
-            // instead of using this.advance(), we use this.current++ here
-            // because otherwise we will get an infinite loop
-            if (!(this.peek().type === tokenType.EOF)) this.current++;
-        }
-    }
 
     private isAtEnd(): boolean {
-        this.skipNewlines();
         return this.peek().type === tokenType.EOF;
     }
 
