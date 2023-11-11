@@ -669,6 +669,16 @@ CALL change(^a)
 OUTPUT a
 `;
 
+const code61 = `TYPE strptr = ^STRING
+
+DECLARE a: STRING
+DECLARE b: strptr
+
+a <- "Hi"
+b <- ^a
+OUTPUT b^
+`;
+
 const codes = [
     code0,
     code1,
@@ -731,6 +741,7 @@ const codes = [
     code58,
     code59,
     code60,
+    code61,
 ];
 const expected = [
     10,
@@ -794,6 +805,7 @@ const expected = [
     4,
     33,
     31,
+    "Hi",
 ];
 let total = codes.length;
 let compileCount = 0;
