@@ -86,6 +86,39 @@ export class Compiler {
         // initialize import objects
         const memory = new WebAssembly.Memory({ initial: 2, maximum: 10 });
         const maxSize = 65536 * 2 - 1;
+
+        // input test
+        const inputInteger = () => Promise.resolve(32);
+        const inputReal = () => Promise.resolve(3.14);
+        const inputChar = () => Promise.resolve('a'.charCodeAt(0));
+        const inputString = () => Promise.resolve(0);
+
+        // @ts-ignore
+        const suspendingInputInteger = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputInteger,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputReal = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["f64"] },
+            inputReal,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputChar = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputChar,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputString = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputString,
+            { suspending: "first" }
+        );
+
+
         // TODO: currently import many log functions, change to only logString later
         const importObect = {
             env: {
@@ -108,11 +141,24 @@ export class Compiler {
                     str = str.split('\0')[0];
                     correct = (str == expected);
                     console.log(str);
-                }
+                },
+                inputInteger: suspendingInputInteger,
+                inputReal: suspendingInputReal,
+                inputChar: suspendingInputChar,
+                inputString: suspendingInputString,
             },
         }
 
         const { instance } = await WebAssembly.instantiate(wasm, importObect);
+
+        // @ts-ignore
+        const main = new WebAssembly.Function(
+            { parameters: [], results: ["externref"] },
+            instance.exports.main,
+            { promising: "first" }
+        );
+
+        await main();
 
         // for debug
         // debugger;

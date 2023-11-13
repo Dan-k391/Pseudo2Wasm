@@ -605,11 +605,11 @@ export class OutputNode extends BaseNode {
 
 export class InputNode extends BaseNode {
     public readonly kind = nodeKind.InputNode;
-    public ident: string;
+    public expr: Expr;
 
-    constructor(ident: string) {
+    constructor(expr: Expr) {
         super();
-        this.ident = ident;
+        this.expr = expr;
     }
 
     public toString(): string {

@@ -608,6 +608,9 @@ export class Checker {
             case nodeKind.OutputNode:
                 this.visitOutputStmt(stmt);
                 break;
+            case nodeKind.InputNode:
+                this.visitInputStmt(stmt);
+                break;
             case nodeKind.VarDeclNode:
                 this.visitVarDeclStmt(stmt);
                 break;
@@ -657,6 +660,10 @@ export class Checker {
 
     private visitOutputStmt(node: OutputNode): void {
         // debugger;
+        this.visitExpr(node.expr);
+    }
+
+    private visitInputStmt(node: InputNode): void {
         this.visitExpr(node.expr);
     }
 

@@ -679,6 +679,47 @@ b <- ^a
 OUTPUT b^
 `;
 
+const code62 = `TYPE nums
+    DECLARE j: INTEGER
+    DECLARE f: REAL
+ENDTYPE
+
+TYPE numptr = ^nums
+
+PROCEDURE print(i: numptr)
+    OUTPUT (i^).j + (i^).f
+ENDPROCEDURE
+
+DECLARE i: nums
+i.j <- 2
+i.f <- 9.28
+CALL print(^i)
+`;
+
+const code63 = `DECLARE i: INTEGER
+
+INPUT i
+OUTPUT i
+`
+
+const code64 = `DECLARE i: REAL
+
+INPUT i
+OUTPUT i
+`
+
+const code65 = `DECLARE i: CHAR
+
+INPUT i
+OUTPUT i
+`
+
+const code66 = `DECLARE i: STRING
+
+INPUT i
+OUTPUT i
+`
+
 const codes = [
     code0,
     code1,
@@ -742,6 +783,11 @@ const codes = [
     code59,
     code60,
     code61,
+    code62,
+    code63,
+    code64,
+    code65,
+    code66,
 ];
 const expected = [
     10,
@@ -806,6 +852,11 @@ const expected = [
     33,
     31,
     "Hi",
+    11.28,
+    32,
+    3.14,
+    'a',
+    "Hello World",
 ];
 let total = codes.length;
 let compileCount = 0;

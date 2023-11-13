@@ -242,6 +242,7 @@ export class Parser {
 
     private statement(): Stmt {
         if (this.match(tokenType.OUTPUT)) return this.outputStatement();
+        if (this.match(tokenType.INPUT)) return this.inputStatement();
         if (this.match(tokenType.RETURN)) return this.returnStatement();
         // FIXME: declaration only supports variable
         if (this.match(tokenType.DECLARE)) return this.declaration();
@@ -259,6 +260,11 @@ export class Parser {
     private outputStatement(): Stmt {
         const expr = this.expression();
         return new OutputNode(expr);
+    }
+
+    private inputStatement(): Stmt {
+        const expr = this.expression();
+        return new InputNode(expr);
     }
 
     private returnStatement(): ReturnNode {
