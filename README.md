@@ -45,7 +45,7 @@ The semantic analysis is very basic and currently only has type check and valida
 - [ ] 文件操作
 - [x] 结构体
 
-- [ ] INPUT
+- [x] INPUT
 
 ## Precautions
 
@@ -231,5 +231,16 @@ OUTPUT <Expression>
 // Examples
 OUTPUT 'a'
 ```
+
 Currently OUTPUT supports whatever basic type.
+
+#### Input
+```
+INPUT <Expression>
+
+// Examples
+INPUT i
+```
+
+Currently INPUT supports whatever basic type. (Strings are not supported yet)
 
