@@ -700,25 +700,25 @@ const code63 = `DECLARE i: INTEGER
 
 INPUT i
 OUTPUT i
-`
+`;
 
 const code64 = `DECLARE i: REAL
 
 INPUT i
 OUTPUT i
-`
+`;
 
 const code65 = `DECLARE i: CHAR
 
 INPUT i
 OUTPUT i
-`
+`;;
 
 const code66 = `DECLARE i: STRING
 
 INPUT i
 OUTPUT i
-`
+`;
 
 const code67 = `DECLARE i: ARRAY[0: 3] OF INTEGER
 
@@ -727,7 +727,7 @@ INPUT i[1]
 i[2] <- 2
 i[3] <- 3
 OUTPUT i[0] + i[1] + i[2] + i[3]
-`
+`;
 
 const code68 = `FUNCTION add() RETURNS REAL
     DECLARE i: REAL
@@ -739,8 +739,7 @@ const code68 = `FUNCTION add() RETURNS REAL
 ENDFUNCTION
 
 OUTPUT add()
-`
-
+`;
 
 const codes = [
     code0,

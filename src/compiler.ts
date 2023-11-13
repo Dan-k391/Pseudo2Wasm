@@ -98,6 +98,8 @@ export class Compiler {
         const inputString = () => new Promise<number>((resolve, reject) => {
             const str = "Hello World!";
             const bytes = new TextEncoder().encode(str);
+            // currently allocate on the heap
+            // maybe allocate on a separate page later
             const ptr = heapOffSet;
             heapOffSet += bytes.length;
             const len = bytes.length;
