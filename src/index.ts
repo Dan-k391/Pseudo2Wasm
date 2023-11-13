@@ -880,7 +880,7 @@ const expected = [
     32,
     3.14,
     'a',
-    "Hello World",
+    "Hello World!",
     69,
     6.28,
 ];

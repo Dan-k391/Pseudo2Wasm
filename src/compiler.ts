@@ -83,16 +83,28 @@ export class Compiler {
         const wasm = module.emitBinary();
         // console.log(wasm);
 
+        const pages = 3;
+        const pageSize = 65536;
         // initialize import objects
-        const memory = new WebAssembly.Memory({ initial: 2, maximum: 10 });
-        const maxSize = 65536 * 2 - 1;
+        const memory = new WebAssembly.Memory({ initial: pages, maximum: pages });
+        const maxSize = pageSize * pages - 1;
+        let heapOffSet = pageSize * (pages - 1);
 
         // TODO: input validation
         // input test
         const inputInteger = () => Promise.resolve(32);
         const inputReal = () => Promise.resolve(3.14);
         const inputChar = () => Promise.resolve('a'.charCodeAt(0));
-        const inputString = () => Promise.resolve(0);
+        const inputString = () => new Promise<number>((resolve, reject) => {
+            const str = "Hello World!";
+            const bytes = new TextEncoder().encode(str);
+            const ptr = heapOffSet;
+            heapOffSet += bytes.length;
+            const len = bytes.length;
+            const view = new Uint8Array(memory.buffer, ptr, len);
+            view.set(bytes);
+            resolve(ptr);
+        });
 
         // @ts-ignore
         const suspendingInputInteger = new WebAssembly.Function(
