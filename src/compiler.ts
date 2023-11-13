@@ -87,6 +87,7 @@ export class Compiler {
         const memory = new WebAssembly.Memory({ initial: 2, maximum: 10 });
         const maxSize = 65536 * 2 - 1;
 
+        // TODO: input validation
         // input test
         const inputInteger = () => Promise.resolve(32);
         const inputReal = () => Promise.resolve(3.14);
@@ -117,7 +118,6 @@ export class Compiler {
             inputString,
             { suspending: "first" }
         );
-
 
         // TODO: currently import many log functions, change to only logString later
         const importObect = {

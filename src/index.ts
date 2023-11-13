@@ -720,6 +720,28 @@ INPUT i
 OUTPUT i
 `
 
+const code67 = `DECLARE i: ARRAY[0: 3] OF INTEGER
+
+INPUT i[0]
+INPUT i[1]
+i[2] <- 2
+i[3] <- 3
+OUTPUT i[0] + i[1] + i[2] + i[3]
+`
+
+const code68 = `FUNCTION add() RETURNS REAL
+    DECLARE i: REAL
+    DECLARE j: REAL
+
+    INPUT i
+    INPUT j
+    RETURN i + j
+ENDFUNCTION
+
+OUTPUT add()
+`
+
+
 const codes = [
     code0,
     code1,
@@ -788,6 +810,8 @@ const codes = [
     code64,
     code65,
     code66,
+    code67,
+    code68,
 ];
 const expected = [
     10,
@@ -857,6 +881,8 @@ const expected = [
     3.14,
     'a',
     "Hello World",
+    69,
+    6.28,
 ];
 let total = codes.length;
 let compileCount = 0;
