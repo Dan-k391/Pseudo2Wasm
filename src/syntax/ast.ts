@@ -9,6 +9,7 @@
 import { Token, tokenType } from "../lex/token";
 import { Scope } from "../type/scope";
 import { Type } from "../type/type";
+import { Values } from "./casevalue";
 import { ParamNode } from "./param";
 
 
@@ -44,6 +45,7 @@ export const enum nodeKind {
     WhileNode,
     RepeatNode,
     ForNode,
+    CaseNode,
     ExprStmtNode,
     OutputNode,
     InputNode,
@@ -86,6 +88,7 @@ export type Stmt = ProgramNode |
     WhileNode |
     RepeatNode |
     ForNode |
+    CaseNode |
     ExprStmtNode |
     OutputNode |
     InputNode;
@@ -571,6 +574,24 @@ export class ForNode extends BaseNode {
 
     public toString(): string {
         return "ForNode";
+    }
+}
+
+export class CaseNode extends BaseNode {
+    public readonly kind = nodeKind.CaseNode;
+    public ident: Token;
+    public values: Array<Values>;
+    public bodies: Array<Array<Stmt>>;
+
+    constructor(ident: Token, values: Array<Values>, bodies: Array<Array<Stmt>>) {
+        super();
+        this.ident = ident;
+        this.values = values;
+        this.bodies = bodies;
+    }
+
+    public toString(): string {
+        return "CaseNode";
     }
 }
 

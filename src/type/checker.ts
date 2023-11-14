@@ -346,6 +346,8 @@ export class Checker {
                 return this.charExpr(expr);
             case nodeKind.StringExprNode:
                 return this.stringExpr(expr);
+            case nodeKind.BoolExprNode:
+                return this.boolExpr(expr);
             default:
                 throw new RuntimeError("Not implemented yet");
         }
@@ -557,6 +559,11 @@ export class Checker {
 
     private stringExpr(node: StringExprNode): Type {
         node.type = new BasicType(basicKind.STRING);
+        return node.type;
+    }
+
+    private boolExpr(node: BoolExprNode): Type {
+        node.type = new BasicType(basicKind.BOOLEAN);
         return node.type;
     }
 

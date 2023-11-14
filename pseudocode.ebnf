@@ -1,8 +1,8 @@
-Program ::= {FuncDef | ProcDef | {Statement}}
+Program ::= {FuncDef | ProcDef | {Stmt}}
 
 Type ::= "INTEGER" | "REAL" | "CHAR" | "STRING" | "BOOLEAN"
 
-FuncDef ::= "FUNCTION" IDENT "(" [Params] ")" "RETURNS" Type {Statement} "ENDFUNCTION"
+FuncDef ::= "FUNCTION" IDENT "(" [Params] ")" "RETURNS" Type {Stmt} "ENDFUNCTION"
 ProcDef ::= "PROCEDURE" IDENT "(" [Params] ")"  "ENDPROCEDURE"
 
 Params ::= Param {"," Param}
@@ -34,13 +34,15 @@ Primary ::= IDENT |
 Select ::= "[" Args "]"
 Index ::= "." IDENT
 
-Statement ::= Decl | TypeDecl | Assign | If | While | Repeat | For | Return
+Stmt ::= Decl | TypeDecl | Assign | If | While | Repeat | For | Return
 Decl ::= "DECLARE" IDENT ":" Type | "DECLARE" IDENT ":" "ARRAY" "OF" Type
 TypeDecl ::= "TYPE" IDENT {Decl} "ENDTYPE" |
     "TYPE" IDENT "=" "(" Value {"," Value} ")" |
     "TYPE" IDENT "=" "^" Type
-If ::= "IF" Expr "THEN" {Statement} ["ELSE" {Statement}] "ENDIF"
-While ::= "WHILE" Expr {Statement} "ENDWHILE"
-Repeat ::= "REPEAT" {Statement} "UNTIL" Expr
-For ::= "FOR" IDENT "<-" Expr "TO" Expr ["STEP" Expr] {Statement} "NEXT" IDENT
+If ::= "IF" Expr "THEN" {Stmt} ["ELSE" {Stmt}] "ENDIF"
+While ::= "WHILE" Expr {Stmt} "ENDWHILE"
+Repeat ::= "REPEAT" {Stmt} "UNTIL" Expr
+For ::= "FOR" IDENT "<-" Expr "TO" Expr ["STEP" Expr] {Stmt} "NEXT" IDENT
+Value ::= INTEGER | REAL | CHAR | STRING | BOOLEAN
+Case ::= "CASE" "OF" IDENT {Value {"TO" Value} ":" {Stmts} ";"} "ENDCASE"
 Return ::= "RETURN" Expr

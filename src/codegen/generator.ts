@@ -106,7 +106,7 @@ export class Generator {
     }
 
     public generate(): Module {
-        binaryen.setPassArgument("jspi-imports", "env.inputInteger,env.inputReal,env.inputChar,env.inputString");
+        binaryen.setPassArgument("jspi-imports", "env.inputInteger,env.inputReal,env.inputChar,env.inputString,env.inputBoolean");
         binaryen.setPassArgument("jspi-exports", "main");
         this.module.setFeatures(binaryen.Features.ReferenceTypes);
         // createType although it is useless
@@ -114,10 +114,12 @@ export class Generator {
         this.module.addFunctionImport("logReal", "env", "logReal", binaryen.createType([binaryen.f64]), binaryen.none);
         this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
+        this.module.addFunctionImport("logBoolean", "env", "logBoolean", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("inputInteger", "env", "inputInteger", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("inputReal", "env", "inputReal", binaryen.createType([]), binaryen.f64);
         this.module.addFunctionImport("inputChar", "env", "inputChar", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("inputString", "env", "inputString", binaryen.createType([]), binaryen.i32);
+        this.module.addFunctionImport("inputBoolean", "env", "inputBoolean", binaryen.createType([]), binaryen.i32);
 
 
         // The stack grows upwards
@@ -471,6 +473,8 @@ export class Generator {
                 return this.charExpression(expression);
             case nodeKind.StringExprNode:
                 return this.stringExpression(expression);
+            case nodeKind.BoolExprNode:
+                return this.boolExpression(expression);
             default:
                 throw new RuntimeError("Not implemented yet");
         }
@@ -494,7 +498,7 @@ export class Generator {
     public castExpression(node: CastExprNode): ExpressionRef {
         const expr = this.generateExpression(node.expr);
         if (node.type.kind !== typeKind.BASIC || node.expr.type.kind !== typeKind.BASIC) {
-            throw new RuntimeError("Type cast can onlybe perfromed for basic types");
+            throw new RuntimeError("Type cast can onlybe performed for basic types");
         }
         const to = node.type.type;
         const from = node.expr.type.type;
@@ -724,6 +728,10 @@ export class Generator {
         return this.module.i32.const(stringIndex);
     }
 
+    public boolExpression(node: BoolExprNode): ExpressionRef {
+        return this.module.i32.const(node.value ? 1 : 0);
+    }
+
     // Statements
     private generateBlock(statements: Array<Stmt>): ExpressionRef {
         return this.module.block(null, this.generateStatements(statements));
@@ -823,6 +831,8 @@ export class Generator {
                 return this.module.call("logChar", [expr], binaryen.none);
             case basicKind.STRING:
                 return this.module.call("logString", [expr], binaryen.none);
+            case basicKind.BOOLEAN:
+                return this.module.call("logBoolean", [expr], binaryen.none);
         }
 
         throw new RuntimeError("Not implemented yet");
@@ -847,6 +857,8 @@ export class Generator {
                 return this.store(type, ptr, this.module.call("inputChar", [], binaryen.i32));
             case basicKind.STRING:
                 return this.store(type, ptr, this.module.call("inputString", [], binaryen.i32));
+            case basicKind.BOOLEAN:
+                return this.store(type, ptr, this.module.call("inputBoolean", [], binaryen.i32));
         }
         
         throw new RuntimeError("Not implemented yet");

@@ -224,6 +224,17 @@ a <- ^i
 OUTPUT a^
 ```
 
+#### Case
+```
+CASE OF <Identifier>
+    <Value>: <Statements>;
+    <Value>: <Statements>;
+    ...
+ENDCASE
+```
+***At the end of each statement, you have to put a semicolon.***
+Just don't use this lol.
+
 #### Output
 ```
 OUTPUT <Expression>

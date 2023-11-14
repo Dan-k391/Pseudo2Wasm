@@ -140,7 +140,7 @@ ENDPROCEDURE
 CALL print(1)
 `;
 
-const code13 = `DECLARE i: INTEGER
+const code13 = `DECLAR  E i: INTEGER
 i <- 1
 
 PROCEDURE increment(BYREF a: INTEGER)
@@ -741,6 +741,29 @@ ENDFUNCTION
 OUTPUT add()
 `;
 
+const code69 = `DECLARE i: INTEGER
+DECLARE j: INTEGER
+
+INPUT i
+INPUT j
+// FIXME: no OUTPUT for bools yet
+OUTPUT (i < j) + 1
+`;
+
+const code70 = `DECLARE i: BOOLEAN
+i <- TRUE
+OUTPUT i
+`;
+
+const code71 = `DECLARE i: INTEGER
+
+INPUT i
+CASE OF i
+    32: OUTPUT 1;
+    33: OUTPUT 2;
+ENDCASE
+`;
+
 const codes = [
     code0,
     code1,
@@ -811,6 +834,9 @@ const codes = [
     code66,
     code67,
     code68,
+    code69,
+    code70,
+    code71,
 ];
 const expected = [
     10,
@@ -882,6 +908,9 @@ const expected = [
     "Hello World!",
     69,
     6.28,
+    1,
+    "TRUE",
+    1,
 ];
 let total = codes.length;
 let compileCount = 0;

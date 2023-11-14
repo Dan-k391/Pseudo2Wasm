@@ -26,3 +26,7 @@ ok, 终于还是到了这一步，在实现指针之前，我几乎需要重新�
 10. 结构体 *
 
 100. INPUT *
+
+11. CASE
+12. CONCAT & STRING operations
+13. POINTER operations

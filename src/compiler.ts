@@ -107,6 +107,7 @@ export class Compiler {
             view.set(bytes);
             resolve(ptr);
         });
+        const inputBoolean = () => Promise.resolve(1);
 
         // @ts-ignore
         const suspendingInputInteger = new WebAssembly.Function(
@@ -130,6 +131,12 @@ export class Compiler {
         const suspendingInputString = new WebAssembly.Function(
             { parameters: ["externref"], results: ["i32"] },
             inputString,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputBoolean = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputBoolean,
             { suspending: "first" }
         );
 
@@ -156,10 +163,21 @@ export class Compiler {
                     correct = (str == expected);
                     console.log(str);
                 },
+                logBoolean: (output: number) => {
+                    if (output == 0) {
+                        correct = (expected == "FALSE");
+                        console.log("FALSE");
+                    }
+                    else {
+                        correct = (expected == "TRUE");
+                        console.log("TRUE");
+                    }
+                },
                 inputInteger: suspendingInputInteger,
                 inputReal: suspendingInputReal,
                 inputChar: suspendingInputChar,
                 inputString: suspendingInputString,
+                inputBoolean: suspendingInputBoolean,
             },
         }
 

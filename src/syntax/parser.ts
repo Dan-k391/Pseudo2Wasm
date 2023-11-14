@@ -23,6 +23,7 @@ import {
     WhileNode,
     RepeatNode,
     ForNode,
+    CaseNode,
     ExprStmtNode,
     VarExprNode,
     IndexExprNode,
@@ -41,11 +42,12 @@ import {
     OutputNode,
     InputNode,
     AssignNode,
-    Dimension
+    Dimension,
 } from "./ast";
 import { passType, ParamNode } from "./param";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../lex/token";
+import { Values } from "./casevalue";
 
 
 export class Parser {
@@ -253,6 +255,7 @@ export class Parser {
         if (this.match(tokenType.WHILE)) return this.whileStatement();
         if (this.match(tokenType.REPEAT)) return this.repeatStatement();
         if (this.match(tokenType.FOR)) return this.forStatement();
+        if (this.match(tokenType.CASE)) return this.caseStatement();
 
         return this.expressionStatement();
     } 
@@ -393,6 +396,38 @@ export class Parser {
         }
 
         return new ForNode(ident, start, end, step, body);
+    }
+
+    // Case ::= "CASE" "OF" IDENT {Values {"TO" Expr} ":" {Stmts} ";"} "ENDCASE"
+    private caseStatement(): CaseNode {
+        this.consume("Expected 'OF'", tokenType.OF);
+        const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
+        const bodies: Array<Array<Stmt>> = new Array<Array<Stmt>>();
+        const values: Array<Values> = new Array<Values>();
+        // statements for current case
+        const statements: Array<Stmt> = new Array<Stmt>();
+        while (!this.check(tokenType.ENDCASE) && !this.isAtEnd()) {
+            if (this.isNewLine()) this.advance();
+            else {
+                const from = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
+                // if there is no 'TO', the from and to value are the same
+                let to = from;
+                if (this.match(tokenType.TO))
+                    to = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
+                this.consume("Expected colon", tokenType.COLON);
+                while (!this.check(tokenType.SEMICOLON) && !this.isAtEnd()) {
+                    if (this.isNewLine()) this.advance();
+                    else statements.push(this.statement());
+                }
+                this.consume("Expected semicolon", tokenType.SEMICOLON);
+                bodies.push(statements);
+                // clear the statements
+                statements.length = 0;
+                values.push({from, to});
+            }
+        }
+        this.consume("Expected 'ENDCASE'", tokenType.ENDCASE);
+        return new CaseNode(ident, values, bodies);
     }
 
     private expressionStatement(): Stmt {
