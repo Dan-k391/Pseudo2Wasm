@@ -23,6 +23,7 @@ import {
     WhileNode,
     RepeatNode,
     ForNode,
+    CaseNode,
     ExprStmtNode,
     VarExprNode,
     IndexExprNode,
@@ -41,11 +42,12 @@ import {
     OutputNode,
     InputNode,
     AssignNode,
-    Dimension
+    Dimension,
 } from "./ast";
 import { passType, ParamNode } from "./param";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../lex/token";
+import { Values } from "./value";
 
 
 export class Parser {
@@ -60,7 +62,9 @@ export class Parser {
     public parse(): ProgramNode {
         const statements: Array<Stmt> = new Array<Stmt>();
         while (!this.isAtEnd()) {
-            if (this.match(tokenType.FUNCTION)) statements.push(this.funcDefinition());
+            // FIXME: is there a better way to do this?
+            if (this.isNewLine()) this.advance(); // ignore newline 
+            else if (this.match(tokenType.FUNCTION)) statements.push(this.funcDefinition());
             else if (this.match(tokenType.PROCEDURE)) statements.push(this.procDefinition());
             else statements.push(this.statement());
         }
@@ -240,6 +244,7 @@ export class Parser {
 
     private statement(): Stmt {
         if (this.match(tokenType.OUTPUT)) return this.outputStatement();
+        if (this.match(tokenType.INPUT)) return this.inputStatement();
         if (this.match(tokenType.RETURN)) return this.returnStatement();
         // FIXME: declaration only supports variable
         if (this.match(tokenType.DECLARE)) return this.declaration();
@@ -250,6 +255,7 @@ export class Parser {
         if (this.match(tokenType.WHILE)) return this.whileStatement();
         if (this.match(tokenType.REPEAT)) return this.repeatStatement();
         if (this.match(tokenType.FOR)) return this.forStatement();
+        if (this.match(tokenType.CASE)) return this.caseStatement();
 
         return this.expressionStatement();
     } 
@@ -257,6 +263,11 @@ export class Parser {
     private outputStatement(): Stmt {
         const expr = this.expression();
         return new OutputNode(expr);
+    }
+
+    private inputStatement(): Stmt {
+        const expr = this.expression();
+        return new InputNode(expr);
     }
 
     private returnStatement(): ReturnNode {
@@ -302,8 +313,11 @@ export class Parser {
         }
         const component: Array<VarDeclNode | ArrDeclNode> = new Array<VarDeclNode | ArrDeclNode>();
         while (!this.check(tokenType.ENDTYPE) && !this.isAtEnd()) {
-            this.consume("Expected Declaration", tokenType.DECLARE);
-            component.push(this.declaration());
+            if (this.isNewLine()) this.advance();
+            else {
+                this.consume("Expected Declaration", tokenType.DECLARE);
+                component.push(this.declaration());
+            }
         }
         this.consume("Expected 'ENDTYPE'", tokenType.ENDTYPE);
         return new TypeDeclNode(ident, component);
@@ -314,12 +328,14 @@ export class Parser {
         this.consume("Expected 'THEN'", tokenType.THEN);
         const thenBranch: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ELSE) && !this.check(tokenType.ENDIF) && !this.isAtEnd()) {
-            thenBranch.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else thenBranch.push(this.statement());
         }
         const elseBranch: Array<Stmt> = new Array<Stmt>();
         if (this.match(tokenType.ELSE)) {
             while (!this.check(tokenType.ENDIF) && !this.isAtEnd()) {
-                elseBranch.push(this.statement());
+                if (this.isNewLine()) this.advance();
+                else elseBranch.push(this.statement());
             }
         }
         this.consume("Expected 'ENDIF'", tokenType.ENDIF);
@@ -336,7 +352,8 @@ export class Parser {
         const condition: Expr = this.expression();
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDWHILE) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'ENDWHILE'", tokenType.ENDWHILE);
         return new WhileNode(condition, body);
@@ -345,7 +362,8 @@ export class Parser {
     private repeatStatement(): RepeatNode {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.UNTIL) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'UNTIL'", tokenType.UNTIL);
         const condition: Expr = this.expression();
@@ -367,7 +385,8 @@ export class Parser {
 
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.NEXT) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'NEXT'", tokenType.NEXT);
         const ident2: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
@@ -377,6 +396,38 @@ export class Parser {
         }
 
         return new ForNode(ident, start, end, step, body);
+    }
+
+    // Case ::= "CASE" "OF" IDENT {Values {"TO" Expr} ":" {Stmts} ";"} "ENDCASE"
+    private caseStatement(): CaseNode {
+        this.consume("Expected 'OF'", tokenType.OF);
+        const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
+        const bodies: Array<Array<Stmt>> = new Array<Array<Stmt>>();
+        const values: Array<Values> = new Array<Values>();
+        // statements for current case
+        const statements: Array<Stmt> = new Array<Stmt>();
+        while (!this.check(tokenType.ENDCASE) && !this.isAtEnd()) {
+            if (this.isNewLine()) this.advance();
+            else {
+                const from: Token = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
+                // if there is no 'TO', the from and to value are the same
+                let to: Token = from;
+                if (this.match(tokenType.TO))
+                    to = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
+                this.consume("Expected colon", tokenType.COLON);
+                while (!this.check(tokenType.SEMICOLON) && !this.isAtEnd()) {
+                    if (this.isNewLine()) this.advance();
+                    else statements.push(this.statement());
+                }
+                this.consume("Expected semicolon", tokenType.SEMICOLON);
+                bodies.push(statements);
+                // clear the statements
+                statements.length = 0;
+                values.push({from, to});
+            }
+        }
+        this.consume("Expected 'ENDCASE'", tokenType.ENDCASE);
+        return new CaseNode(ident, values, bodies);
     }
 
     private expressionStatement(): Stmt {
@@ -396,17 +447,18 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.ARRAY);
+                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
                 // function only supports BYVAL
                 params.push(new ParamNode(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));
         }
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
         this.consume("Expected 'RETURNS'", tokenType.RETURNS);
-        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDFUNCTION) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'ENDFUNCTION'", tokenType.ENDFUNCTION);
         return new FuncDefNode(ident, params, type, body);
@@ -434,7 +486,7 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN);
+                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
                 // default passType is BYVAL
                 params.push(new ParamNode(ident, type, _passType));
             } while (this.match(tokenType.COMMA));
@@ -442,7 +494,8 @@ export class Parser {
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDPROCEDURE) && !this.isAtEnd()) {
-            body.push(this.statement());
+            if (this.isNewLine()) this.advance();
+            else body.push(this.statement());
         }
         this.consume("Expected 'ENDPROCEDURE'", tokenType.ENDPROCEDURE);
         return new ProcDefNode(ident, params, body);
@@ -470,6 +523,10 @@ export class Parser {
 
     private isAtEnd(): boolean {
         return this.peek().type === tokenType.EOF;
+    }
+
+    private isNewLine(): boolean {
+        return this.peek().type === tokenType.NEWLINE;
     }
 
     private peek(): Token {

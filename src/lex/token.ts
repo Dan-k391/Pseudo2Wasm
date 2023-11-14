@@ -2,7 +2,7 @@ export const enum tokenType {
     // single character tokens
     LEFT_PAREN, RIGHT_PAREN, LEFT_BRACKET, RIGHT_BRACKET,
     COMMA, DOT, MINUS, PLUS, STAR, SLASH, COLON, AMPERSAND, // &
-    CARET, //^
+    SEMICOLON, CARET, //^
 
     // one or two character tokens
     LESS_GREATER, LESS_MINUS,
@@ -24,6 +24,7 @@ export const enum tokenType {
     WHILE, ENDWHILE,
     REPEAT, UNTIL,
     FOR, TO, STEP, NEXT,
+    CASE, ENDCASE,
     MOD, AND, OR, NOT,
     OUTPUT, INPUT, RND, TIME,
     TRUE, FALSE,
@@ -31,7 +32,7 @@ export const enum tokenType {
     // types
     INTEGER, REAL, CHAR, STRING, BOOLEAN,
 
-    EOF
+    NEWLINE, EOF
 };
 
 export class Token {

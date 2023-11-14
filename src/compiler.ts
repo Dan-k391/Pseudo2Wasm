@@ -28,88 +28,122 @@ export class Compiler {
         return module;
     }
 
-    async runtime(output: (a: number) => void): Promise<number> {
+    async runtime(output: (a: any) => void, input: () => any): Promise<number> {
         const module = this.compile();
 
         // module.optimize();
+
+        if (!module.validate())
+            throw new Error("Module failed to validate");
 
         console.log(module.emitText());
         const wasm = module.emitBinary();
 
         // initialize import objects
-        const memory = new WebAssembly.Memory({ initial: 2, maximum: 10 });
-        const maxSize = 65536 * 2 - 1;
+        const pages = 3;
+        const pageSize = 65536;
+        const memory = new WebAssembly.Memory({ initial: pages, maximum: pages });
+        const maxSize = pageSize * pages - 1;
+        let heapOffSet = pageSize * (pages - 1);
+
+        // add validation
+        const inputInteger = () => Promise.resolve(input()!);
+        const inputReal = () => Promise.resolve(input()!);
+        const inputChar = () => Promise.resolve(input()!.charCodeAt(0));
+        const inputString = () => new Promise<number>((resolve, reject) => {
+            const str = input()!;
+            const bytes = new TextEncoder().encode(str);
+            // currently allocate on the heap
+            // maybe allocate on a separate page later
+            const ptr = heapOffSet;
+            heapOffSet += bytes.length;
+            const len = bytes.length;
+            const view = new Uint8Array(memory.buffer, ptr, len);
+            view.set(bytes);
+            resolve(ptr);
+        });
+        const inputBoolean = () => new Promise<number>((resolve, reject) => {
+            if (input()! === "TRUE") {
+                resolve(1);
+            }
+            else {
+                resolve(0);
+            }
+        });
+
+        // @ts-ignore
+        const suspendingInputInteger = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputInteger,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputReal = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["f64"] },
+            inputReal,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputChar = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputChar,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputString = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputString,
+            { suspending: "first" }
+        );
+        // @ts-ignore
+        const suspendingInputBoolean = new WebAssembly.Function(
+            { parameters: ["externref"], results: ["i32"] },
+            inputBoolean,
+            { suspending: "first" }
+        );
+
         const importObect = {
             env: {
                 buffer: memory,
-                logInteger: (output: number) => {
-                    console.log(output);
+                logInteger: (out: number) => {
+                    output(out);
                 },
-                logReal: (output: number) => {
-                    console.log(output);
+                logReal: (out: number) => {
+                    output(out);
                 },
-                logChar: (output: number) => {
-                    console.log(String.fromCharCode(output));
+                logChar: (out: number) => {
+                    output(String.fromCharCode(out));
                 },
-                logString: (output: number) => {
-                    const bytes = new Uint8Array(memory.buffer, output, maxSize - output);
+                logString: (out: number) => {
+                    const bytes = new Uint8Array(memory.buffer, out, maxSize - out);
                     let str = new TextDecoder("utf8").decode(bytes);
                     str = str.split('\0')[0];
-                    console.log(str);
-                }
+                    output(str);
+                },
+                logBoolean: (out: number) => {
+                    output(out);
+                },
+                inputInteger: suspendingInputInteger,
+                inputReal: suspendingInputReal,
+                inputChar: suspendingInputChar,
+                inputString: suspendingInputString,
+                inputBoolean: suspendingInputBoolean,
             },
         }
 
         // FIXME: not updated version, test() has the newest functions
         const { instance } = await WebAssembly.instantiate(wasm, importObect);
 
-        const main = instance.exports.main as CallableFunction;
+        // @ts-ignore
+        const main = new WebAssembly.Function(
+            { parameters: [], results: ["externref"] },
+            instance.exports.main,
+            { promising: "first" }
+        );
+
         const start = new Date().getTime();
-        main();
+        await main();
         const end = new Date().getTime();
         return end - start;
-    }
-
-    // the test function
-    async test(expected: number | string): Promise<Boolean> {
-        let correct = false;
-
-        const module = this.compile();
-
-        // module.optimize();
-
-        console.log(module.emitText());
-        const wasm = module.emitBinary();
-
-        // initialize import objects
-        const memory = new WebAssembly.Memory({ initial: 2, maximum: 10 });
-        const maxSize = 65536 * 2 - 1;
-        // TODO: currently import many log functions, change to only logString later
-        const importObect = {
-            env: {
-                buffer: memory,
-                logInteger: (output: number) => {
-                    correct = (output == expected);
-                    console.log(output);
-                },
-                logReal: (output: number) => {
-                    correct = (output == expected);
-                    console.log(output);
-                },
-                logChar: (output: number) => {
-                    correct = (String.fromCharCode(output) == expected);
-                    console.log(String.fromCharCode(output));
-                },
-                logString: (output: number) => {
-                    const bytes = new Uint8Array(memory.buffer, maxSize - output);
-                    const str = bytes.toString();
-                    console.log(str);
-                }
-            },
-        }
-
-        const { instance } = await WebAssembly.instantiate(wasm, importObect);
-
-        return correct;
     }
 }

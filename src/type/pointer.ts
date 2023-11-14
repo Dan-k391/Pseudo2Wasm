@@ -12,7 +12,7 @@ export class PointerType extends BaseType {
     }
 
     public toString(): string {
-        return "^" + this.base.toString;
+        return "^" + this.base.toString();
     }
 
     public size(): number {

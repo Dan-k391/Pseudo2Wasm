@@ -8,10 +8,11 @@ import { Generator } from "./codegen/generator";
 
 export async function runCode(
     code: string,
-    output: (a: number) => void
+    output: (a: number) => void,
+    input: () => number
 ): Promise<number> {
     const compiler = new Compiler(code);
-    const time = await compiler.runtime(output);
+    const time = await compiler.runtime(output, input);
 
     return time;
 }
@@ -65,3 +66,9 @@ export { Parser };
 export { Checker };
 export { Generator };
 
+// const time = runCode(`DECLARE i: INTEGER
+// INPUT i
+// OUTPUT i`,
+// console.log,
+// // @ts-ignore
+// prompt).then((time) => console.log(time));

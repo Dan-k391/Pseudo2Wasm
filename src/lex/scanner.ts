@@ -42,6 +42,8 @@ const KEYWORDS: Map<string, tokenType> = new Map([
     ["TO", tokenType.TO],
     ["STEP", tokenType.STEP],
     ["NEXT", tokenType.NEXT],
+    ["CASE", tokenType.CASE],
+    ["ENDCASE", tokenType.ENDCASE],
     ["MOD", tokenType.MOD],
     ["AND", tokenType.AND],
     ["OR", tokenType.OR],
@@ -117,6 +119,7 @@ export class Scanner {
                 break;
             case ':': this.addToken(tokenType.COLON); break;
             case '&': this.addToken(tokenType.AMPERSAND); break;
+            case ';': this.addToken(tokenType.SEMICOLON); break;
             case '^': this.addToken(tokenType.CARET); break;
             case '=': this.addToken(tokenType.EQUAL); break;
             case '<': this.addToken(this.match('>') ? tokenType.LESS_GREATER : (this.match('-') ? tokenType.LESS_MINUS : (this.match('=') ? tokenType.LESS_EQUAL : tokenType.LESS))); break;
@@ -126,7 +129,7 @@ export class Scanner {
             case ' ': break;
             case '\r': break;
             case '\t': break;
-            case '\n': this.line++; this.startColumn = 0; this.endColumn = 0; break;
+            case '\n': this.addToken(tokenType.NEWLINE); this.line++; this.startColumn = 0; this.endColumn = 0; break;
             default: 
                 if (this.isDigit(c)) {
                     this.number();

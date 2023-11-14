@@ -106,11 +106,21 @@ export class Generator {
     }
 
     public generate(): Module {
+        binaryen.setPassArgument("jspi-imports", "env.inputInteger,env.inputReal,env.inputChar,env.inputString,env.inputBoolean");
+        binaryen.setPassArgument("jspi-exports", "main");
+        this.module.setFeatures(binaryen.Features.ReferenceTypes);
         // createType although it is useless
         this.module.addFunctionImport("logInteger", "env", "logInteger", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logReal", "env", "logReal", binaryen.createType([binaryen.f64]), binaryen.none);
         this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
+        this.module.addFunctionImport("logBoolean", "env", "logBoolean", binaryen.createType([binaryen.i32]), binaryen.none);
+        this.module.addFunctionImport("inputInteger", "env", "inputInteger", binaryen.createType([]), binaryen.i32);
+        this.module.addFunctionImport("inputReal", "env", "inputReal", binaryen.createType([]), binaryen.f64);
+        this.module.addFunctionImport("inputChar", "env", "inputChar", binaryen.createType([]), binaryen.i32);
+        this.module.addFunctionImport("inputString", "env", "inputString", binaryen.createType([]), binaryen.i32);
+        this.module.addFunctionImport("inputBoolean", "env", "inputBoolean", binaryen.createType([]), binaryen.i32);
+
 
         // The stack grows upwards
         // stacktop, starts from 65536
@@ -132,6 +142,7 @@ export class Generator {
         );
 
         this.module.addMemoryImport("0", "env", "buffer");
+        this.module.runPasses(["jspi"]);
         return this.module;
     }
 
@@ -352,9 +363,6 @@ export class Generator {
         for (const param of params) {
             const paramName = param.ident.lexeme;
             const paramType = param.type;
-            if (paramType.kind !== typeKind.BASIC) {
-                throw new RuntimeError("not implemented");
-            }
             this.addVar(paramName, paramType);
             totalSize += paramType.size();
             const ptr = this.getPointer(paramName);
@@ -465,6 +473,8 @@ export class Generator {
                 return this.charExpression(expression);
             case nodeKind.StringExprNode:
                 return this.stringExpression(expression);
+            case nodeKind.BoolExprNode:
+                return this.boolExpression(expression);
             default:
                 throw new RuntimeError("Not implemented yet");
         }
@@ -478,15 +488,17 @@ export class Generator {
                 return this.indexExpression(expression);
             case nodeKind.SelectExprNode:
                 return this.selectExpression(expression);
+            case nodeKind.DerefExprNode:
+                return this.generateExpression(expression.lVal);
             default:
-                throw new RuntimeError(expression.toString() + "cannot be a left value");
+                throw new RuntimeError(expression.toString() + " cannot be a left value");
         }
     }
 
     public castExpression(node: CastExprNode): ExpressionRef {
         const expr = this.generateExpression(node.expr);
         if (node.type.kind !== typeKind.BASIC || node.expr.type.kind !== typeKind.BASIC) {
-            throw new RuntimeError("Type cast can onlybe perfromed for basic types");
+            throw new RuntimeError("Type cast can onlybe performed for basic types");
         }
         const to = node.type.type;
         const from = node.expr.type.type;
@@ -716,6 +728,10 @@ export class Generator {
         return this.module.i32.const(stringIndex);
     }
 
+    public boolExpression(node: BoolExprNode): ExpressionRef {
+        return this.module.i32.const(node.value ? 1 : 0);
+    }
+
     // Statements
     private generateBlock(statements: Array<Stmt>): ExpressionRef {
         return this.module.block(null, this.generateStatements(statements));
@@ -746,6 +762,8 @@ export class Generator {
                 return this.returnStatement(statement);
             case nodeKind.OutputNode:
                 return this.outputStatement(statement);
+            case nodeKind.InputNode:
+                return this.inputStatement(statement);
             case nodeKind.VarDeclNode:
                 return this.varDeclStatement(statement);
             case nodeKind.ArrDeclNode:
@@ -804,20 +822,46 @@ export class Generator {
         const basicType: basicKind = type.type;
         const expr = this.generateExpression(node.expr);
 
-        if (basicType === basicKind.INTEGER) {
-            return this.module.call("logInteger", [expr], binaryen.none);
+        switch (basicType) {
+            case basicKind.INTEGER:
+                return this.module.call("logInteger", [expr], binaryen.none);
+            case basicKind.REAL:
+                return this.module.call("logReal", [expr], binaryen.none);
+            case basicKind.CHAR:
+                return this.module.call("logChar", [expr], binaryen.none);
+            case basicKind.STRING:
+                return this.module.call("logString", [expr], binaryen.none);
+            case basicKind.BOOLEAN:
+                return this.module.call("logBoolean", [expr], binaryen.none);
         }
-        else if (basicType === basicKind.REAL) {
-            return this.module.call("logReal", [expr], binaryen.none);
-        }
-        else if (basicType === basicKind.CHAR) {
-            return this.module.call("logChar", [expr], binaryen.none);
-        }
-        else if (basicType === basicKind.STRING) {
-            return this.module.call("logString", [expr], binaryen.none);
-        }
+
         throw new RuntimeError("Not implemented yet");
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
+    }
+
+    private inputStatement(node: InputNode): ExpressionRef {
+        const type = node.expr.type;
+        if (type.kind !== typeKind.BASIC) {
+            throw new RuntimeError("Input can only be performed on basic types");
+        }
+
+        const basicType: basicKind = type.type;
+        const ptr = this.generateAddr(node.expr);
+
+        switch (basicType) {
+            case basicKind.INTEGER:
+                return this.store(type, ptr, this.module.call("inputInteger", [], binaryen.i32));
+            case basicKind.REAL:
+                return this.store(type, ptr, this.module.call("inputReal", [], binaryen.f64));
+            case basicKind.CHAR:
+                return this.store(type, ptr, this.module.call("inputChar", [], binaryen.i32));
+            case basicKind.STRING:
+                return this.store(type, ptr, this.module.call("inputString", [], binaryen.i32));
+            case basicKind.BOOLEAN:
+                return this.store(type, ptr, this.module.call("inputBoolean", [], binaryen.i32));
+        }
+        
+        throw new RuntimeError("Not implemented yet");
     }
 
     // for declaration, unlike regular assembly which allocates the stack at the very start of a function

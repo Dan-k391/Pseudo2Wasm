@@ -36,7 +36,8 @@ import {
     InputNode,
     CastExprNode,
     DerefExprNode,
-    AddrExprNode
+    AddrExprNode,
+    CaseNode
 } from "../syntax/ast";
 import { unreachable } from "../util";
 import { Scope } from "./scope";
@@ -275,6 +276,15 @@ export class Checker {
         this.insertType(node.ident, node.type);
     }
 
+    private declPtr(node: PtrDeclNode): void {
+        const elemType = this.resolveType(node.typeToken);
+        node.type = new PointerType(elemType);
+        this.insertType(
+            node.ident,
+            node.type
+        );
+    }
+
     private visitFuncDef(node: FuncDefNode) {
         // Return type already determined in function declaration
         this.beginScope(true, node.type, node.params.length);
@@ -337,6 +347,8 @@ export class Checker {
                 return this.charExpr(expr);
             case nodeKind.StringExprNode:
                 return this.stringExpr(expr);
+            case nodeKind.BoolExprNode:
+                return this.boolExpr(expr);
             default:
                 throw new RuntimeError("Not implemented yet");
         }
@@ -406,10 +418,9 @@ export class Checker {
                 if (!Checker.compatable(argType, paramType)) {
                     throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
                 }
-                if (argType.kind !== typeKind.BASIC || paramType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
+                if (argType.kind === typeKind.BASIC && paramType.kind === typeKind.BASIC) {
+                    node.args[i] = this.arithConv(node.args[i], argType.type);
                 }
-                node.args[i] = this.arithConv(node.args[i], argType.type);   
             }
             node.type = func.returnType;
             return node.type;
@@ -432,10 +443,9 @@ export class Checker {
                 if (!Checker.compatable(argType, paramType)) {
                     throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
                 }
-                if (argType.kind !== typeKind.BASIC || paramType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
+                if (argType.kind === typeKind.BASIC && paramType.kind === typeKind.BASIC) {
+                    node.args[i] = this.arithConv(node.args[i], argType.type);
                 }
-                node.args[i] = this.arithConv(node.args[i], argType.type);   
             }
             node.type = new NoneType();
             return node.type;
@@ -553,6 +563,11 @@ export class Checker {
         return node.type;
     }
 
+    private boolExpr(node: BoolExprNode): Type {
+        node.type = new BasicType(basicKind.BOOLEAN);
+        return node.type;
+    }
+
     private visitStmts(stmts: Array<Stmt>): void {
         // Pre declare all FUNCTIONs and PROCEDUREs
         for (const stmt of stmts) {
@@ -562,11 +577,15 @@ export class Checker {
             else if (stmt.kind === nodeKind.ProcDefNode) {
                 this.declProc(stmt);
             }
-            // FIXME: do type declarations really need to be pre declared?
+            // do type declarations really need to be pre declared?
             // i am not sure
-            // else if (stmt.kind === nodeKind.TypeDeclNode) {
-            //     this.declRecord(stmt);
-            // }
+            // they indeed need to, otherwise types in functions cannot be resolved
+            else if (stmt.kind === nodeKind.TypeDeclNode) {
+                this.declRecord(stmt);
+            }
+            else if (stmt.kind === nodeKind.PtrDeclNode) {
+                this.declPtr(stmt);
+            }
         }
         // then run the other code
         for (const stmt of stmts) {
@@ -596,6 +615,9 @@ export class Checker {
                 break;
             case nodeKind.OutputNode:
                 this.visitOutputStmt(stmt);
+                break;
+            case nodeKind.InputNode:
+                this.visitInputStmt(stmt);
                 break;
             case nodeKind.VarDeclNode:
                 this.visitVarDeclStmt(stmt);
@@ -649,6 +671,10 @@ export class Checker {
         this.visitExpr(node.expr);
     }
 
+    private visitInputStmt(node: InputNode): void {
+        this.visitExpr(node.expr);
+    }
+
     private visitVarDeclStmt(node: VarDeclNode): void {
         // assign the type resolved to the node
         node.type = this.resolveType(node.typeToken);
@@ -672,16 +698,13 @@ export class Checker {
     }
 
     private visitTypeDeclStmt(node: TypeDeclNode): void {
-        this.declRecord(node);
+        // do nothing, already predeclared
+        return;
     }
 
     private visitPtrDeclStmt(node: PtrDeclNode): void {
-        const elemType = this.resolveType(node.typeToken);
-        node.type = new PointerType(elemType);
-        this.insertType(
-            node.ident,
-            node.type
-        );
+        // do nothing, already predeclared
+        return;
     }
 
     private visitIfStmt(node: IfNode): void {

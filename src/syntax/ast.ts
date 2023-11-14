@@ -9,6 +9,7 @@
 import { Token, tokenType } from "../lex/token";
 import { Scope } from "../type/scope";
 import { Type } from "../type/type";
+import { Values } from "./value";
 import { ParamNode } from "./param";
 
 
@@ -44,13 +45,17 @@ export const enum nodeKind {
     WhileNode,
     RepeatNode,
     ForNode,
+    CaseNode,
     ExprStmtNode,
     OutputNode,
-    InputNode
+    InputNode,
+    ParamNode
 }
 
 export abstract class BaseNode {
     public abstract readonly kind: nodeKind;
+
+    public abstract toString(): string;
 }
 
 // every Expr has type property
@@ -83,6 +88,7 @@ export type Stmt = ProgramNode |
     WhileNode |
     RepeatNode |
     ForNode |
+    CaseNode |
     ExprStmtNode |
     OutputNode |
     InputNode;
@@ -95,6 +101,10 @@ export class ProgramNode extends BaseNode {
     constructor(body: Array<Stmt>) {
         super();
         this.body = body;
+    }
+
+    public toString(): string {
+        return "ProgramNode";
     }
 }
 
@@ -567,6 +577,24 @@ export class ForNode extends BaseNode {
     }
 }
 
+export class CaseNode extends BaseNode {
+    public readonly kind = nodeKind.CaseNode;
+    public ident: Token;
+    public values: Array<Values>;
+    public bodies: Array<Array<Stmt>>;
+
+    constructor(ident: Token, values: Array<Values>, bodies: Array<Array<Stmt>>) {
+        super();
+        this.ident = ident;
+        this.values = values;
+        this.bodies = bodies;
+    }
+
+    public toString(): string {
+        return "CaseNode";
+    }
+}
+
 // ExprStmt ::= AssignNode
 export class ExprStmtNode extends BaseNode {
     public readonly kind = nodeKind.ExprStmtNode;
@@ -598,11 +626,11 @@ export class OutputNode extends BaseNode {
 
 export class InputNode extends BaseNode {
     public readonly kind = nodeKind.InputNode;
-    public ident: string;
+    public expr: Expr;
 
-    constructor(ident: string) {
+    constructor(expr: Expr) {
         super();
-        this.ident = ident;
+        this.expr = expr;
     }
 
     public toString(): string {
