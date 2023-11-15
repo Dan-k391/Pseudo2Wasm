@@ -9,7 +9,7 @@
 import { Token, tokenType } from "../lex/token";
 import { Scope } from "../type/scope";
 import { Type } from "../type/type";
-import { Values } from "./casevalue";
+import { Values } from "./value";
 import { ParamNode } from "./param";
 
 

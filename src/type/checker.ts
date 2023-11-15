@@ -36,7 +36,8 @@ import {
     InputNode,
     CastExprNode,
     DerefExprNode,
-    AddrExprNode
+    AddrExprNode,
+    CaseNode
 } from "../syntax/ast";
 import { unreachable } from "../util";
 import { Scope } from "./scope";

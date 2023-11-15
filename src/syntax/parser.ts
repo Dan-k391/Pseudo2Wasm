@@ -47,7 +47,7 @@ import {
 import { passType, ParamNode } from "./param";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../lex/token";
-import { Values } from "./casevalue";
+import { Values } from "./value";
 
 
 export class Parser {
@@ -409,9 +409,9 @@ export class Parser {
         while (!this.check(tokenType.ENDCASE) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
             else {
-                const from = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
+                const from: Token = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
                 // if there is no 'TO', the from and to value are the same
-                let to = from;
+                let to: Token = from;
                 if (this.match(tokenType.TO))
                     to = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
                 this.consume("Expected colon", tokenType.COLON);

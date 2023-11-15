@@ -232,8 +232,10 @@ CASE OF <Identifier>
     ...
 ENDCASE
 ```
+Not implemented because i don't want to.
+***Theoretically,***
 ***At the end of each statement, you have to put a semicolon.***
-Just don't use this lol.
+***Just don't use this lol.***
 
 #### Output
 ```

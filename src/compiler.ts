@@ -96,7 +96,7 @@ export class Compiler {
         const inputReal = () => Promise.resolve(3.14);
         const inputChar = () => Promise.resolve('a'.charCodeAt(0));
         const inputString = () => new Promise<number>((resolve, reject) => {
-            const str = "Hello World!";
+            const str = prompt()!;
             const bytes = new TextEncoder().encode(str);
             // currently allocate on the heap
             // maybe allocate on a separate page later
