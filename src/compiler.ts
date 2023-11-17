@@ -16,10 +16,8 @@ export class Compiler {
     compile(log: boolean): binaryen.Module {
         const scanner = new Scanner(this.input);
         const tokens = scanner.scan();
-        console.log(tokens);
         const parser = new Parser(tokens);
         const ast = parser.parse();
-        console.log(ast);
         const checker = new Checker(ast);
         const typedAst = checker.check();
         if (log) {
@@ -67,8 +65,10 @@ export class Compiler {
     }
 
     // the test function
-    async test(expected: number | string): Promise<Boolean> {
-        let correct = false;
+    async test(input: Array<any>, expected: Array<any>): Promise<Boolean> {
+        let correct = true;
+        let inputIndex = 0;
+        let expectedIndex = 0;
 
         const module = this.compile(false);
 
@@ -78,8 +78,9 @@ export class Compiler {
             throw new Error("Module validation error");
         }
 
-        const text = module.emitText();
-        console.log(text);
+        // uncomment following two lines to see the text format
+        // const text = module.emitText();
+        // console.log(text);
         const wasm = module.emitBinary();
         // console.log(wasm);
 
@@ -92,11 +93,22 @@ export class Compiler {
 
         // TODO: input validation
         // input test
-        const inputInteger = () => Promise.resolve(32);
-        const inputReal = () => Promise.resolve(3.14);
-        const inputChar = () => Promise.resolve('a'.charCodeAt(0));
-        const inputString = () => new Promise<number>((resolve, reject) => {
-            const str = prompt()!;
+        const inputInteger = () => new Promise<number>(resolve => {
+            const num = input[inputIndex++];
+            resolve(parseInt(num));
+        });
+        const inputReal = () => new Promise<number>(resolve => {
+            const num = input[inputIndex++];
+            resolve(parseFloat(num));
+        });
+        const inputChar = () => new Promise<number>(resolve => {
+            const str = input[inputIndex++];
+            // utf-8 encoding
+            const bytes = new TextEncoder().encode(str);
+            resolve(bytes[0]);
+        });
+        const inputString = () => new Promise<number>(resolve => {
+            const str = input[inputIndex++];
             const bytes = new TextEncoder().encode(str);
             // currently allocate on the heap
             // maybe allocate on a separate page later
@@ -107,7 +119,11 @@ export class Compiler {
             view.set(bytes);
             resolve(ptr);
         });
-        const inputBoolean = () => Promise.resolve(1);
+        const inputBoolean = () => new Promise<number>(resolve => {
+            const str = input[inputIndex++];
+            if (str === "TRUE") resolve(1);
+            else resolve(0);
+        });
 
         // @ts-ignore
         const suspendingInputInteger = new WebAssembly.Function(
@@ -145,32 +161,45 @@ export class Compiler {
             env: {
                 buffer: memory,
                 logInteger: (output: number) => {
-                    correct = (output == expected);
-                    console.log(output);
+                    if (output !== expected[expectedIndex++]) {
+                        correct = false;
+                    }
+                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${output}`);
                 },
                 logReal: (output: number) => {
-                    correct = (output == expected);
-                    console.log(output);
+                    if (output !== expected[expectedIndex++]) {
+                        correct = false;
+                    }
+                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${output}`);
                 },
                 logChar: (output: number) => {
-                    correct = (String.fromCharCode(output) == expected);
-                    console.log(String.fromCharCode(output));
+                    // TODO: utf-8 encoding
+                    if (String.fromCharCode(output) !== expected[expectedIndex++]) {
+                        correct = false;
+                    }
+                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${String.fromCharCode(output)}`);
                 },
                 logString: (output: number) => {
                     const bytes = new Uint8Array(memory.buffer, output, maxSize - output);
                     let str = new TextDecoder("utf8").decode(bytes);
                     str = str.split('\0')[0];
-                    correct = (str == expected);
-                    console.log(str);
+                    if (str !== expected[expectedIndex++]) {
+                        correct = false;
+                    }
+                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${str}`);
                 },
                 logBoolean: (output: number) => {
                     if (output == 0) {
-                        correct = (expected == "FALSE");
-                        console.log("FALSE");
+                        if (expected[expectedIndex++] === "TRUE") {
+                            correct = false;
+                        }
+                        console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: FALSE`);
                     }
                     else {
-                        correct = (expected == "TRUE");
-                        console.log("TRUE");
+                        if (expected[expectedIndex++] === "FALSE") {
+                            correct = false;
+                        }
+                        console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: TRUE`);
                     }
                 },
                 inputInteger: suspendingInputInteger,

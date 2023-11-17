@@ -1,0 +1,62 @@
+## How to write some tests?
+
+### 0. Environment setup
+
+Install the dependencies:
+```sh
+npm install
+```
+
+Run the tests:
+```sh
+npm run test
+```
+
+Access the url: localhost:8080
+Open devtools in the browser and go to the console tab to see the test results.
+
+### 1. Create a test file
+
+Create a file with the name of the test you want to write, for example `/test/code1`.
+You can name it whatever you want, but it's recommended to name it as a sequence of after the last test number.
+
+### 2. Write the test
+```ts
+export const code1 = {
+    name: "declare",
+    code: `DECLARE i: INTEGER
+DECLARE j: INTEGER
+DECLARE k: REAL
+
+INPUT i
+INPUT j
+INPUT k
+OUTPUT i + j * k
+    `,
+    input: [3, 2, 3.14],
+    // floatring point inaccuracy
+    expected: [3 + 2 * 3.14],
+    // cannot be used yet
+    error: [],
+};
+```
+The test is a simple object with the following properties:
+- `name`: The name of the test, it's recommended to name it as the name of the test file.
+- `code`: The code to be tested.
+- `input`: The input to be passed to the code.
+- `expected`: The expected output of the code.
+- `error`: The expected error of the code.
+
+### 3. Add the test to the test list
+
+Open the file `/test/index.ts` and add the test to the list `tests`:
+```ts
+import { code1 } from "./code1";
+
+export const tests = [
+    ...
+    code1,
+];
+```
+
+### And that's it!

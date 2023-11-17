@@ -1,6 +1,7 @@
-// TODO: add ts type to every statement
+// Main entry at /test/index.ts
+// Author: Dan-K391
 
-import binaryen from "binaryen";
+/*
 import { Compiler } from "./compiler";
 
 const code0 = `OUTPUT 9 + 1`;
@@ -854,7 +855,7 @@ const expected = [
     5,
     2,
     2,
-    1.1 + 2.2 /*floating point inaccuracy*/,
+    1.1 + 2.2,
     "a",
     "v",
     -1,
@@ -894,7 +895,7 @@ const expected = [
     19,
     21,
     34,
-    9 + 3.88 /*floating point inaccuracy*/,
+    9 + 3.88,
     "Type test",
     "test",
     4,
@@ -958,3 +959,5 @@ compileTest().then(() => {
     console.log(`runCount: ${runCount}/${total}`);
     console.log(`runFailed: ${runFailed}`);
 });
+
+*/
