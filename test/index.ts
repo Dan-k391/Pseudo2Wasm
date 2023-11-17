@@ -3,38 +3,38 @@ import { Compiler } from "../src/compiler";
 import { code0 } from "./code0";
 import { code1 } from "./code1";
 
-const codes = [
+const tests = [
     code0,
     code1,
 ];
 
-let total = codes.length;
+let total = tests.length;
 let compileCount = 0;
 let runCount = 0;
 const compileFailed: Array<string> = [];
 const runFailed: Array<string> = [];
 
 async function compileTest() {
-    for (let code of codes) {
+    for (let test of tests) {
         // console.log(codes);
-        const compiler = new Compiler(code.code);
+        const compiler = new Compiler(test.code);
         try {
             // log the tokens and ast
             compiler.compile(false);
             compileCount++;
         } catch (e) {
             console.error(e);
-            compileFailed.push(code.name);
+            compileFailed.push(test.name);
         }
 
         try {
             // if fail push
-            if ((await compiler.test(code.input, code.expected)) === false)
-                runFailed.push(code.name);
+            if ((await compiler.test(test.input, test.expected)) === false)
+                runFailed.push(test.name);
             else runCount++;
         } catch (e) {
             console.error(e);
-            runFailed.push(code.name);
+            runFailed.push(test.name);
         }
     }
 }
