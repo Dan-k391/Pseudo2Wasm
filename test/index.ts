@@ -42,13 +42,6 @@ async function compileTest() {
 // The interpreter part now is under the interpreter branch, and it is not finished
 
 compileTest().then(() => {
-    // fetch("http://127.0.0.1:5570/wasmtry/pointer.wasm")
-    // .then((response) => response.arrayBuffer())
-    // .then((buffer) => new Uint8Array(buffer))
-    // .then((array) => binaryen.readBinary(array))
-    // .then((module) => {console.log(module.emitText())});
-
-    // const instance = new WebAssembly.Instance(module);
     console.log(`compileCount: ${compileCount}/${total}`);
     console.log(`compileFailed: ${compileFailed}`);
     console.log(`runCount: ${runCount}/${total}`);
