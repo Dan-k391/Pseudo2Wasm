@@ -282,7 +282,7 @@ export class Generator {
         else if (type.size() === 8) {
             return this.module.f64.load(0, 1, ptr, "0");
         }
-        throw new RuntimeError("Cannot load '" + type + "'");
+        return ptr;
     }
 
     public store(type: Type, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
@@ -292,7 +292,7 @@ export class Generator {
         else if (type.size() === 8) {
             return this.module.f64.store(0, 1, ptr, value, "0");
         }
-        throw new RuntimeError("Cannot store '" + type + "'");
+        throw new RuntimeError("Unknown type '" + type.toString() + "'");
     }
 
     // private generateMainFunction(statements: Array<Stmt>): void {
@@ -532,50 +532,61 @@ export class Generator {
     public indexExpression(node: IndexExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
         const rValType = node.expr.type;
-        if (rValType.kind !== typeKind.ARRAY) {
-            throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
-        }
-        const elemType = node.type;
-        // the base ptr(head) of the array
-        const base = this.generateAddr(node.expr);
-        // if the numbers of dimensions do not match
-        if (node.indexes.length != rValType.dimensions.length) {
-            throw new RuntimeError("The index dimension numbers do not match for " + rValType.toString());
-        }
-        // flaten index expressions
-        let index = this.generateConstant(binaryen.i32, 0);
-        for (let i = 0; i < rValType.dimensions.length; i++) {
-            // the section index
-            let section = 1;
-            for (let j = i + 1; j < rValType.dimensions.length; j++) {
-                // section is static, basically represents the size of one section
-                // For example: i = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-                // i[2, 1]
-                // for 2, section is 3
-                // for 1, section is 1
-
-                // add 1 because Pseudocode ARRAYs include upper and lower bound
-                section *= rValType.dimensions[j].upper.literal - rValType.dimensions[j].lower.literal + 1;
+        if (rValType.kind === typeKind.ARRAY) {
+            const elemType = node.type;
+            // the base ptr(head) of the array
+            const base = this.generateAddr(node.expr);
+            // if the numbers of dimensions do not match
+            if (node.indexes.length != rValType.dimensions.length) {
+                throw new RuntimeError("The index dimension numbers do not match for " + rValType.toString());
             }
-            index = this.module.i32.add(
-                index,
-                // and then multiple the index to the section
-                this.module.i32.mul(
-                    this.module.i32.sub(
-                        this.generateExpression(node.indexes[i]),
-                        this.generateConstant(binaryen.i32, rValType.dimensions[i].lower.literal)
-                    ),
-                    this.generateConstant(binaryen.i32, section)
+            // flaten index expressions
+            let index = this.generateConstant(binaryen.i32, 0);
+            for (let i = 0; i < rValType.dimensions.length; i++) {
+                // the section index
+                let section = 1;
+                for (let j = i + 1; j < rValType.dimensions.length; j++) {
+                    // section is static, basically represents the size of one section
+                    // For example: i = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+                    // i[2, 1]
+                    // for 2, section is 3
+                    // for 1, section is 1
+
+                    // add 1 because Pseudocode ARRAYs include upper and lower bound
+                    section *= rValType.dimensions[j].upper.literal - rValType.dimensions[j].lower.literal + 1;
+                }
+                index = this.module.i32.add(
+                    index,
+                    // and then multiple the index to the section
+                    this.module.i32.mul(
+                        this.module.i32.sub(
+                            this.generateExpression(node.indexes[i]),
+                            this.generateConstant(binaryen.i32, rValType.dimensions[i].lower.literal)
+                        ),
+                        this.generateConstant(binaryen.i32, section)
+                    )
                 )
-            )
+            }
+            return this.module.i32.add(
+                this.load(rValType, base),
+                this.module.i32.mul(
+                    index,
+                    this.generateConstant(binaryen.i32, elemType.size())
+                )
+            );
         }
-        return this.module.i32.add(
-            base,
-            this.module.i32.mul(
-                index,
-                this.generateConstant(binaryen.i32, elemType.size())
-            )
-        );
+        else if (rValType.kind === typeKind.POINTER) {
+            const base = this.generateAddr(node.expr);
+            const index = this.generateExpression(node.indexes[0]);
+            return this.module.i32.add(
+                this.load(rValType, base),
+                this.module.i32.mul(
+                    index,
+                    this.generateConstant(binaryen.i32, rValType.base.size())
+                )
+            );
+        }
+        throw new RuntimeError("Cannot perfrom 'index' operation to non ARRAY or POINTER types");
     }
 
     public selectExpression(node: SelectExprNode): ExpressionRef {

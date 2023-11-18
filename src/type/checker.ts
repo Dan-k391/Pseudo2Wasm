@@ -124,6 +124,8 @@ export class Checker {
         return true;
     }
 
+    // sequence matters, ARRAYs are compatable with POINTERs
+    // but not the other way around
     private static compatable(leftType: Type, rightType: Type): boolean {
         if (leftType === rightType) {
             return true;
@@ -136,11 +138,14 @@ export class Checker {
                 }
                 return Checker.compatableBasic(leftType.type, rightType.type);
             case typeKind.ARRAY:
-                if (rightType.kind !== typeKind.ARRAY) {
-                    return false;
-                }
                 // if the element types are same ARRAYs are compatable
-                return Checker.compatable(leftType.elem, rightType.elem);
+                if (rightType.kind === typeKind.ARRAY) {
+                    return Checker.compatable(leftType.elem, rightType.elem);
+                }
+                else if (rightType.kind === typeKind.POINTER) {
+                    return Checker.compatable(leftType.elem, rightType.base);
+                }
+                return false;
             case typeKind.RECORD:
                 if (rightType.kind !== typeKind.RECORD) {
                     return false;
@@ -367,14 +372,12 @@ export class Checker {
         const leftType = this.visitExpr(node.left);
         const rightType = this.visitExpr(node.right);
 
-        if (!Checker.compatable(leftType, rightType)) {
-            throw new RuntimeError("Cannot convert " + leftType + " to " + rightType);
+        if (!Checker.compatable(rightType, leftType)) {
+            throw new RuntimeError("Cannot convert " + rightType + " to " + leftType);
         }
 
         if (leftType.kind === typeKind.BASIC && rightType.kind === typeKind.BASIC) {
-            const leftBasicType = leftType.type;
-            const rightBasicType = rightType.type;
-            node.right = this.arithConv(node.right, leftBasicType);
+            node.right = this.arithConv(node.right, leftType.type);
         }
 
         // let type for assignnode be the left type
@@ -389,17 +392,25 @@ export class Checker {
 
     private indexExpr(node: IndexExprNode): Type {   
         const base = this.visitExpr(node.expr);
-        if (base.kind !== typeKind.ARRAY) {
-            throw new RuntimeError("Cannot perfrom 'index' operation to none ARRAY types");
+        if (base.kind === typeKind.ARRAY) {
+            if (node.indexes.length !== base.dimensions.length) {
+                throw new RuntimeError("The index dimension numbers do not match for " + base.toString());
+            }
+            for (const index of node.indexes) {
+                this.visitExpr(index);
+            }
+            node.type = base.elem;
+            return node.type;
         }
-        if (node.indexes.length !== base.dimensions.length) {
-            throw new RuntimeError("The index dimension numbers do not match for " + base.toString());
+        else if (base.kind === typeKind.POINTER) {
+            if (node.indexes.length !== 1) {
+                throw new RuntimeError("The index dimension numbers do not match for " + base.toString());
+            }
+            this.visitExpr(node.indexes[0]);
+            node.type = base.base;
+            return node.type;
         }
-        for (const index of node.indexes) {
-            this.visitExpr(index);
-        }
-        node.type = base.elem;
-        return node.type;
+        throw new RuntimeError("Cannot index none ARRAY or POINTER types");
     }
 
     private selectExpr(node: SelectExprNode): Type {
@@ -469,14 +480,11 @@ export class Checker {
         const leftType = this.visitExpr(node.left);
         const rightType = this.visitExpr(node.right);
 
-        // Binary operations only happen between basic types, at least now
-        // TODO: Whether ot not to support Array comparison is a question
-        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
-            throw new RuntimeError("Cannot convert " + rightType + " to " + leftType);
+        // The right side of arithmetic operations need to be BASIC types
+        // while the left side can be POINTER and BASIC types (for add and sub)
+        if (rightType.kind !== typeKind.BASIC) {
+            throw new RuntimeError("Cannot perform binary operations to none BASIC types");
         }
-
-        const leftBasicType = leftType.type;
-        const rightBasicType = rightType.type;
         
         // the following code looks complicated but just goes over all the possibilities
         // for basic types
@@ -487,13 +495,33 @@ export class Checker {
             // arithmetic operations
             case tokenType.PLUS:
             case tokenType.MINUS:
+                if (leftType.kind === typeKind.BASIC) {
+                    if (leftType.type === basicKind.STRING ||
+                        rightType.type === basicKind.STRING) {
+                        throw new RuntimeError("Cannot perform arithmetic operations to STRINGs")
+                    }
+                    const type = Checker.commonBasicType(leftType.type, rightType.type);
+                    node.type = new BasicType(type);
+                    node.left = this.arithConv(node.left, type);
+                    node.right = this.arithConv(node.right, type);
+                }
+                else if (leftType.kind === typeKind.POINTER) {
+                    if (rightType.type !== basicKind.INTEGER) {
+                        throw new RuntimeError("Cannot perform arithmetic operations to none INTEGER types");
+                    }
+                    node.type = leftType;
+                }
+                break;
             case tokenType.STAR:
             case tokenType.SLASH: {
-                if (leftBasicType === basicKind.STRING ||
-                    rightBasicType === basicKind.STRING) {
+                if (leftType.kind !== typeKind.BASIC) {
+                    throw new RuntimeError("Cannot perform arithmetic operations to none BASIC types");
+                }
+                if (leftType.type === basicKind.STRING ||
+                    rightType.type === basicKind.STRING) {
                     throw new RuntimeError("Cannot perform arithmetic operations to STRINGs")
                 }
-                const type = Checker.commonBasicType(leftBasicType, rightBasicType);
+                const type = Checker.commonBasicType(leftType.type, rightType.type);
                 node.type = new BasicType(type);
                 node.left = this.arithConv(node.left, type);
                 node.right = this.arithConv(node.right, type);
@@ -506,22 +534,25 @@ export class Checker {
             case tokenType.GREATER:
             case tokenType.LESS_EQUAL:
             case tokenType.GREATER_EQUAL: {
-                if (leftBasicType === basicKind.STRING ||
-                    rightBasicType === basicKind.STRING) {
+                if (leftType.kind !== typeKind.BASIC) {
+                    throw new RuntimeError("Cannot perform logical operations to none BASIC types");
+                }
+                if (leftType.type === basicKind.STRING ||
+                    rightType.type === basicKind.STRING) {
                     throw new RuntimeError("Cannot perform logical operations to STRINGs")
                 }
-                if (!Checker.compatableBasic(leftBasicType, rightBasicType)) {
-                    throw new RuntimeError("Cannot convert " + leftBasicType + " to " + rightBasicType);
-                }
                 node.type = new BasicType(basicKind.BOOLEAN);
-                const type = Checker.commonBasicType(leftBasicType, rightBasicType);
+                const type = Checker.commonBasicType(leftType.type, rightType.type);
                 node.left = this.arithConv(node.left, type);
                 node.right = this.arithConv(node.right, type);
                 break;
             }
             case tokenType.AMPERSAND: {
-                if (leftBasicType !== basicKind.STRING ||
-                    rightBasicType !== basicKind.STRING) {
+                if (leftType.kind !== typeKind.BASIC) {
+                    throw new RuntimeError("Cannot perform logical operations to none BASIC types");
+                }
+                if (leftType.type !== basicKind.STRING ||
+                    rightType.type !== basicKind.STRING) {
                     throw new RuntimeError("Cannot perform logical operations to STRINGs")
                 }
                 node.type = new BasicType(basicKind.STRING);
@@ -734,11 +765,15 @@ export class Checker {
 
     private visitForStmt(node: ForNode): void {
         const varType = this.lookUp(node.ident);
+        const startType = this.visitExpr(node.start);
         const endType = this.visitExpr(node.end);
         const stepType = this.visitExpr(node.step);
         
         if (varType.kind !== typeKind.BASIC || varType.type !== basicKind.INTEGER) {
             throw new RuntimeError("For loops only iterate over for INTEGERs");
+        }
+        if (startType.kind !== typeKind.BASIC || startType.type !== basicKind.INTEGER) {
+            throw new RuntimeError("Start value of for loops can only be INTEGERs");
         }
         if (endType.kind !== typeKind.BASIC || endType.type !== basicKind.INTEGER) {
             throw new RuntimeError("End value of for loops can only be INTEGERs");

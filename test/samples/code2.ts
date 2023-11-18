@@ -1,7 +1,7 @@
 export const code2 = {
     name: "function",
     code: `
-FUNCTION pow(base:REAL, exp:INTEGER) RETURNS REAL
+FUNCTION pow(base: REAL, exp: INTEGER) RETURNS REAL
     DECLARE ans: REAL
     DECLARE i: INTEGER
     ans <- 1

@@ -222,7 +222,9 @@ DECLARE a: intptr
 i <- 19
 a <- ^i
 OUTPUT a^
+OUTPUT (a + 1)^
 ```
+You can perform pointer arithmetic on pointers. But the pointer has to be on the left side of the operator.
 
 #### Case
 ```
