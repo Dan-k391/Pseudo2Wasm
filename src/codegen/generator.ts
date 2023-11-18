@@ -94,10 +94,10 @@ export class Generator {
         this.curScope = this.global;
 
         // memory size, not used for now
-        this.size = 65536 * 2;
+        this.size = 65536 * 30;
         // first page is data section, second page is stack and heap (maybe)
         this.globalOffset = 0;
-        this.localOffset = 65536; 
+        this.localOffset = 65536 * 10;
 
         // all the strings are set together so record them
         this.strings = new Array<String>();
@@ -120,7 +120,7 @@ export class Generator {
         this.module.addFunctionImport("inputChar", "env", "inputChar", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("inputString", "env", "inputString", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("inputBoolean", "env", "inputBoolean", binaryen.createType([]), binaryen.i32);
-
+        this.module.addFunctionImport("RAND", "env", "randomInteger", binaryen.createType([binaryen.i32]), binaryen.i32);
 
         // The stack grows upwards
         // stacktop, starts from 65536

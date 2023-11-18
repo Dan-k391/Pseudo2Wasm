@@ -78,6 +78,13 @@ export class Checker {
             new BasicType(basicKind.INTEGER)
         );
         this.curScope.insertFunc("LENGTH", lengthFunc);
+        const randFunc = new FunctionType(
+            new Map<string, Type>([
+                ["range", new BasicType(basicKind.INTEGER)]
+            ]),
+            new BasicType(basicKind.INTEGER)
+        );
+        this.curScope.insertFunc("RAND", randFunc);
     }
 
     // assign type to each Expr Node

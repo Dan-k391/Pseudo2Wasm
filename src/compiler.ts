@@ -82,14 +82,18 @@ export class Compiler {
         // const text = module.emitText();
         // console.log(text);
         const wasm = module.emitBinary();
-        // console.log(wasm);
 
-        const pages = 3;
+        // 0-10: global variables
+        // 11-20: stack
+        // 21-30: heap
+        // takes up totally 1.875MB
+        const pages = 30;
         const pageSize = 65536;
+        const heapStart = 20 * pageSize;
         // initialize import objects
         const memory = new WebAssembly.Memory({ initial: pages, maximum: pages });
         const maxSize = pageSize * pages - 1;
-        let heapOffSet = pageSize * (pages - 1);
+        let heapOffSet = heapStart;
 
         // TODO: input validation
         // input test
@@ -207,6 +211,10 @@ export class Compiler {
                 inputChar: suspendingInputChar,
                 inputString: suspendingInputString,
                 inputBoolean: suspendingInputBoolean,
+                randomInteger: (range: number) => {
+                    // includes 0 and range
+                    return Math.floor(Math.random() * (range + 1));
+                }
             },
         }
 
