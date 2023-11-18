@@ -1,16 +1,20 @@
 import { Compiler } from "../src/compiler";
 
-import { code0 } from "./code0";
-import { code1 } from "./code1";
-import { code2 } from "./code2";
-import { code3 } from "./code3";
+import { code0 } from "./samples/code0";
+import { code1 } from "./samples/code1";
+import { code2 } from "./samples/code2";
+import { code3 } from "./samples/code3";
+import { code4 } from "./samples/code4";
+import { code5 } from "./samples/code5";
 
 
 const tests = [
     code0,
     code1,
     code2,
-    code3
+    code3,
+    code4,
+    code5,
 ];
 
 let total = tests.length;
@@ -43,8 +47,6 @@ async function compileTest() {
         }
     }
 }
-
-// The interpreter part now is under the interpreter branch, and it is not finished
 
 compileTest().then(() => {
     console.log(`compileCount: ${compileCount}/${total}`);

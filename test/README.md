@@ -22,7 +22,7 @@ Change the highlighted tag to "Enabled" and we are good to go.
 
 ### 1. Create a test file
 
-Create a file with the name of the test you want to write, for example `/test/code1.ts`.
+Create a file with in the directory `/test/samples/`. For example, `/test/samples/code1.ts`.
 You can name it whatever you want, but it's recommended to name it as a sequence of after the last test number.
 
 ### 2. Write the test
