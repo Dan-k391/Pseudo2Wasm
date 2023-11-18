@@ -16,6 +16,10 @@ Access the url: localhost:8080.
 
 Open devtools in the browser and go to the console tab to see the test results.
 
+Before this, go to `chrome://flags/#enable-experimental-webassembly-stack-switching`.
+
+Change the highlighted tag to "Enabled" and we are good to go.
+
 ### 1. Create a test file
 
 Create a file with the name of the test you want to write, for example `/test/code1.ts`.
