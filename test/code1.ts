@@ -1,5 +1,5 @@
 export const code1 = {
-    name: "declare",
+    name: "input",
     code: `DECLARE i: INTEGER
 DECLARE j: INTEGER
 DECLARE k: REAL
