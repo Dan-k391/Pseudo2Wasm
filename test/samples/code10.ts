@@ -1,6 +1,6 @@
 export const code10 = {
     name: "sort_array",
-    code: `DECLARE arr : ARRAY[1: 10] OF INTEGER    
+    code: `DECLARE arr : ARRAY[0: 9] OF INTEGER    
 DECLARE len : INTEGER
 len <- 10
 
@@ -10,8 +10,8 @@ PROCEDURE Sort(arr: intptr, len: INTEGER)
     DECLARE i : INTEGER
     DECLARE j : INTEGER
     DECLARE temp : INTEGER
-    FOR i <- 1 TO len
-        FOR j <- 1 TO len - i
+    FOR i <- 0 TO len - 1
+        FOR j <- 0 TO len - i - 1
             IF arr[j] > arr[j + 1] THEN
                 temp <- arr[j]
                 arr[j] <- arr[j + 1]
@@ -22,15 +22,17 @@ PROCEDURE Sort(arr: intptr, len: INTEGER)
 ENDPROCEDURE
 
 DECLARE i: INTEGER
-FOR i <- 1 TO len
-    arr[i] <- RAND(len)
+FOR i <- 0 TO len - 1
+    arr[i] <- RAND(len - 1)
 NEXT i
 
 CALL Sort(arr, len)
-OUTPUT arr[1]
+FOR i <- 0 TO len - 1
+    OUTPUT arr[i]
+NEXT i
     `,
     input: [],
-    expected: [1],
+    expected: [],
     // cannot be used yet
     error: [],
 };

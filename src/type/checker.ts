@@ -10,8 +10,7 @@ import {
     FuncDefNode,
     ProcDefNode,
     ReturnNode,
-    VarDeclNode,
-    ArrDeclNode,
+    DeclNode,
     PtrDeclNode,
     TypeDeclNode,
     AssignNode,
@@ -50,6 +49,7 @@ import { PointerType } from "./pointer";
 import { ProcedureType } from "./procedure";
 import { RecordType } from "./record";
 import { Symbol, symbolKind } from "./symbol";
+import { ArrTypeNode, TypeNode } from "../syntax/typenode";
 
 
 export class Checker {
@@ -219,8 +219,8 @@ export class Checker {
         return this.curScope.lookUpType(name.lexeme);
     }
 
-    private resolveType(name: Token): Type {
-        switch (name.type) {
+    private resolveBasicType(typeToken: Token): Type {
+        switch (typeToken.type) {
             case tokenType.INTEGER:
                 return new BasicType(basicKind.INTEGER);
             case tokenType.REAL:
@@ -232,9 +232,25 @@ export class Checker {
             case tokenType.BOOLEAN:
                 return new BasicType(basicKind.BOOLEAN);
             case tokenType.IDENTIFIER:
-                return this.getType(name);
+                return this.getType(typeToken);
             default:
-                throw new RuntimeError("There is no type '" + name.lexeme + "'");
+                throw new RuntimeError("There is no type '" + typeToken.lexeme + "'");
+        }
+    }
+
+    private resolveArrType(node: ArrTypeNode): Type {
+        const elemType = this.resolveType(node.type);
+        return new ArrayType(elemType, node.dimensions);
+    }
+
+    private resolveType(typeNode: TypeNode): Type {
+        switch (typeNode.kind) {
+            case nodeKind.BasicTypeNode:
+                return this.resolveBasicType(typeNode.type);
+            case nodeKind.ArrTypeNode:
+                return this.resolveArrType(typeNode);
+            default:
+                throw new RuntimeError("Not implemented yet");
         }
     }
 
@@ -244,11 +260,11 @@ export class Checker {
 
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            param.type = this.resolveType(param.typeToken);
+            param.type = this.resolveType(param.typeNode);
             funcParams.set(paramName, param.type);
         }
 
-        node.type = this.resolveType(node.typeToken);
+        node.type = this.resolveType(node.typeNode);
         const func = new FunctionType(funcParams, node.type);
         this.curScope.insertFunc(funcName, func);
     }
@@ -259,7 +275,7 @@ export class Checker {
 
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            param.type = this.resolveType(param.typeToken);
+            param.type = this.resolveType(param.typeNode);
             procParams.set(paramName, param.type);
         }
 
@@ -273,23 +289,14 @@ export class Checker {
         for (const decl of node.body) {
             // do not assign the type to the declarations in the typedecl
             // not necessary
-            if (decl.kind === nodeKind.VarDeclNode) {
-                fields.set(decl.ident.lexeme, this.resolveType(decl.typeToken));
-            }
-            else if (decl.kind === nodeKind.ArrDeclNode) {
-                const elemType = this.resolveType(decl.typeToken);
-                fields.set(
-                    decl.ident.lexeme,
-                    new ArrayType(elemType, decl.dimensions)
-                );
-            }
+            fields.set(decl.ident.lexeme, this.resolveType(decl.typeNode));
         }
         node.type = new RecordType(fields);
         this.insertType(node.ident, node.type);
     }
 
     private declPtr(node: PtrDeclNode): void {
-        const elemType = this.resolveType(node.typeToken);
+        const elemType = this.resolveType(node.typeNode);
         node.type = new PointerType(elemType);
         this.insertType(
             node.ident,
@@ -657,11 +664,8 @@ export class Checker {
             case nodeKind.InputNode:
                 this.visitInputStmt(stmt);
                 break;
-            case nodeKind.VarDeclNode:
-                this.visitVarDeclStmt(stmt);
-                break;
-            case nodeKind.ArrDeclNode:
-                this.visitArrDeclStmt(stmt);
+            case nodeKind.DeclNode:
+                this.visitDeclStmt(stmt);
                 break;
             case nodeKind.TypeDeclNode:
                 this.visitTypeDeclStmt(stmt);
@@ -713,20 +717,9 @@ export class Checker {
         this.visitExpr(node.expr);
     }
 
-    private visitVarDeclStmt(node: VarDeclNode): void {
+    private visitDeclStmt(node: DeclNode): void {
         // assign the type resolved to the node
-        node.type = this.resolveType(node.typeToken);
-        if (this.isGlobal()) {
-            this.insert(node.ident, node.type, symbolKind.GLOBAL);
-        }
-        else {
-            this.insert(node.ident, node.type, symbolKind.LOCAL);
-        }
-    }
-
-    private visitArrDeclStmt(node: ArrDeclNode): void {
-        const elemType = this.resolveType(node.typeToken);
-        node.type = new ArrayType(elemType, node.dimensions);
+        node.type = this.resolveType(node.typeNode);
         if (this.isGlobal()) {
             this.insert(node.ident, node.type, symbolKind.GLOBAL);
         }

@@ -15,8 +15,7 @@ import {
     FuncDefNode,
     ProcDefNode,
     ReturnNode,
-    VarDeclNode,
-    ArrDeclNode,
+    DeclNode,
     PtrDeclNode,
     TypeDeclNode,
     IfNode,
@@ -42,12 +41,16 @@ import {
     OutputNode,
     InputNode,
     AssignNode,
-    Dimension,
 } from "./ast";
+import { Dimension } from "./dimension";
 import { passType, ParamNode } from "./param";
 import { SyntaxError } from "../error";
 import { tokenType, Token } from "../lex/token";
 import { Values } from "./value";
+import { Type } from "../type/type";
+import { ArrayType } from "../type/array";
+import { BasicType, basicKind } from "../type/basic";
+import { ArrTypeNode, BasicTypeNode, TypeNode } from "./typenode";
 
 
 export class Parser {
@@ -275,9 +278,7 @@ export class Parser {
         return new ReturnNode(expr);
     }
 
-    private declaration(): VarDeclNode | ArrDeclNode {
-        const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
-        this.consume("Expected colon", tokenType.COLON);
+    private expectType(): TypeNode {
         if (this.match(tokenType.ARRAY)) {
             this.consume("Expected '['", tokenType.LEFT_BRACKET);
             const dimensions: Array<Dimension> = new Array<Dimension>;
@@ -297,21 +298,28 @@ export class Parser {
             }
             this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
             this.consume("Expected 'OF'", tokenType.OF);
-            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
-            return new ArrDeclNode(ident, type, dimensions);
+            const type: TypeNode = this.expectType();
+            return new ArrTypeNode(type, dimensions);
         }
         const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
-        return new VarDeclNode(ident, type);
+        return new BasicTypeNode(type);
+    }
+
+    private declaration(): DeclNode {
+        const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
+        this.consume("Expected colon", tokenType.COLON);
+        const type: TypeNode = this.expectType();
+        return new DeclNode(ident, type);
     }
 
     private typeDeclaration(): Stmt {
         const ident: Token = this.consume("Expected type name", tokenType.IDENTIFIER);
         if (this.match(tokenType.EQUAL)) {
             this.consume("Expected caret", tokenType.CARET);
-            const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
+            const type: TypeNode = this.expectType();
             return new PtrDeclNode(ident, type);
         }
-        const component: Array<VarDeclNode | ArrDeclNode> = new Array<VarDeclNode | ArrDeclNode>();
+        const component: Array<DeclNode> = new Array<DeclNode>();
         while (!this.check(tokenType.ENDTYPE) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
             else {
@@ -447,14 +455,14 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
+                let type: TypeNode = this.expectType();
                 // function only supports BYVAL
                 params.push(new ParamNode(ident, type, passType.BYVAL));
             } while (this.match(tokenType.COMMA));
         }
         this.consume("Expected right parenthesis", tokenType.RIGHT_PAREN);
         this.consume("Expected 'RETURNS'", tokenType.RETURNS);
-        const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
+        const type: TypeNode = this.expectType();
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDFUNCTION) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
@@ -486,7 +494,7 @@ export class Parser {
                 }
                 let ident: Token = this.consume("Expected parameter name", tokenType.IDENTIFIER);
                 this.consume("Expected colon", tokenType.COLON);
-                let type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
+                let type: TypeNode = this.expectType();
                 // default passType is BYVAL
                 params.push(new ParamNode(ident, type, _passType));
             } while (this.match(tokenType.COMMA));

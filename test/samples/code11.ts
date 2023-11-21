@@ -1,13 +1,16 @@
 export const code11 = {
-    name: "array2ptr",
-    code: `DECLARE i: INTEGER
+    name: "function_array",
+    code: `DECLARE i: ARRAY[0: 10] OF INTEGER
 
-FOR i <- 1 TO 11
-    OUTPUT i
-NEXT i
+FUNCTION f(x: ARRAY[0: 10] OF INTEGER) RETURNS INTEGER
+    RETURN x[0]
+ENDFUNCTION
+
+INPUT i[0]
+OUTPUT f(i)
     `,
-    input: [],
-    expected: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    input: [22],
+    expected: [22],
     // cannot be used yet
     error: [],
 };

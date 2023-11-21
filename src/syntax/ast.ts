@@ -1,8 +1,9 @@
 /**
  * I tried to use the visitor pattern but I found that it really was not necessary.
  * 
- * Some of the statements contain a typeToken and a type.
- * The typeToken is assigned in the parser storing the token recording the type.
+ * Some of the statements contain a typeNode and a type.
+ * The typeNode is assigned in the parser as a placeholder for arrays and basic types.
+ * storing the token recording the type.
  * The type is assigned in the checker and is a resolved version with type Type.
  */
 
@@ -11,6 +12,8 @@ import { Scope } from "../type/scope";
 import { Type } from "../type/type";
 import { Values } from "./value";
 import { ParamNode } from "./param";
+import { Dimension } from "./dimension";
+import { TypeNode } from "./typenode";
 
 
 
@@ -34,8 +37,7 @@ export const enum nodeKind {
     CharExprNode,
     StringExprNode,
     BoolExprNode,
-    VarDeclNode,
-    ArrDeclNode,
+    DeclNode,
     PtrDeclNode,
     TypeDeclNode,
     AssignNode,
@@ -49,7 +51,9 @@ export const enum nodeKind {
     ExprStmtNode,
     OutputNode,
     InputNode,
-    ParamNode
+    ParamNode,
+    BasicTypeNode,
+    ArrTypeNode,
 }
 
 export abstract class BaseNode {
@@ -80,8 +84,7 @@ export type Stmt = ProgramNode |
     FuncDefNode |
     ProcDefNode |
     ReturnNode |
-    VarDeclNode |
-    ArrDeclNode |
+    DeclNode |
     PtrDeclNode |
     TypeDeclNode |
     IfNode |
@@ -113,16 +116,16 @@ export class FuncDefNode extends BaseNode {
     public ident: Token;
     public params: Array<ParamNode>;
     // change type
-    public typeToken: Token;
+    public typeNode: TypeNode;
     public body: Array<Stmt>;
     public type!: Type;
     public local!: Scope;
 
-    constructor(ident: Token, params: Array<ParamNode>, typeToken: Token, body: Array<Stmt>) {
+    constructor(ident: Token, params: Array<ParamNode>, typeNode: TypeNode, body: Array<Stmt>) {
         super();
         this.ident = ident;
         this.params = params;
-        this.typeToken = typeToken;
+        this.typeNode = typeNode;
         this.body = body;
     }
 
@@ -405,17 +408,17 @@ export class BoolExprNode extends BaseNode {
     }
 }
 
-export class VarDeclNode extends BaseNode {
-    public readonly kind = nodeKind.VarDeclNode;
+export class DeclNode extends BaseNode {
+    public readonly kind = nodeKind.DeclNode;
     public ident: Token;
-    public typeToken: Token;
+    public typeNode: TypeNode;
     // records the variable type, assigned in the checker
     public type!: Type;
 
-    constructor(ident: Token, typeToken: Token) {
+    constructor(ident: Token, typeNode: TypeNode) {
         super();
         this.ident = ident;
-        this.typeToken = typeToken;
+        this.typeNode = typeNode;
     }
 
     public toString(): string {
@@ -423,41 +426,17 @@ export class VarDeclNode extends BaseNode {
     }
 }
 
-export interface Dimension {
-    lower: Token;
-    upper: Token;
-}
-
-export class ArrDeclNode extends BaseNode {
-    public readonly kind = nodeKind.ArrDeclNode;
-    public ident: Token;
-    public typeToken: Token;
-    public dimensions: Array<Dimension>;
-    public type!: Type;
-
-    constructor(ident: Token, typeToken: Token, dimensions: Array<Dimension>) {
-        super();
-        this.ident = ident;
-        this.typeToken = typeToken;
-        this.dimensions = dimensions;
-    }
-
-    public toString(): string {
-        return "ArrDeclNode";
-    }
-}
-
 export class PtrDeclNode extends BaseNode {
     public readonly kind = nodeKind.PtrDeclNode;
     public ident: Token;
-    public typeToken: Token;
+    public typeNode: TypeNode;
     // records what type declared, added in the checker
     public type!: Type;
 
-    constructor(ident: Token, typeToken: Token) {
+    constructor(ident: Token, typeNode: TypeNode) {
         super();
         this.ident = ident;
-        this.typeToken = typeToken;
+        this.typeNode = typeNode;
     }
 
     public toString(): string {
@@ -468,11 +447,11 @@ export class PtrDeclNode extends BaseNode {
 export class TypeDeclNode extends BaseNode {
     public readonly kind = nodeKind.TypeDeclNode;
     public ident: Token;
-    public body: Array<VarDeclNode | ArrDeclNode>;
+    public body: Array<DeclNode>;
     // records what type declared in the checker
     public type!: Type;
 
-    constructor(ident: Token, body: Array<VarDeclNode | ArrDeclNode>) {
+    constructor(ident: Token, body: Array<DeclNode>) {
         super();
         this.ident = ident;
         this.body = body;

@@ -1,5 +1,5 @@
 import binaryen from "binaryen";
-import { Dimension } from "../syntax/ast";
+import { Dimension } from "../syntax/dimension";
 import { BaseType, typeKind, Type } from "./type";
 
 

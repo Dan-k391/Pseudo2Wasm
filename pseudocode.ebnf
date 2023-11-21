@@ -1,6 +1,14 @@
 Program ::= {FuncDef | ProcDef | {Stmt}}
 
-Type ::= "INTEGER" | "REAL" | "CHAR" | "STRING" | "BOOLEAN"
+Type ::= "INTEGER" |
+    "REAL" |
+    "CHAR" |
+    "STRING" |
+    "BOOLEAN" |
+    "ARRAY" Dimensions  "OF" Type |
+    IDENT
+
+Dimensions ::= "[" Expr ":" Expr {"," Expr ":" Expr} "]"
 
 FuncDef ::= "FUNCTION" IDENT "(" [Params] ")" "RETURNS" Type {Stmt} "ENDFUNCTION"
 ProcDef ::= "PROCEDURE" IDENT "(" [Params] ")"  "ENDPROCEDURE"
@@ -21,11 +29,11 @@ Args ::= Expr {"," Expr}
 Call ::= Primary ["(" [Args] ")"] | "CALL" Primary "(" [Args] ")"
 
 Primary ::= IDENT |
-    INTEGER |
-    REAL |
-    CHAR |
-    STRING |
-    BOOLEAN |
+    INT_CONST |
+    REAL_CONST |
+    CHAR_CONST |
+    STRING_CONST |
+    BOOL_CONST |
     "(" Expr ")"|
     Primary Select |
     Primary Index |
@@ -35,7 +43,7 @@ Select ::= "[" Args "]"
 Index ::= "." IDENT
 
 Stmt ::= Decl | TypeDecl | Assign | If | While | Repeat | For | Return
-Decl ::= "DECLARE" IDENT ":" Type | "DECLARE" IDENT ":" "ARRAY" "OF" Type
+Decl ::= "DECLARE" IDENT ":" Type
 TypeDecl ::= "TYPE" IDENT {Decl} "ENDTYPE" |
     "TYPE" IDENT "=" "(" Value {"," Value} ")" |
     "TYPE" IDENT "=" "^" Type

@@ -15,8 +15,7 @@ import {
     FuncDefNode,
     ProcDefNode,
     ReturnNode,
-    VarDeclNode,
-    ArrDeclNode,
+    DeclNode,
     PtrDeclNode,
     TypeDeclNode,
     AssignNode,
@@ -276,16 +275,25 @@ export class Generator {
     }
 
     public load(type: Type, ptr: ExpressionRef): ExpressionRef {
+        // load ARRAYs by ptr
+        if (type.kind === typeKind.ARRAY) {
+            return ptr;
+        }
         if (type.size() === 4) {
             return this.module.i32.load(0, 1, ptr, "0");
         }
         else if (type.size() === 8) {
             return this.module.f64.load(0, 1, ptr, "0");
         }
-        return ptr;
+        throw new RuntimeError("Unknown type '" + type.toString() + "'");
     }
 
     public store(type: Type, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
+        // store ARRAYs by ptr
+        if (type.kind === typeKind.ARRAY) {
+            debugger;
+            return this.module.i32.store(0, 1, ptr, value, "0");
+        }
         if (type.size() === 4) {
             return this.module.i32.store(0, 1, ptr, value, "0");
         }
@@ -775,10 +783,8 @@ export class Generator {
                 return this.outputStatement(statement);
             case nodeKind.InputNode:
                 return this.inputStatement(statement);
-            case nodeKind.VarDeclNode:
-                return this.varDeclStatement(statement);
-            case nodeKind.ArrDeclNode:
-                return this.arrDeclStatement(statement);
+            case nodeKind.DeclNode:
+                return this.declStatement(statement);
             case nodeKind.TypeDeclNode:
                 return this.typeDeclStatement(statement);
             case nodeKind.PtrDeclNode:
@@ -877,7 +883,7 @@ export class Generator {
 
     // for declaration, unlike regular assembly which allocates the stack at the very start of a function
     // here the stack is allocated when the variable is declared
-    private varDeclStatement(node: VarDeclNode): ExpressionRef {
+    private declStatement(node: DeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
         const varType = node.type;
@@ -890,21 +896,6 @@ export class Generator {
         }
         else {
             return this.incrementStackTop(varType.size());
-        }
-    }
-
-    private arrDeclStatement(node: ArrDeclNode): ExpressionRef {
-        const arrName = node.ident.lexeme;
-        const arrType = node.type;
-        this.addVar(arrName, arrType);
-        // FIXME: set to init pointer
-        const kind = this.curScope.lookUp(arrName).kind;
-        if (kind === symbolKind.GLOBAL) {
-            // do nothing, just set the pointer
-            return this.module.block(null, []);
-        }
-        else {
-            return this.incrementStackTop(arrType.size());
         }
     }
 
