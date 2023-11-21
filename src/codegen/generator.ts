@@ -291,7 +291,7 @@ export class Generator {
     public store(type: Type, ptr: ExpressionRef, value: ExpressionRef): ExpressionRef {
         // store ARRAYs by ptr
         if (type.kind === typeKind.ARRAY) {
-            debugger;
+            // FIXME: load ARRAYs?
             return this.module.i32.store(0, 1, ptr, value, "0");
         }
         if (type.size() === 4) {
@@ -659,6 +659,8 @@ export class Generator {
                 return this.generateExpression(node.expr);
             case tokenType.MINUS:
                 return this.module.i32.sub(this.module.i32.const(0), this.generateExpression(node.expr));
+            case tokenType.NOT:
+                return this.module.i32.eq(this.generateExpression(node.expr), this.module.i32.const(0));
         }
         throw new RuntimeError("Not implemented yet");
 
@@ -708,6 +710,8 @@ export class Generator {
                 return this.module.i32.mul(leftExpr, rightExpr);
             case tokenType.SLASH:
                 return this.module.i32.div_s(leftExpr, rightExpr);
+            case tokenType.MOD:
+                return this.module.i32.rem_s(leftExpr, rightExpr);
             case tokenType.EQUAL:
                 return this.module.i32.eq(leftExpr, rightExpr);
             case tokenType.LESS_GREATER:
@@ -720,6 +724,10 @@ export class Generator {
                 return this.module.i32.le_s(leftExpr, rightExpr);
             case tokenType.GREATER_EQUAL:
                 return this.module.i32.ge_s(leftExpr, rightExpr);
+            case tokenType.AND:
+                return this.module.i32.and(leftExpr, rightExpr);
+            case tokenType.OR:
+                return this.module.i32.or(leftExpr, rightExpr);
         }
         throw new RuntimeError("Not implemented yet");
         // TODO: STRING

@@ -534,6 +534,17 @@ export class Checker {
                 node.right = this.arithConv(node.right, type);
                 break;
             }
+            case tokenType.MOD: {
+                if (leftType.kind !== typeKind.BASIC) {
+                    throw new RuntimeError("Cannot perform arithmetic operations to none BASIC types");
+                }
+                if (leftType.type !== basicKind.INTEGER ||
+                    rightType.type !== basicKind.INTEGER) {
+                    throw new RuntimeError("Cannot perform arithmetic operations to none INTEGERs")
+                }
+                node.type = new BasicType(basicKind.INTEGER);
+                break;
+            }
             // logical operators
             case tokenType.EQUAL:
             case tokenType.LESS_GREATER:
@@ -552,6 +563,18 @@ export class Checker {
                 const type = Checker.commonBasicType(leftType.type, rightType.type);
                 node.left = this.arithConv(node.left, type);
                 node.right = this.arithConv(node.right, type);
+                break;
+            }
+            case tokenType.AND:
+            case tokenType.OR: {
+                if (leftType.kind !== typeKind.BASIC) {
+                    throw new RuntimeError("Cannot perform logical operations to none BASIC types");
+                }
+                if (leftType.type !== basicKind.BOOLEAN ||
+                    rightType.type !== basicKind.BOOLEAN) {
+                    throw new RuntimeError("Cannot perform logical operations to none BOOLEANs")
+                }
+                node.type = new BasicType(basicKind.BOOLEAN);
                 break;
             }
             case tokenType.AMPERSAND: {

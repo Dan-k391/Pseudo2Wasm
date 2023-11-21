@@ -79,7 +79,7 @@ export class Parser {
     }
 
     private assignment(): Expr {
-        const expr: Expr = this.equality();
+        const expr: Expr = this.or();
 
         if (this.match(tokenType.LESS_MINUS)) {
             const equals: Token = this.previous();
@@ -90,9 +90,29 @@ export class Parser {
         return expr;
     }
 
+    private or(): Expr {
+        let expr: Expr = this.and();
+        while (this.match(tokenType.OR)) {
+            const operator: Token = this.previous();
+            const right: Expr = this.equality();
+            expr = new BinaryExprNode(expr, operator, right);
+        }
+        return expr;
+    }
+
+    private and(): Expr {
+        let expr: Expr = this.equality();
+        while (this.match(tokenType.AND)) {
+            const operator: Token = this.previous();
+            const right: Expr = this.equality();
+            expr = new BinaryExprNode(expr, operator, right);
+        }
+        return expr;
+    }
+
     private equality(): Expr {
         let expr: Expr = this.comparison();
-        while (this.match(tokenType.EQUAL, tokenType.LESS_GREATER, tokenType.OR)) {
+        while (this.match(tokenType.EQUAL, tokenType.LESS_GREATER)) {
             const operator: Token = this.previous();
             const right: Expr = this.comparison();
             expr = new BinaryExprNode(expr, operator, right);
@@ -102,7 +122,7 @@ export class Parser {
 
     private comparison(): Expr {
         let expr: Expr = this.term();
-        while (this.match(tokenType.GREATER, tokenType.GREATER_EQUAL, tokenType.LESS, tokenType.LESS_EQUAL, tokenType.AND)) {
+        while (this.match(tokenType.GREATER, tokenType.GREATER_EQUAL, tokenType.LESS, tokenType.LESS_EQUAL)) {
             const operator: Token = this.previous();
             const right: Expr = this.term();
             expr = new BinaryExprNode(expr, operator, right);

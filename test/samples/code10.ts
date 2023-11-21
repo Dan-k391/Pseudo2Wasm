@@ -2,37 +2,47 @@ export const code10 = {
     name: "sort_array",
     code: `DECLARE arr : ARRAY[0: 9] OF INTEGER    
 DECLARE len : INTEGER
-len <- 10
+len <- 10000
 
 TYPE intptr = ^INTEGER
 
-PROCEDURE Sort(arr: intptr, len: INTEGER)
-    DECLARE i : INTEGER
-    DECLARE j : INTEGER
-    DECLARE temp : INTEGER
-    FOR i <- 0 TO len - 1
-        FOR j <- 0 TO len - i - 1
-            IF arr[j] > arr[j + 1] THEN
-                temp <- arr[j]
-                arr[j] <- arr[j + 1]
-                arr[j + 1] <- temp
-            ENDIF
-        NEXT j
-    NEXT i
+PROCEDURE Sort(arr: intptr, start: INTEGER, end: INTEGER)
+    IF start < end THEN
+        DECLARE pivot: INTEGER
+        pivot <- arr[start]
+        DECLARE left: INTEGER
+        left <- start
+        DECLARE right: INTEGER
+        right <- end
+
+        WHILE left < right
+            WHILE left < right AND arr[right] >= pivot
+                right <- right - 1
+            ENDWHILE
+            arr[left] <- arr[right]
+
+            WHILE left < right AND arr[left] <= pivot
+                left <- left + 1
+            ENDWHILE
+            arr[right] <- arr[left]
+        ENDWHILE
+        arr[left] <- pivot
+
+        CALL Sort(arr, start, left - 1)
+        CALL Sort(arr, left + 1, end)
+    ENDIF
 ENDPROCEDURE
 
 DECLARE i: INTEGER
-FOR i <- 0 TO len - 1
-    arr[i] <- RAND(len - 1)
+FOR i <- 0 TO len
+    arr[i] <- RAND(len)
 NEXT i
 
-CALL Sort(arr, len)
-FOR i <- 0 TO len - 1
-    OUTPUT arr[i]
-NEXT i
+CALL Sort(arr, 0, len)
+OUTPUT arr[0]
     `,
     input: [],
-    expected: [],
+    expected: [0],
     // cannot be used yet
     error: [],
 };
