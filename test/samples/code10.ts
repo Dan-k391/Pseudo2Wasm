@@ -1,8 +1,8 @@
 export const code10 = {
     name: "sort_array",
-    code: `DECLARE arr : ARRAY[0: 9] OF INTEGER    
+    code: `DECLARE arr : ARRAY[0: 99999] OF INTEGER    
 DECLARE len : INTEGER
-len <- 10000
+len <- 100000
 
 TYPE intptr = ^INTEGER
 
@@ -34,11 +34,11 @@ PROCEDURE Sort(arr: intptr, start: INTEGER, end: INTEGER)
 ENDPROCEDURE
 
 DECLARE i: INTEGER
-FOR i <- 0 TO len
-    arr[i] <- RAND(len)
+FOR i <- 0 TO len - 1
+    arr[i] <- RAND(len - 1)
 NEXT i
 
-CALL Sort(arr, 0, len)
+CALL Sort(arr, 0, len - 1)
 OUTPUT arr[0]
     `,
     input: [],

@@ -65,12 +65,16 @@ type WasmType = binaryen.Type;
 
 
 export class Generator {
+    private readonly pageSize: number = 65536;
+    private readonly pageNum: number = 30;
+    private readonly stackStart: number = this.pageSize * 10;
+
     private ast: ProgramNode;
     private module: binaryen.Module;
     private global: Scope;
     private curScope: Scope;
     // memory
-    //            stackbase (starts from 65536)
+    //            stackbase (starts from 65536 * 10)
     //                ⬇
     // ----------------------------------------------
     // | data section | stack->       <-heap(maybe) |
@@ -93,10 +97,10 @@ export class Generator {
         this.curScope = this.global;
 
         // memory size, not used for now
-        this.size = 65536 * 30;
+        this.size = this.pageSize * this.pageNum;
         // first page is data section, second page is stack and heap (maybe)
         this.globalOffset = 0;
-        this.localOffset = 65536 * 10;
+        this.localOffset = 0;
 
         // all the strings are set together so record them
         this.strings = new Array<String>();
@@ -122,16 +126,17 @@ export class Generator {
         this.module.addFunctionImport("RAND", "env", "randomInteger", binaryen.createType([binaryen.i32]), binaryen.i32);
 
         // The stack grows upwards
-        // stacktop, starts from 65536
-        this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, 65536));
-        // stackbase, starts from 65536
-        this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, 65536));
+        // stacktop, starts from 65536 * 10
+        this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
+        // stackbase, starts from 65536 * 10
+        this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
 
         this.generateBuiltins();
         // this.module.setStart(this.generateBody(this.ast.body));
         this.generateBody(this.ast.body);
 
         const encoder = new TextEncoder();
+        // the first and second number stand for memory page numbers
         this.module.setMemory(0, 65536, null, 
             this.strings.map(str => ({
                 offset: str.ptr,

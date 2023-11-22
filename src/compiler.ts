@@ -214,7 +214,7 @@ export class Compiler {
                 randomInteger: (range: number) => {
                     // includes 0 and range
                     return Math.floor(Math.random() * (range + 1));
-                }
+                },
             },
         }
 
