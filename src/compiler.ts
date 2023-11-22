@@ -215,6 +215,12 @@ export class Compiler {
                     // includes 0 and range
                     return Math.floor(Math.random() * (range + 1));
                 },
+                startTime: () => {
+                    console.time("Execution time");
+                },
+                endTime: () => {
+                    console.timeEnd("Execution time");
+                },
             },
         }
 

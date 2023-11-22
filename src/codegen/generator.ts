@@ -124,6 +124,8 @@ export class Generator {
         this.module.addFunctionImport("inputString", "env", "inputString", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("inputBoolean", "env", "inputBoolean", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("RAND", "env", "randomInteger", binaryen.createType([binaryen.i32]), binaryen.i32);
+        this.module.addFunctionImport("STARTTIME", "env", "startTime", binaryen.createType([]), binaryen.none);
+        this.module.addFunctionImport("ENDTIME", "env", "endTime", binaryen.createType([]), binaryen.none);
 
         // The stack grows upwards
         // stacktop, starts from 65536 * 10

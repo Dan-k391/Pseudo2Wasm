@@ -6,7 +6,7 @@ len <- 100000
 
 TYPE intptr = ^INTEGER
 
-PROCEDURE Sort(arr: intptr, start: INTEGER, end: INTEGER)
+PROCEDURE qsort(arr: intptr, start: INTEGER, end: INTEGER)
     IF start < end THEN
         DECLARE pivot: INTEGER
         pivot <- arr[start]
@@ -28,8 +28,8 @@ PROCEDURE Sort(arr: intptr, start: INTEGER, end: INTEGER)
         ENDWHILE
         arr[left] <- pivot
 
-        CALL Sort(arr, start, left - 1)
-        CALL Sort(arr, left + 1, end)
+        CALL qsort(arr, start, left - 1)
+        CALL qsort(arr, left + 1, end)
     ENDIF
 ENDPROCEDURE
 
@@ -38,11 +38,12 @@ FOR i <- 0 TO len - 1
     arr[i] <- RAND(len - 1)
 NEXT i
 
-CALL Sort(arr, 0, len - 1)
-OUTPUT arr[0]
+CALL STARTTIME()
+CALL qsort(arr, 0, len - 1)
+CALL ENDTIME()
     `,
     input: [],
-    expected: [0],
+    expected: [],
     // cannot be used yet
     error: [],
 };
