@@ -513,7 +513,7 @@ export class Generator {
     public castExpression(node: CastExprNode): ExpressionRef {
         const expr = this.generateExpression(node.expr);
         if (node.type.kind !== typeKind.BASIC || node.expr.type.kind !== typeKind.BASIC) {
-            throw new RuntimeError("Type cast can onlybe performed for basic types");
+            throw new RuntimeError("Type cast can only be performed for basic types");
         }
         const to = node.type.type;
         const from = node.expr.type.type;

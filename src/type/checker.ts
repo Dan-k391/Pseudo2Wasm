@@ -452,7 +452,7 @@ export class Checker {
                     throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
                 }
                 if (argType.kind === typeKind.BASIC && paramType.kind === typeKind.BASIC) {
-                    node.args[i] = this.arithConv(node.args[i], argType.type);
+                    node.args[i] = this.arithConv(node.args[i], paramType.type);
                 }
             }
             node.type = func.returnType;
