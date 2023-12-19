@@ -547,7 +547,8 @@ export class Generator {
     public indexExpression(node: IndexExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
         const rValType = node.expr.type;
-        if (rValType.kind === typeKind.ARRAY) {
+        // same for both ARRAY and POINTER
+        if (rValType.kind === typeKind.ARRAY || rValType.kind === typeKind.POINTER) {
             const elemType = node.type;
             // the base ptr(head) of the array
             const base = this.generateAddr(node.expr);
@@ -568,7 +569,7 @@ export class Generator {
                     // for 1, section is 1
 
                     // add 1 because Pseudocode ARRAYs include upper and lower bound
-                    section *= rValType.dimensions[j].upper.literal - rValType.dimensions[j].lower.literal + 1;
+                    section *= rValType.dimensions[j].upper - rValType.dimensions[j].lower + 1;
                 }
                 index = this.module.i32.add(
                     index,
@@ -576,7 +577,7 @@ export class Generator {
                     this.module.i32.mul(
                         this.module.i32.sub(
                             this.generateExpression(node.indexes[i]),
-                            this.generateConstant(binaryen.i32, rValType.dimensions[i].lower.literal)
+                            this.generateConstant(binaryen.i32, rValType.dimensions[i].lower)
                         ),
                         this.generateConstant(binaryen.i32, section)
                     )
@@ -587,17 +588,6 @@ export class Generator {
                 this.module.i32.mul(
                     index,
                     this.generateConstant(binaryen.i32, elemType.size())
-                )
-            );
-        }
-        else if (rValType.kind === typeKind.POINTER) {
-            const base = this.generateAddr(node.expr);
-            const index = this.generateExpression(node.indexes[0]);
-            return this.module.i32.add(
-                this.load(rValType, base),
-                this.module.i32.mul(
-                    index,
-                    this.generateConstant(binaryen.i32, rValType.base.size())
                 )
             );
         }

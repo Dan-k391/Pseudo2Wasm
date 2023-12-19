@@ -17,7 +17,7 @@ export class ArrayType extends BaseType {
     public toString(): string {
         let msg = "";
         for (const dimension of this.dimensions) {
-            msg += dimension.upper.lexeme + ': ' + dimension.lower.lexeme + ', ';
+            msg += dimension.upper + ': ' + dimension.lower + ', ';
         }
         return "ARRAY[" + msg + "] OF " + this.elem.toString();
     }
@@ -26,7 +26,7 @@ export class ArrayType extends BaseType {
         let length = 1;
         for (const dimension of this.dimensions) {
             // add 1 because the upper and lower bounds are included
-            length *= (dimension.upper.literal - dimension.lower.literal + 1);
+            length *= (dimension.upper - dimension.lower + 1);
         }
         return this.elem.size() * length;
     }
@@ -35,7 +35,7 @@ export class ArrayType extends BaseType {
         let length = 1;
         for (const dimension of this.dimensions) {
             // add 1 because the upper and lower bounds are included
-            length *= (dimension.upper.literal - dimension.lower.literal + 1);
+            length *= (dimension.upper - dimension.lower + 1);
         }
         return length;
     }

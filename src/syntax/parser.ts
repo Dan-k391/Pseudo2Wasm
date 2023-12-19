@@ -312,7 +312,8 @@ export class Parser {
                     this.consume("Expected colon", tokenType.COLON);
                     const upper: Token = this.consume("Expected INTEGER for ARRAY upper bound", tokenType.INT_CONST);
                     // use interfaces
-                    dimensions.push({lower, upper});
+                    const dimension: Dimension = {lower: lower.literal, upper: upper.literal};
+                    dimensions.push(dimension);
                 }
                 while (this.match(tokenType.COMMA));
             }
@@ -405,7 +406,7 @@ export class Parser {
         this.consume("Expected 'TO'", tokenType.TO);
         const end: Expr = this.expression();
         
-        // step expression
+        // step expression, default is 1
         let step: Expr = new IntegerExprNode(1);
         if (this.match(tokenType.STEP)) {
             step = this.expression();

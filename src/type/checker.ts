@@ -262,17 +262,33 @@ export class Checker {
         }
     }
 
+    // only difference between resolveCallableType and resolveType is that
+    // arrays are adjusted to pointers, similar as C fucntion declarators
+    // only used as the parameter type of functions and procedures
+    private resolveCallableType(node: TypeNode): Type {
+        switch (node.kind) {
+            case nodeKind.BasicTypeNode:
+                return this.resolveBasicType(node.type);
+            case nodeKind.ArrTypeNode: {
+                const elemType = this.resolveType(node.type);
+                return new PointerType(elemType, node.dimensions);
+            }
+            default:
+                throw new RuntimeError("Not implemented yet");
+        }
+    }
+
     private declFunc(node: FuncDefNode): void {
         const funcName = node.ident.lexeme;
         const funcParams = new Map<string, Type>();
 
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            param.type = this.resolveType(param.typeNode);
+            param.type = this.resolveCallableType(param.typeNode);
             funcParams.set(paramName, param.type);
         }
 
-        node.type = this.resolveType(node.typeNode);
+        node.type = this.resolveCallableType(node.typeNode);
         const func = new FunctionType(funcParams, node.type);
         this.curScope.insertFunc(funcName, func);
     }
@@ -283,7 +299,7 @@ export class Checker {
 
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
-            param.type = this.resolveType(param.typeNode);
+            param.type = this.resolveCallableType(param.typeNode);
             procParams.set(paramName, param.type);
         }
 
@@ -305,7 +321,8 @@ export class Checker {
 
     private declPtr(node: PtrDeclNode): void {
         const elemType = this.resolveType(node.typeNode);
-        node.type = new PointerType(elemType);
+        // default POINTER has no dimensions
+        node.type = new PointerType(elemType, [{lower: 0, upper: 0}]);
         this.insertType(
             node.ident,
             node.type
@@ -615,7 +632,8 @@ export class Checker {
         //     node = node.lVal.lVal;
         // }
         node.type = this.visitExpr(node.lVal);
-        node.type = new PointerType(node.type);
+        // default POINTER has no dimensions
+        node.type = new PointerType(node.type, [{lower: 0, upper: 0}]);
         return node.type;
     }
 
