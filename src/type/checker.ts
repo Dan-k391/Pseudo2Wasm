@@ -85,14 +85,14 @@ export class Checker {
             new BasicType(basicKind.INTEGER)
         );
         this.curScope.insertFunc("RAND", randFunc);
-        const startTimeFunc = new ProcedureType(
+        const startTimeProc = new ProcedureType(
             new Map<string, Type>()
         );
-        this.curScope.insertProc("STARTTIME", startTimeFunc);
-        const endTimeFunc = new ProcedureType(
+        this.curScope.insertProc("STARTTIME", startTimeProc);
+        const endTimeProc = new ProcedureType(
             new Map<string, Type>()
         );
-        this.curScope.insertProc("ENDTIME", endTimeFunc);
+        this.curScope.insertProc("ENDTIME", endTimeProc);
     }
 
     // assign type to each Expr Node
