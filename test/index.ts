@@ -13,6 +13,7 @@ import { code9 } from "./samples/code9";
 import { code10 } from "./samples/code10";
 import { code11 } from "./samples/code11";
 import { code12 } from "./samples/code12";
+import { code13 } from "./samples/code13";
 
 
 const tests = [
@@ -28,7 +29,8 @@ const tests = [
     code9,
     code10,
     code11,
-    code12
+    code12,
+    code13,
 ];
 
 let total = tests.length;

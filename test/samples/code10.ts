@@ -1,12 +1,10 @@
 export const code10 = {
-    name: "sort_array",
-    code: `DECLARE arr : ARRAY[0: 99999] OF INTEGER    
+    name: "quicksort_array",
+    code: `DECLARE arr: ARRAY[0: 99999] OF INTEGER
 DECLARE len : INTEGER
 len <- 100000
 
-TYPE intptr = ^INTEGER
-
-PROCEDURE qsort(arr: intptr, start: INTEGER, end: INTEGER)
+PROCEDURE qsort(arr: ARRAY[0: 99999] OF INTEGER, start: INTEGER, end: INTEGER)
     IF start < end THEN
         DECLARE pivot: INTEGER
         pivot <- arr[start]

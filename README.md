@@ -257,5 +257,5 @@ INPUT <Expression>
 INPUT i
 ```
 
-Currently INPUT supports whatever basic type. (Strings are not supported yet)
+Currently INPUT supports whatever basic type. 
 
