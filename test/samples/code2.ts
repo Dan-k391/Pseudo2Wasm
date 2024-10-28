@@ -22,7 +22,7 @@ INPUT k
 OUTPUT i + pow(j, k)
     `,
     input: [3, 3.14, 2],
-    // floatring point inaccuracy
+    // floating point inaccuracy
     expected: [3 + Math.pow(3.14, 2)],
     // cannot be used yet
     error: [],

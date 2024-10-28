@@ -10,7 +10,7 @@ INPUT k
 OUTPUT i + j * k
     `,
     input: [3, 2, 3.14],
-    // floatring point inaccuracy
+    // floating point inaccuracy
     expected: [3 + 2 * 3.14],
     // cannot be used yet
     error: [],

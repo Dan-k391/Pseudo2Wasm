@@ -53,7 +53,11 @@ import { RecordType } from "../type/record";
 import { ArrayType } from "../type/array";
 import { BasicType } from "../type/basic";
 import { String } from "./string";
-import { Length } from "./std/builtin";
+import { 
+    Length,
+    UCase,
+    LCase,
+} from "./std/builtin";
 import { Symbol, symbolKind } from "../type/symbol";
 import { Scope } from "../type/scope";
 
@@ -154,6 +158,8 @@ export class Generator {
 
     public generateBuiltins(): void {
         new Length(this.module).generate();
+        new UCase(this.module).generate();
+        new LCase(this.module).generate();
     }
 
     // basically, all the constant value which are generated are numbers, either i32 or f64

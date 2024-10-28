@@ -86,4 +86,95 @@ export class Length extends BuiltinFunction {
     }
 }
 
+// FIXME: change char to uint8 instead of i32
+export class UCase extends BuiltinFunction {
+    private module: binaryen.Module;
+
+    constructor(module: binaryen.Module) {
+        super();
+        this.module = module;
+    }
+
+    public generate(): void {
+        // in c, this function looks like this
+        /**
+         * int UCASE(char s) {
+         *  if (s >= 'a' && s <= 'z') return s - 32;
+         *  return s;
+         * }
+         * 
+         */
+        this.module.addFunction("UCASE", binaryen.createType([binaryen.i32]), binaryen.i32, [],
+            this.module.block(null, [
+                this.module.if(
+                    this.module.i32.and(
+                        this.module.i32.ge_u(
+                            this.module.local.get(0, binaryen.i32),
+                            this.module.i32.const(97)
+                        ),
+                        this.module.i32.le_u(
+                            this.module.local.get(0, binaryen.i32),
+                            this.module.i32.const(122)
+                        )
+                    ),
+                    this.module.return(
+                        this.module.i32.sub(
+                            this.module.local.get(0, binaryen.i32),
+                            this.module.i32.const(32)
+                        )
+                    ),
+                    this.module.return(
+                        this.module.local.get(0, binaryen.i32)
+                    )
+                )
+            ])
+        )
+    }
+}
+
+
+export class LCase extends BuiltinFunction {
+    private module: binaryen.Module;
+
+    constructor(module: binaryen.Module) {
+        super();
+        this.module = module;
+    }
+
+    public generate(): void {
+        // in c, this function looks like this
+        /**
+         * int UCASE(char s) {
+         *  if (s >= 'a' && s <= 'z') return s - 32;
+         *  return s;
+         * }
+         * 
+         */
+        this.module.addFunction("LCASE", binaryen.createType([binaryen.i32]), binaryen.i32, [],
+            this.module.block(null, [
+                this.module.if(
+                    this.module.i32.and(
+                        this.module.i32.ge_u(
+                            this.module.local.get(0, binaryen.i32),
+                            this.module.i32.const(65)
+                        ),
+                        this.module.i32.le_u(
+                            this.module.local.get(0, binaryen.i32),
+                            this.module.i32.const(90)
+                        )
+                    ),
+                    this.module.return(
+                        this.module.i32.add(
+                            this.module.local.get(0, binaryen.i32),
+                            this.module.i32.const(32)
+                        )
+                    ),
+                    this.module.return(
+                        this.module.local.get(0, binaryen.i32)
+                    )
+                )
+            ])
+        )
+    }
+}
 

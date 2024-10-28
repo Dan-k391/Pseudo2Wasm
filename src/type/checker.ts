@@ -85,6 +85,21 @@ export class Checker {
             new BasicType(basicKind.INTEGER)
         );
         this.curScope.insertFunc("RAND", randFunc);
+        // string operations
+        const ucaseFunc = new FunctionType(
+            new Map<string, Type>([
+                ["ch", new BasicType(basicKind.CHAR)]
+            ]),
+            new BasicType(basicKind.CHAR)
+        );
+        this.curScope.insertFunc("UCASE", ucaseFunc);
+        const lcaseFunc = new FunctionType(
+            new Map<string, Type>([
+                ["ch", new BasicType(basicKind.CHAR)]
+            ]),
+            new BasicType(basicKind.CHAR)
+        );
+        this.curScope.insertFunc("LCASE", lcaseFunc);
         const startTimeProc = new ProcedureType(
             new Map<string, Type>()
         );

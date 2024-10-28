@@ -130,34 +130,24 @@ export class Compiler {
         });
 
         // @ts-ignore
-        const suspendingInputInteger = new WebAssembly.Function(
-            { parameters: ["externref"], results: ["i32"] },
-            inputInteger,
-            { suspending: "first" }
+        const suspendingInputInteger = new WebAssembly.Suspending(
+            inputInteger
         );
         // @ts-ignore
-        const suspendingInputReal = new WebAssembly.Function(
-            { parameters: ["externref"], results: ["f64"] },
-            inputReal,
-            { suspending: "first" }
+        const suspendingInputReal = new WebAssembly.Suspending(
+            inputReal
         );
         // @ts-ignore
-        const suspendingInputChar = new WebAssembly.Function(
-            { parameters: ["externref"], results: ["i32"] },
-            inputChar,
-            { suspending: "first" }
+        const suspendingInputChar = new WebAssembly.Suspending(
+            inputChar
         );
         // @ts-ignore
-        const suspendingInputString = new WebAssembly.Function(
-            { parameters: ["externref"], results: ["i32"] },
-            inputString,
-            { suspending: "first" }
+        const suspendingInputString = new WebAssembly.Suspending(
+            inputString
         );
         // @ts-ignore
-        const suspendingInputBoolean = new WebAssembly.Function(
-            { parameters: ["externref"], results: ["i32"] },
-            inputBoolean,
-            { suspending: "first" }
+        const suspendingInputBoolean = new WebAssembly.Suspending(
+            inputBoolean
         );
 
         // TODO: currently import many log functions, change to only logString later
@@ -227,10 +217,8 @@ export class Compiler {
         const { instance } = await WebAssembly.instantiate(wasm, importObect);
 
         // @ts-ignore
-        const main = new WebAssembly.Function(
-            { parameters: [], results: ["externref"] },
-            instance.exports.main,
-            { promising: "first" }
+        const main = WebAssembly.promising(
+            instance.exports.main
         );
 
         // for debug

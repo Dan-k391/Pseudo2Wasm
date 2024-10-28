@@ -16,7 +16,7 @@ Access the url: localhost:8080.
 
 Open devtools in the browser and go to the console tab to see the test results.
 
-Before this, go to `chrome://flags/#enable-experimental-webassembly-stack-switching`.
+Before this, go to `chrome://flags/#enable-experimental-webassembly-jspi`.
 
 Change the highlighted tag to "Enabled" and we are good to go.
 
