@@ -31,7 +31,8 @@ export class Scope {
         if (returnType) {
             this.returnType = returnType;
         }
-        if (returnIndex) {
+        // Zero is a valid local index (for example, a function with no params).
+        if (returnIndex !== undefined) {
             this.returnIndex = returnIndex;
         }
         this.children = new Array<Scope>();
@@ -63,12 +64,13 @@ export class Scope {
         return this.elems.get(name)!;
     }
 
-    public setPointer(name: string, ptr: ExpressionRef) {
+    public setPointer(name: string, ptr: ExpressionRef): void {
         if (!this.elems.has(name)) {
             if (!this.parent) {
                 throw new RuntimeError("Unknown variable '" + name + "'");
             }
             this.parent.setPointer(name, ptr);
+            return;
         }
         this.elems.get(name)!.pointer = ptr;
     }

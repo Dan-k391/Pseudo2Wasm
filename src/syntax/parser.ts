@@ -94,7 +94,7 @@ export class Parser {
         let expr: Expr = this.and();
         while (this.match(tokenType.OR)) {
             const operator: Token = this.previous();
-            const right: Expr = this.equality();
+            const right: Expr = this.and();
             expr = new BinaryExprNode(expr, operator, right);
         }
         return expr;
