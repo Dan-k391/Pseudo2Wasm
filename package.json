@@ -21,7 +21,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "npm run test:browser",
+    "test": "npm run build && npm run build:test && node test/node.test.mjs && node scripts/run-browser-tests.mjs && node scripts/test-package.mjs",
     "test:browser": "webpack serve --config webpack.config.js --open",
     "typecheck": "tsc --project tsconfig.json",
     "build": "npm run typecheck && npm run build:browser && npm run build:node && npm run build:types",

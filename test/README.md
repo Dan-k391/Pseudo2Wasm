@@ -2,20 +2,25 @@
 
 ### 0. Environment setup
 
-Install the dependencies:
+Use Node.js 22 or newer and install the locked dependencies:
 ```sh
-npm install
+npm ci
 ```
 
-Run the tests:
+Run all tests, including headless browser execution and the packed npm artifact:
 ```sh
-npm run test
+npm test
 ```
 
-Access the url: localhost:8080.
+The command exits nonzero when any assertion fails. It requires Chrome or Edge
+with WebAssembly JSPI. Set `PSEUDO2WASM_BROWSER` to the browser executable path
+if automatic browser detection fails. To debug interactively, run
+`npm run test:browser`, open `localhost:8080`, and inspect the DevTools console.
 
-Open devtools in the browser and go to the console tab to see the assertion results.
-Any failed assertion is reported with the test name, expected value, and actual value.
+Node-only scanner, parser, type-checker, and compile-API checks live in
+`test/node.test.mjs`. Browser execution cases live in `test/samples/` and are
+collected by `test/index.ts`. `scripts/test-package.mjs` checks the tarball
+created by `npm pack` and exercises both published entry points.
 
 The runtime requires WebAssembly JSPI. To check support in the browser console:
 ```js

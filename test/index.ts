@@ -116,4 +116,11 @@ async function runTests(): Promise<void> {
     expect(failures, failures.map(failure => failure.name).join(", ")).to.be.empty;
 }
 
-runTests();
+runTests().then(
+    () => document.documentElement.setAttribute("data-pseudo2wasm-tests", "passed"),
+    error => {
+        console.error("Browser test suite failed", error);
+        document.documentElement.setAttribute("data-pseudo2wasm-detail", String(error));
+        document.documentElement.setAttribute("data-pseudo2wasm-tests", "failed");
+    }
+);

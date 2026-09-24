@@ -1,15 +1,18 @@
 # OAC
 
+See [ROADMAP.md](ROADMAP.md) for the current milestones and progress checklist.
+
 ## Development setup
 
-Use Node.js and npm, then install the locked dependencies with `npm ci`.
+Use Node.js 22 or newer and npm, then install the locked dependencies with `npm ci`.
 
 | Command | Purpose |
 | --- | --- |
 | `npm run typecheck` | Check source and browser tests without writing JavaScript. |
 | `npm run build` | Check types, then build the browser and Node packages and declarations. |
 | `npm run build:test` | Build the browser test page in `dist-test/`. |
-| `npm test` | Serve the browser test page; inspect its console for assertion results. |
+| `npm test` | Build, run Node and headless-browser tests, then test the packed npm artifact; exits nonzero on failure. |
+| `npm run test:browser` | Serve the browser test page for interactive debugging. |
 
 `tsconfig.json` is the shared editor/type-checking configuration. It uses
 TypeScript's `bundler` module resolution because Webpack resolves the source's
@@ -19,9 +22,11 @@ targets in `webpack.package.config.js` create the browser UMD bundle and Node
 ES module. These TypeScript resolution settings do not choose an npm entry point:
 the `exports` field in `package.json` does that for consumers.
 
-`npm test` is an interactive browser test, not a headless test runner. Executing
-pseudocode requires browser support for WebAssembly JSPI; programs using `INPUT`
-also need an input callback.
+`npm test` requires a recent Chrome or Edge with WebAssembly JSPI. Set
+`PSEUDO2WASM_BROWSER` to the browser executable path if it is not in a standard
+location. The tests run without opening a visible browser or DevTools.
+`npm run test:browser` remains available for interactive debugging. Programs
+using `INPUT` also need an input callback.
 
 ## npm package
 
