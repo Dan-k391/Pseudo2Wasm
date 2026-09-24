@@ -113,8 +113,8 @@ export class Generator {
     }
 
     public generate(): Module {
-        binaryen.setPassArgument("jspi-imports", "env.inputInteger,env.inputReal,env.inputChar,env.inputString,env.inputBoolean");
-        binaryen.setPassArgument("jspi-exports", "main");
+        // JSPI now uses WebAssembly.Suspending/promising at the host boundary;
+        // recent Binaryen versions no longer provide a "jspi" transform pass.
         this.module.setFeatures(binaryen.Features.ReferenceTypes);
         // createType although it is useless
         this.module.addFunctionImport("logInteger", "env", "logInteger", binaryen.createType([binaryen.i32]), binaryen.none);
@@ -152,7 +152,6 @@ export class Generator {
         );
 
         this.module.addMemoryImport("0", "env", "buffer");
-        this.module.runPasses(["jspi"]);
         return this.module;
     }
 

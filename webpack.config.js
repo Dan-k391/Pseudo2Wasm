@@ -22,6 +22,10 @@ module.exports = {
         extensions: [".ts", ".js"],
     },
 
+    // Binaryen's Node-only initialization dynamically imports this module.
+    // Keep it external; the branch is never reached in a browser.
+    externals: { "node:module": "commonjs node:module" },
+
     module: {
         rules: [
             {

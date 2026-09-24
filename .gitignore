@@ -2,5 +2,4 @@ dist
 dist-test
 node_modules
 .VSCodeCounter
-package-lock.json
 archive

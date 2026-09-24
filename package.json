@@ -36,7 +36,7 @@
   "author": "Dan-k391",
   "license": "ISC",
   "dependencies": {
-    "binaryen": "^119.0.0"
+    "binaryen": "^132.0.0"
   },
   "devDependencies": {
     "@types/chai": "^4.3.11",

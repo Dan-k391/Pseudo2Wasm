@@ -51,6 +51,8 @@ module.exports = (env = {}) => {
         ...common,
         name: "browser",
         target: "web",
+        // Binaryen's Node-only initialization dynamically imports this module.
+        externals: { "node:module": "commonjs node:module" },
         output: {
             path: path.resolve(__dirname, "dist"),
             filename: "pseudo2wasm.js",
