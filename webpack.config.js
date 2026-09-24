@@ -1,7 +1,5 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const { CleanWebpackPlugin } = require("clean-webpack-plugin");
-const { webpack } = require("webpack");
 
 module.exports = {
     mode: "development",
@@ -12,8 +10,9 @@ module.exports = {
     },
 
     output: {
-        path: path.resolve(__dirname, "dist"),
+        path: path.resolve(__dirname, "dist-test"),
         filename: "bundle.js",
+        clean: true,
     },
 
     resolve: {
@@ -27,8 +26,13 @@ module.exports = {
         rules: [
             {
                 test: /\.ts$/,
-                use: "ts-loader",
-                exclude: /node-modules/,
+                use: {
+                    loader: "ts-loader",
+                    options: {
+                        compilerOptions: { noEmit: false, sourceMap: true },
+                    },
+                },
+                exclude: /node_modules/,
             },
         ],
     },
@@ -36,9 +40,8 @@ module.exports = {
     devtool: "inline-source-map",
 
     plugins: [
-        new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
-            title: "Temp",
+            title: "Pseudo2Wasm browser tests",
         }),
     ],
 };

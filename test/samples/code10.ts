@@ -42,6 +42,5 @@ CALL ENDTIME()
     `,
     input: [],
     expected: [],
-    // cannot be used yet
     error: [],
 };

@@ -9,7 +9,6 @@ OUTPUT i < j
     `,
     input: [1, 2],
     expected: ["TRUE"],
-    // cannot be used yet
     error: [],
 };
 

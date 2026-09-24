@@ -11,6 +11,5 @@ OUTPUT LCASE(c2)
     `,
     input: ['a', 'B'],
     expected: ['A', 'b'],
-    // cannot be used yet
     error: [],
 };

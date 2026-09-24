@@ -11,6 +11,5 @@ ENDIF
     `,
     input: ["TRUE"],
     expected: ["true bool"],
-    // cannot be used yet
     error: [],
 };

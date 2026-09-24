@@ -18,6 +18,5 @@ OUTPUT t.a + t.c.x
     `,
     input: [3, 4],
     expected: [7],
-    // cannot be used yet
     error: [],
 };

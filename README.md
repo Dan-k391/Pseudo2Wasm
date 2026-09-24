@@ -1,5 +1,52 @@
 # OAC
 
+## Development setup
+
+Use Node.js and npm, then install the locked dependencies with `npm ci`.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run typecheck` | Check source and browser tests without writing JavaScript. |
+| `npm run build` | Check types, then build the browser and Node packages and declarations. |
+| `npm run build:test` | Build the browser test page in `dist-test/`. |
+| `npm test` | Serve the browser test page; inspect its console for assertion results. |
+
+`tsconfig.json` is the shared editor/type-checking configuration. It uses
+TypeScript's `bundler` module resolution because Webpack resolves the source's
+extensionless imports. `tsconfig.build.json` extends it only to emit package
+declarations. `webpack.config.js` builds the browser test page; the two explicit
+targets in `webpack.package.config.js` create the browser UMD bundle and Node
+ES module. These TypeScript resolution settings do not choose an npm entry point:
+the `exports` field in `package.json` does that for consumers.
+
+`npm test` is an interactive browser test, not a headless test runner. Executing
+pseudocode requires browser support for WebAssembly JSPI; programs using `INPUT`
+also need an input callback.
+
+## npm package
+
+The npm package is built from this repository. Install it with `npm install pseudo2wasm`.
+In a browser project, `runCode` compiles and executes pseudocode and sends each
+`OUTPUT` value to your callback:
+
+```ts
+import { runCode } from "pseudo2wasm";
+
+await runCode("OUTPUT 1 + 2", value => console.log(value));
+```
+
+CommonJS consumers can use `const compiler = await require("pseudo2wasm")`.
+The CommonJS entry is awaitable because Binaryen initializes asynchronously.
+
+Programs that use `INPUT` need a third callback. The runtime uses WebAssembly
+JSPI (`WebAssembly.Suspending` and `WebAssembly.promising`), so execution requires
+a browser with those APIs enabled. Compiling alone does not require JSPI.
+
+To prepare a package release, run `npm run build` and `npm pack --dry-run`.
+The build creates browser and Node entry points plus TypeScript declarations in
+`dist/`. `npm run build:test` builds the browser tests into `dist-test/`.
+The `prepack` script rebuilds the package when `npm pack` or `npm publish` runs.
+
 ## About
 
 OAC (Oh a compiler)

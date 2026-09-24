@@ -12,6 +12,5 @@ OUTPUT f(i)
     `,
     input: [33],
     expected: [33],
-    // cannot be used yet
     error: [],
 };

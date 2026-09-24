@@ -13,7 +13,7 @@ export class Compiler {
         this.input = input;
     }
 
-    compile(log: boolean): binaryen.Module {
+    compile(log: boolean = false): binaryen.Module {
         const scanner = new Scanner(this.input);
         const tokens = scanner.scan();
         const parser = new Parser(tokens);
@@ -30,45 +30,21 @@ export class Compiler {
         return module;
     }
 
-    async runtime(): Promise<number> {
-        const module = this.compile(false);
-
-        // module.optimize();
-
-        console.log(module.emitText());
-        const wasm = module.emitBinary();
-
-        // initialize import objects
-        const memory = new WebAssembly.Memory({ initial: 1, maximum: 2 });
-        const importObect = {
-            env: {
-                buffer: memory,
-                logNumber: (output: number) => {
-                    console.log(output);
-                },
-                logString: (output: number) => {
-                    const bytes = new Uint8Array(memory.buffer, output);
-                    const str = bytes.toString();
-                    console.log(str);
-                }
-            },
-        }
-
-        // FIXME: not updated version, test() has the newest functions
-        const { instance } = await WebAssembly.instantiate(wasm, importObect);
-
-        const main = instance.exports.main as CallableFunction;
-        const start = new Date().getTime();
-        main();
-        const end = new Date().getTime();
-        return end - start;
+    async runtime(
+        output: (value: number | string) => void = console.log,
+        input?: () => unknown | Promise<unknown>
+    ): Promise<number> {
+        const result = await this.execute([], output, input);
+        return result.executionTimeMs;
     }
 
-    // the test function
-    async test(input: Array<any>, expected: Array<any>): Promise<Boolean> {
-        let correct = true;
+    async execute(
+        input: ReadonlyArray<unknown>,
+        output?: (value: number | string) => void,
+        inputProvider?: () => unknown | Promise<unknown>
+    ): Promise<ExecutionResult> {
         let inputIndex = 0;
-        let expectedIndex = 0;
+        const outputs: Array<unknown> = [];
 
         const module = this.compile(false);
 
@@ -81,7 +57,9 @@ export class Compiler {
         // uncomment following two lines to see the text format
         // const text = module.emitText();
         // console.log(text);
-        const wasm = module.emitBinary();
+        // Give WebAssembly a fresh ArrayBuffer-backed view (TS 5.9 distinguishes it
+        // from a Uint8Array that could be backed by SharedArrayBuffer).
+        const wasm = new Uint8Array(module.emitBinary());
 
         // 0-10: global variables
         // 11-20: stack
@@ -95,24 +73,27 @@ export class Compiler {
         const maxSize = pageSize * pages - 1;
         let heapOffSet = heapStart;
 
-        // TODO: input validation
-        // input test
-        const inputInteger = () => new Promise<number>(resolve => {
-            const num = input[inputIndex++];
-            resolve(parseInt(num));
-        });
-        const inputReal = () => new Promise<number>(resolve => {
-            const num = input[inputIndex++];
-            resolve(parseFloat(num));
-        });
-        const inputChar = () => new Promise<number>(resolve => {
-            const str = input[inputIndex++];
+        const nextInput = (): unknown | Promise<unknown> => {
+            if (inputProvider) {
+                inputIndex++;
+                return inputProvider();
+            }
+            if (inputIndex >= input.length) {
+                throw new Error(`Program requested input ${inputIndex + 1}, but only ${input.length} value(s) were provided`);
+            }
+            return input[inputIndex++];
+        };
+
+        const inputInteger = async () => parseInt(String(await nextInput()), 10);
+        const inputReal = async () => parseFloat(String(await nextInput()));
+        const inputChar = async () => {
+            const str = String(await nextInput());
             // utf-8 encoding
             const bytes = new TextEncoder().encode(str);
-            resolve(bytes[0]);
-        });
-        const inputString = () => new Promise<number>(resolve => {
-            const str = input[inputIndex++];
+            return bytes[0];
+        };
+        const inputString = async () => {
+            const str = String(await nextInput());
             const bytes = new TextEncoder().encode(str);
             // currently allocate on the heap
             // maybe allocate on a separate page later
@@ -121,13 +102,17 @@ export class Compiler {
             const len = bytes.length;
             const view = new Uint8Array(memory.buffer, ptr, len);
             view.set(bytes);
-            resolve(ptr);
-        });
-        const inputBoolean = () => new Promise<number>(resolve => {
-            const str = input[inputIndex++];
-            if (str === "TRUE") resolve(1);
-            else resolve(0);
-        });
+            return ptr;
+        };
+        const inputBoolean = async () => {
+            const value = await nextInput();
+            return value === true || value === "TRUE" ? 1 : 0;
+        };
+
+        const emit = (value: number | string): void => {
+            outputs.push(value);
+            output?.(value);
+        };
 
         // @ts-ignore
         const suspendingInputInteger = new WebAssembly.Suspending(
@@ -155,46 +140,23 @@ export class Compiler {
             env: {
                 buffer: memory,
                 logInteger: (output: number) => {
-                    if (output !== expected[expectedIndex++]) {
-                        correct = false;
-                    }
-                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${output}`);
+                    emit(output);
                 },
                 logReal: (output: number) => {
-                    if (output !== expected[expectedIndex++]) {
-                        correct = false;
-                    }
-                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${output}`);
+                    emit(output);
                 },
                 logChar: (output: number) => {
                     // TODO: utf-8 encoding
-                    if (String.fromCharCode(output) !== expected[expectedIndex++]) {
-                        correct = false;
-                    }
-                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${String.fromCharCode(output)}`);
+                    emit(String.fromCharCode(output));
                 },
                 logString: (output: number) => {
                     const bytes = new Uint8Array(memory.buffer, output, maxSize - output);
                     let str = new TextDecoder("utf8").decode(bytes);
                     str = str.split('\0')[0];
-                    if (str !== expected[expectedIndex++]) {
-                        correct = false;
-                    }
-                    console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: ${str}`);
+                    emit(str);
                 },
                 logBoolean: (output: number) => {
-                    if (output == 0) {
-                        if (expected[expectedIndex++] === "TRUE") {
-                            correct = false;
-                        }
-                        console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: FALSE`);
-                    }
-                    else {
-                        if (expected[expectedIndex++] === "FALSE") {
-                            correct = false;
-                        }
-                        console.log(`Expected: ${expected[expectedIndex - 1]}, Actual: TRUE`);
-                    }
+                    emit(output === 0 ? "FALSE" : "TRUE");
                 },
                 inputInteger: suspendingInputInteger,
                 inputReal: suspendingInputReal,
@@ -226,8 +188,40 @@ export class Compiler {
         const start = new Date().getTime();
         await main();
         const end = new Date().getTime();
-        console.log("Execution time: ", end - start);
 
-        return correct;
+        return {
+            outputs,
+            inputsConsumed: inputIndex,
+            executionTimeMs: end - start,
+        };
     }
+
+    /**
+     * Compatibility helper for the previously published package API.
+     * New code should use execute() and assert against its outputs directly.
+     */
+    async test(expected: number | string): Promise<boolean>;
+    async test(input: ReadonlyArray<unknown>, expected: ReadonlyArray<unknown>): Promise<boolean>;
+    async test(
+        inputOrExpected: ReadonlyArray<unknown> | number | string,
+        expected?: ReadonlyArray<unknown>
+    ): Promise<boolean> {
+        const legacyCall = !Array.isArray(inputOrExpected);
+        const input = legacyCall ? [] : inputOrExpected as ReadonlyArray<unknown>;
+        const expectedOutputs = legacyCall ? [inputOrExpected] : expected;
+
+        if (expectedOutputs === undefined) {
+            throw new Error("Expected outputs must be provided");
+        }
+
+        const result = await this.execute(input);
+        return result.outputs.length === expectedOutputs.length &&
+            result.outputs.every((output, index) => Object.is(output, expectedOutputs[index]));
+    }
+}
+
+export interface ExecutionResult {
+    outputs: Array<unknown>;
+    inputsConsumed: number;
+    executionTimeMs: number;
 }

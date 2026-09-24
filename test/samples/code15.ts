@@ -10,6 +10,5 @@ OUTPUT f(s)
     `,
     input: ["hello"],
     expected: ["hello"],
-    // cannot be used yet
     error: [],
 };

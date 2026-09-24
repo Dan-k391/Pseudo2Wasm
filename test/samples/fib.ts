@@ -21,6 +21,5 @@ aux(46, 0, 1)
     `,
     input: [],
     expected: [1836311903],
-    // cannot be used yet
     error: [],
 };

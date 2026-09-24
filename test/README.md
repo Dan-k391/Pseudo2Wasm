@@ -14,11 +14,16 @@ npm run test
 
 Access the url: localhost:8080.
 
-Open devtools in the browser and go to the console tab to see the test results.
+Open devtools in the browser and go to the console tab to see the assertion results.
+Any failed assertion is reported with the test name, expected value, and actual value.
 
-Before this, go to `chrome://flags/#enable-experimental-webassembly-jspi`.
-
-Change the highlighted tag to "Enabled" and we are good to go.
+The runtime requires WebAssembly JSPI. To check support in the browser console:
+```js
+typeof WebAssembly.Suspending === "function" &&
+typeof WebAssembly.promising === "function"
+```
+If this returns `false`, use a browser version with JSPI support. The old
+`enable-experimental-webassembly-jspi` flag may no longer exist in current browsers.
 
 ### 1. Create a test file
 
@@ -41,7 +46,6 @@ OUTPUT i + j * k
     input: [3, 2, 3.14],
     // floating point inaccuracy
     expected: [3 + 2 * 3.14],
-    // cannot be used yet
     error: [],
 };
 ```
@@ -49,8 +53,22 @@ The test is a simple object with the following properties:
 - `name`: The name of the test, it's recommended to name it as the name of the test file.
 - `code`: The code to be tested.
 - `input`: The input to be passed to the code.
-- `expected`: The expected output of the code.
-- `error`: The expected error of the code.
+- `expected`: The complete output sequence. Chai compares it deeply and in order.
+- `error`: Message fragments expected in a compiler or runtime failure. Keep this empty for successful programs.
+
+The runner also asserts that the program consumes every supplied input value. If the
+program requests more inputs than provided, execution fails with a descriptive error.
+
+To test an expected failure:
+```ts
+export const unknownVariable = {
+    name: "unknown_variable_error",
+    code: `OUTPUT missing`,
+    input: [],
+    expected: [],
+    error: ["Unknown variable 'missing'"],
+};
+```
 
 ### 3. Add the test to the test list
 

@@ -6,6 +6,5 @@ i <- RAND(10)
     `,
     input: [],
     expected: [],
-    // cannot be used yet
     error: [],
 };

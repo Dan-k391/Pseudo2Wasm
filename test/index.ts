@@ -1,3 +1,4 @@
+import { expect } from "chai";
 import { Compiler } from "../src/compiler";
 
 import { code0 } from "./samples/code0";
@@ -18,9 +19,18 @@ import { code14 } from "./samples/code14";
 import { code15 } from "./samples/code15";
 import { code16 } from "./samples/code16";
 import { code17 } from "./samples/code17";
+import { code18 } from "./samples/code18";
+import { code19 } from "./samples/code19";
 
+interface CompilerTestCase {
+    name: string;
+    code: string;
+    input: ReadonlyArray<unknown>;
+    expected: ReadonlyArray<unknown>;
+    error: ReadonlyArray<string>;
+}
 
-const tests = [
+const tests: Array<CompilerTestCase> = [
     code0,
     code1,
     code2,
@@ -35,48 +45,75 @@ const tests = [
     code11,
     code12,
     code13,
-    code13,
     code14,
     code15,
     code16,
-    code17
+    code17,
+    code18,
+    code19,
 ];
 
-let total = tests.length;
-let compileCount = 0;
-let runCount = 0;
-const compileFailed: Array<string> = [];
-const runFailed: Array<string> = [];
+async function assertTest(test: CompilerTestCase): Promise<void> {
+    const compiler = new Compiler(test.code);
 
-async function compileTest() {
-    for (let test of tests) {
-        // console.log(codes);
-        console.log(`Testing ${test.name}...`);
-        const compiler = new Compiler(test.code);
+    if (test.error.length > 0) {
+        let thrown: unknown;
         try {
-            // log the tokens and ast
-            compiler.compile(false);
-            compileCount++;
-        } catch (e) {
-            console.error(e);
-            compileFailed.push(test.name);
+            await compiler.execute(test.input);
+        }
+        catch (error) {
+            thrown = error;
         }
 
-        try {
-            // if fail push
-            if ((await compiler.test(test.input, test.expected)) === false)
-                runFailed.push(test.name);
-            else runCount++;
-        } catch (e) {
-            console.error(e);
-            runFailed.push(test.name);
+        expect(thrown, `${test.name} should fail`).not.to.equal(undefined);
+        const message = String(thrown);
+        for (const expectedMessage of test.error) {
+            expect(message).to.contain(expectedMessage);
         }
+        return;
     }
+
+    const result = await compiler.execute(test.input);
+    expect(result.outputs, `${test.name} produced unexpected output`).to.deep.equal(test.expected);
+    expect(result.inputsConsumed, `${test.name} did not consume all supplied inputs`).to.equal(test.input.length);
+    expect(result.executionTimeMs).to.be.at.least(0);
 }
 
-compileTest().then(() => {
-    console.log(`compileCount: ${compileCount}/${total}`);
-    console.log(`compileFailed: ${compileFailed}`);
-    console.log(`runCount: ${runCount}/${total}`);
-    console.log(`runFailed: ${runFailed}`);
-});
+async function assertPublishedApiCompatibility(): Promise<void> {
+    const legacyCompiler = new Compiler("OUTPUT 42");
+    expect(await legacyCompiler.test(42), "legacy test(expected) API").to.equal(true);
+
+    const currentCompiler = new Compiler("OUTPUT 42");
+    expect(await currentCompiler.test([], [42]), "test(input, expected) API").to.equal(true);
+}
+
+async function runTests(): Promise<void> {
+    const failures: Array<{name: string, error: unknown}> = [];
+
+    for (const test of tests) {
+        try {
+            await assertTest(test);
+            console.log(`✓ ${test.name}`);
+        }
+        catch (error) {
+            failures.push({name: test.name, error});
+            console.error(`✗ ${test.name}`, error);
+        }
+    }
+
+    const compatibilityTestName = "published_api_compatibility";
+    try {
+        await assertPublishedApiCompatibility();
+        console.log(`✓ ${compatibilityTestName}`);
+    }
+    catch (error) {
+        failures.push({name: compatibilityTestName, error});
+        console.error(`✗ ${compatibilityTestName}`, error);
+    }
+
+    const total = tests.length + 1;
+    console.log(`${total - failures.length}/${total} tests passed`);
+    expect(failures, failures.map(failure => failure.name).join(", ")).to.be.empty;
+}
+
+runTests();

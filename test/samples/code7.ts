@@ -11,6 +11,5 @@ NEXT i
     `,
     input: [],
     expected: [],
-    // cannot be used yet
     error: [],
 };

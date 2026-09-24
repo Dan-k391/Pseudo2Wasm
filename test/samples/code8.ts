@@ -10,6 +10,5 @@ OUTPUT j^
     `,
     input: [22.9],
     expected: [22.9],
-    // cannot be used yet
     error: [],
 };

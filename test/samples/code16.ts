@@ -1,13 +1,12 @@
 export const code16 = {
-    name: "pass_strings",
+    name: "return_string_literal",
     code: `FUNCTION f() RETURNS STRING
     RETURN "shit"
 ENDFUNCTION
 
 OUTPUT f()
     `,
-    input: ["shit"],
+    input: [],
     expected: ["shit"],
-    // cannot be used yet
     error: [],
 };

@@ -4,6 +4,5 @@ export const code17 = {
     `,
     input: [],
     expected: ["TRUE"],
-    // cannot be used yet
     error: [],
 };

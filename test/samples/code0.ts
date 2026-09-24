@@ -11,6 +11,5 @@ OUTPUT i + j * k
     `,
     input: [],
     expected: [7.28],
-    // cannot be used yet
     error: [],
 };

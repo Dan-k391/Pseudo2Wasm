@@ -17,6 +17,5 @@ OUTPUT t.str
     `,
     input: [1, 2, "hello"],
     expected: [3, "hello"],
-    // cannot be used yet
     error: [],
 };
