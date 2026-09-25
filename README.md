@@ -134,6 +134,18 @@ assignments are rejected until the backend can copy them correctly.
 Syntax and semantic errors include a 1-based `line:column` in their message.
 Their `startColumn` property is zero-based for editor integrations.
 
+For all source diagnostics without generating Wasm, use `new Compiler(code).diagnose()`.
+It returns entries with `code`, `severity`, `phase`, `message`, and a source
+`span` (`line`/`endLine` are one-based; columns are zero-based). It collects up
+to 20 errors at safe statement/declaration boundaries. Compilation still throws
+the familiar `SyntaxError` or `RuntimeError` for a single problem; multiple
+problems throw `CompilationError` with a `diagnostics` array. Error text includes
+the source line and caret. The scanner, parser, and checker stop at the first
+phase with errors rather than guessing later errors from malformed input, and
+no WebAssembly is generated when diagnostics exist. Runtime array, pointer,
+stack, and input-string heap failures also include a source location where one
+is available. A stack overflow points to the function/procedure declaration.
+
 ***I changed the type system into a where all basic types(except strings) can compat with each other***
 ```
 OUTPUT 'a' > 3.5

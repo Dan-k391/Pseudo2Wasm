@@ -45,7 +45,7 @@ import {
 } from "./ast";
 import { Dimension } from "./dimension";
 import { passType, ParamNode } from "./param";
-import { SyntaxError } from "../error";
+import { MAX_DIAGNOSTICS, SyntaxError } from "../error";
 import { tokenType, Token } from "../lex/token";
 import { Values } from "./value";
 import { Type } from "../type/type";
@@ -57,6 +57,7 @@ import { ArrTypeNode, BasicTypeNode, TypeNode } from "./typenode";
 export class Parser {
     private tokens: Array<Token>;
     private current: number;
+    private errors?: Array<SyntaxError>;
     
     constructor(tokens: Array<Token>) {
         this.tokens = tokens;
@@ -68,16 +69,54 @@ export class Parser {
         return node;
     }
 
-    public parse(): ProgramNode {
+    public parse(errors?: Array<SyntaxError>): ProgramNode {
+        this.errors = errors;
         const statements: Array<Stmt> = new Array<Stmt>();
         while (!this.isAtEnd()) {
-            // FIXME: is there a better way to do this?
-            if (this.isNewLine()) this.advance(); // ignore newline 
-            else if (this.match(tokenType.FUNCTION)) statements.push(this.funcDefinition());
-            else if (this.match(tokenType.PROCEDURE)) statements.push(this.procDefinition());
-            else statements.push(this.statement());
+            if (this.isNewLine()) { this.advance(); continue; }
+            const start = this.peek().type;
+            try {
+                if (this.match(tokenType.FUNCTION)) statements.push(this.funcDefinition());
+                else if (this.match(tokenType.PROCEDURE)) statements.push(this.procDefinition());
+                else statements.push(this.statement());
+            } catch (error) {
+                if (!(error instanceof SyntaxError) || !errors) throw error;
+                errors.push(error);
+                if (errors.length >= MAX_DIAGNOSTICS) break;
+                this.synchronize(this.terminator(start));
+            }
         }
         return new ProgramNode(statements);
+    }
+
+    private recoverStatement(): Stmt | undefined {
+        const start = this.peek().type;
+        try {
+            return this.statement();
+        } catch (error) {
+            if (!(error instanceof SyntaxError) || !this.errors) throw error;
+            this.errors.push(error);
+            if (this.errors.length >= MAX_DIAGNOSTICS) {
+                this.current = this.tokens.length - 1;
+                return undefined;
+            }
+            this.synchronize(this.terminator(start));
+            return undefined;
+        }
+    }
+
+    private terminator(start: tokenType): tokenType | undefined {
+        switch (start) {
+            case tokenType.FUNCTION: return tokenType.ENDFUNCTION;
+            case tokenType.PROCEDURE: return tokenType.ENDPROCEDURE;
+            case tokenType.TYPE: return tokenType.ENDTYPE;
+            case tokenType.IF: return tokenType.ENDIF;
+            case tokenType.WHILE: return tokenType.ENDWHILE;
+            case tokenType.REPEAT: return tokenType.UNTIL;
+            case tokenType.FOR: return tokenType.NEXT;
+            case tokenType.CASE: return tokenType.ENDCASE;
+            default: return undefined;
+        }
     }
 
     private expression(): Expr {
@@ -274,8 +313,14 @@ export class Parser {
     }
 
     private statement(): Stmt {
-        if (this.match(tokenType.OUTPUT)) return this.outputStatement();
-        if (this.match(tokenType.INPUT)) return this.inputStatement();
+        if (this.match(tokenType.OUTPUT)) {
+            const keyword = this.previous();
+            return this.sourced(this.outputStatement(), keyword);
+        }
+        if (this.match(tokenType.INPUT)) {
+            const keyword = this.previous();
+            return this.sourced(this.inputStatement(), keyword);
+        }
         if (this.match(tokenType.RETURN)) {
             const keyword = this.previous();
             return this.sourced(this.returnStatement(), keyword);
@@ -373,13 +418,13 @@ export class Parser {
         const thenBranch: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ELSE) && !this.check(tokenType.ENDIF) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
-            else thenBranch.push(this.statement());
+            else { const stmt = this.recoverStatement(); if (stmt) thenBranch.push(stmt); }
         }
         const elseBranch: Array<Stmt> = new Array<Stmt>();
         if (this.match(tokenType.ELSE)) {
             while (!this.check(tokenType.ENDIF) && !this.isAtEnd()) {
                 if (this.isNewLine()) this.advance();
-                else elseBranch.push(this.statement());
+                else { const stmt = this.recoverStatement(); if (stmt) elseBranch.push(stmt); }
             }
         }
         this.consume("Expected 'ENDIF'", tokenType.ENDIF);
@@ -397,7 +442,7 @@ export class Parser {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDWHILE) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
-            else body.push(this.statement());
+            else { const stmt = this.recoverStatement(); if (stmt) body.push(stmt); }
         }
         this.consume("Expected 'ENDWHILE'", tokenType.ENDWHILE);
         return new WhileNode(condition, body);
@@ -407,7 +452,7 @@ export class Parser {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.UNTIL) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
-            else body.push(this.statement());
+            else { const stmt = this.recoverStatement(); if (stmt) body.push(stmt); }
         }
         this.consume("Expected 'UNTIL'", tokenType.UNTIL);
         const condition: Expr = this.expression();
@@ -430,7 +475,7 @@ export class Parser {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.NEXT) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
-            else body.push(this.statement());
+            else { const stmt = this.recoverStatement(); if (stmt) body.push(stmt); }
         }
         this.consume("Expected 'NEXT'", tokenType.NEXT);
         const ident2: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
@@ -461,7 +506,7 @@ export class Parser {
                 this.consume("Expected colon", tokenType.COLON);
                 while (!this.check(tokenType.SEMICOLON) && !this.isAtEnd()) {
                     if (this.isNewLine()) this.advance();
-                    else statements.push(this.statement());
+                    else { const stmt = this.recoverStatement(); if (stmt) statements.push(stmt); }
                 }
                 this.consume("Expected semicolon", tokenType.SEMICOLON);
                 bodies.push(statements);
@@ -502,7 +547,7 @@ export class Parser {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDFUNCTION) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
-            else body.push(this.statement());
+            else { const stmt = this.recoverStatement(); if (stmt) body.push(stmt); }
         }
         this.consume("Expected 'ENDFUNCTION'", tokenType.ENDFUNCTION);
         return new FuncDefNode(ident, params, type, body);
@@ -539,7 +584,7 @@ export class Parser {
         const body: Array<Stmt> = new Array<Stmt>();
         while (!this.check(tokenType.ENDPROCEDURE) && !this.isAtEnd()) {
             if (this.isNewLine()) this.advance();
-            else body.push(this.statement());
+            else { const stmt = this.recoverStatement(); if (stmt) body.push(stmt); }
         }
         this.consume("Expected 'ENDPROCEDURE'", tokenType.ENDPROCEDURE);
         return new ProcDefNode(ident, params, body);
@@ -591,26 +636,31 @@ export class Parser {
     }
 
     private error(token: Token, message: string): void {
-        throw new SyntaxError(message, token.line, token.startColumn, token.endColumn, token.endLine);
+        const atLineEnd = token.type === tokenType.NEWLINE || token.type === tokenType.EOF;
+        throw new SyntaxError(message, token.line, token.startColumn,
+            atLineEnd ? token.startColumn + 1 : token.endColumn,
+            atLineEnd ? token.line : token.endLine);
     }
 
-    private synchronize() {
-        this.advance();
-
+    private synchronize(end?: tokenType): void {
+        let depth = 0;
         while (!this.isAtEnd()) {
-            switch (this.peek().type) {
-                case tokenType.IF:
-                case tokenType.WHILE:
-                case tokenType.REPEAT:
-                case tokenType.FOR:
-                case tokenType.FUNCTION:
-                case tokenType.PROCEDURE:
-                case tokenType.OUTPUT:
-                case tokenType.INPUT:
-                case tokenType.RETURN:
+            if (end !== undefined && this.terminator(this.peek().type) === end) depth++;
+            if (this.peek().type === end) {
+                this.advance();
+                if (depth === 0) {
+                    if (end === tokenType.NEXT && this.peek().type === tokenType.IDENTIFIER) this.advance();
+                    if (end === tokenType.UNTIL) {
+                        while (!this.isAtEnd() && this.peek().type !== tokenType.NEWLINE) this.advance();
+                    }
                     return;
+                }
+                depth--;
+                continue;
             }
-
+            if (end === undefined && this.peek().type === tokenType.NEWLINE) {
+                this.advance(); return;
+            }
             this.advance();
         }
     }

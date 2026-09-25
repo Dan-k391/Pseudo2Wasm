@@ -10,5 +10,5 @@ ENDFUNCTION
 OUTPUT recurse(2)`,
     input: [],
     expected: [],
-    error: ["Stack memory limit exceeded"],
+    error: ["Stack memory limit exceeded", "line 1:10"],
 };

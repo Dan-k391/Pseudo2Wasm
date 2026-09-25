@@ -1,5 +1,5 @@
 // TODO: this will be implemented after the first complete version is done
-import { RuntimeError } from "../error";
+import { MAX_DIAGNOSTICS, RuntimeError } from "../error";
 import { Token, tokenType } from "../lex/token";
 import {
     nodeKind,
@@ -53,12 +53,16 @@ import { Symbol, symbolKind } from "./symbol";
 import { ArrTypeNode, TypeNode } from "../syntax/typenode";
 import { MEMORY_END } from "../memory-layout";
 
+/** A use of an already-invalid declaration is not an independent error. */
+class DependentDiagnostic extends Error {}
 
 export class Checker {
     public ast: ProgramNode;
     public global: Scope;
     // current scope
     public curScope: Scope;
+    private errors?: Array<RuntimeError>;
+    private failedNames = new Map<Scope, Set<string>>();
 
     constructor(ast: ProgramNode) {
         this.ast = ast;
@@ -66,7 +70,8 @@ export class Checker {
         this.curScope = this.global;
     }
 
-    public check(): ProgramNode {
+    public check(errors?: Array<RuntimeError>): ProgramNode {
+        this.errors = errors;
         this.visit();
         return this.ast;
     }
@@ -200,12 +205,12 @@ export class Checker {
     private static commonBasicType(leftBasicType: basicKind, rightBasicType: basicKind): basicKind {
         if (leftBasicType === basicKind.STRING) {
             if (rightBasicType !== basicKind.STRING) {
-                throw new RuntimeError("Cannot convert " + leftBasicType + " to " + leftBasicType);
+                throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
             }
             return basicKind.STRING;
         }
         else if (rightBasicType === basicKind.STRING) {
-            throw new RuntimeError("Cannot convert " + leftBasicType + " to " + leftBasicType);
+            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
         }
         else if (leftBasicType === basicKind.REAL ||
             rightBasicType === basicKind.REAL) {
@@ -230,6 +235,7 @@ export class Checker {
         try {
             return this.curScope.lookUp(name.lexeme).type;
         } catch (error) {
+            if (this.isFailed(`variable:${name.lexeme}`)) throw new DependentDiagnostic();
             if (error instanceof RuntimeError) throw error.at(name);
             throw error;
         }
@@ -239,6 +245,7 @@ export class Checker {
         try {
             return this.curScope.lookUpFunc(name.lexeme);
         } catch (error) {
+            if (this.isFailed(`function:${name.lexeme}`)) throw new DependentDiagnostic();
             if (error instanceof RuntimeError) throw error.at(name);
             throw error;
         }
@@ -248,6 +255,7 @@ export class Checker {
         try {
             return this.curScope.lookUpProc(name.lexeme);
         } catch (error) {
+            if (this.isFailed(`procedure:${name.lexeme}`)) throw new DependentDiagnostic();
             if (error instanceof RuntimeError) throw error.at(name);
             throw error;
         }
@@ -265,6 +273,7 @@ export class Checker {
         try {
             return this.curScope.lookUpType(name.lexeme);
         } catch (error) {
+            if (this.isFailed(`type:${name.lexeme}`)) throw new DependentDiagnostic();
             if (error instanceof RuntimeError) throw error.at(name);
             throw error;
         }
@@ -285,7 +294,7 @@ export class Checker {
             case tokenType.IDENTIFIER:
                 return this.getType(typeToken);
             default:
-                throw new RuntimeError("There is no type '" + typeToken.lexeme + "'");
+                throw new Error("Internal compiler error: invalid type token");
         }
     }
 
@@ -319,7 +328,7 @@ export class Checker {
             case nodeKind.ArrTypeNode:
                 return this.resolveArrType(typeNode);
             default:
-                throw new RuntimeError("Not implemented yet");
+                throw new Error("Internal compiler error: unknown type syntax");
         }
     }
 
@@ -335,7 +344,7 @@ export class Checker {
                 return new PointerType(array.elem, array.dimensions);
             }
             default:
-                throw new RuntimeError("Not implemented yet");
+                throw new Error("Internal compiler error: unknown parameter type syntax");
         }
     }
 
@@ -410,29 +419,32 @@ export class Checker {
     private visitFuncDef(node: FuncDefNode) {
         // Return type already determined in function declaration
         this.beginScope(true, node.type, node.params.length);
-        for (const param of node.params) {
-            // type of param already determined in function declaration
-            this.insert(param.ident, param.type, symbolKind.LOCAL);
+        try {
+            for (const param of node.params) {
+                this.insert(param.ident, param.type, symbolKind.LOCAL);
+            }
+            const previousErrors = this.errors?.length || 0;
+            this.visitStmts(node.body);
+            if ((this.errors?.length || 0) === previousErrors && !this.definitelyReturns(node.body)) {
+                throw new RuntimeError(`Function '${node.ident.lexeme}' may finish without RETURN`).at(node.ident);
+            }
+            node.local = this.curScope;
+        } finally {
+            this.endScope();
         }
-        this.visitStmts(node.body);
-        if (!this.definitelyReturns(node.body)) {
-            throw new RuntimeError(`Function '${node.ident.lexeme}' may finish without RETURN`).at(node.ident);
-        }
-        // set the local scope of the function
-        node.local = this.curScope;
-        this.endScope();
     }
 
     private visitProcDef(node: ProcDefNode) {
         this.beginScope(false);
-        for (const param of node.params) {
-            // type of param already determined in procedure declaration
-            this.insert(param.ident, param.type, symbolKind.LOCAL);
+        try {
+            for (const param of node.params) {
+                this.insert(param.ident, param.type, symbolKind.LOCAL);
+            }
+            this.visitStmts(node.body);
+            node.local = this.curScope;
+        } finally {
+            this.endScope();
         }
-        this.visitStmts(node.body);
-        // set the local scope of the procedure
-        node.local = this.curScope;
-        this.endScope();
     }
 
     // arithmetic conversion for basic type
@@ -491,6 +503,38 @@ export class Checker {
         throw error;
     }
 
+    private report(error: unknown, node: BaseNode): void {
+        if (error instanceof DependentDiagnostic) return;
+        if (!(error instanceof RuntimeError) || !this.errors) this.locate(error, node);
+        const token = this.tokenFor(node);
+        if (token) error.at(token);
+        this.errors.push(error);
+    }
+
+    private isFailed(key: string): boolean {
+        for (let scope: Scope | undefined = this.curScope; scope; scope = scope.parent) {
+            if (this.failedNames.get(scope)?.has(key)) return true;
+        }
+        return false;
+    }
+
+    private markFailed(stmt: Stmt): void {
+        let key: string | undefined;
+        if (stmt.kind === nodeKind.DeclNode && !this.curScope.elems.has(stmt.ident.lexeme))
+            key = `variable:${stmt.ident.lexeme}`;
+        else if (stmt.kind === nodeKind.FuncDefNode && !this.curScope.functions.has(stmt.ident.lexeme))
+            key = `function:${stmt.ident.lexeme}`;
+        else if (stmt.kind === nodeKind.ProcDefNode && !this.curScope.procedures.has(stmt.ident.lexeme))
+            key = `procedure:${stmt.ident.lexeme}`;
+        else if ((stmt.kind === nodeKind.TypeDeclNode || stmt.kind === nodeKind.PtrDeclNode) &&
+            !this.curScope.types.has(stmt.ident.lexeme)) key = `type:${stmt.ident.lexeme}`;
+        if (key) {
+            const names = this.failedNames.get(this.curScope) || new Set<string>();
+            names.add(key);
+            this.failedNames.set(this.curScope, names);
+        }
+    }
+
     private visitExpr(expr: Expr): Type {
         try {
             return this.visitExprCore(expr);
@@ -532,7 +576,7 @@ export class Checker {
             case nodeKind.BoolExprNode:
                 return this.boolExpr(expr);
             default:
-                throw new RuntimeError("Not implemented yet");
+                throw new Error("Internal compiler error: unknown expression node");
         }
     }
 
@@ -599,13 +643,13 @@ export class Checker {
             node.type = base.base;
             return node.type;
         }
-        throw new RuntimeError("Cannot index none ARRAY or POINTER types");
+        throw new RuntimeError("Only ARRAY or POINTER values can be indexed");
     }
 
     private selectExpr(node: SelectExprNode): Type {
         const base = this.visitExpr(node.expr);
         if (base.kind !== typeKind.RECORD) {
-            throw new RuntimeError("Cannot perfrom 'select' operation to none RECORD types");
+            throw new RuntimeError("Only RECORD values have fields");
         }
         node.type = base.getField(node.ident.lexeme);
         return node.type;
@@ -632,7 +676,7 @@ export class Checker {
             node.type = func.returnType;
             return node.type;
         }
-        throw new RuntimeError("Not implemented yet");
+        throw new RuntimeError("Indirect function calls are not supported");
     }
 
     // PROCEDUREs do not have a return value
@@ -641,7 +685,7 @@ export class Checker {
             const procName = node.callee.ident.lexeme;
             const proc = this.getProcType(node.callee.ident);
             if (proc.paramTypes.size !== node.args.length) {
-                throw new RuntimeError("Function '" + procName + "' expects " + proc.paramTypes.size + " arguments, but " + node.args.length + " are provided");
+                throw new RuntimeError("Procedure '" + procName + "' expects " + proc.paramTypes.size + " arguments, but " + node.args.length + " are provided");
             }
             for (let i = 0, paramNames = Array.from(proc.paramTypes.keys()); i < node.args.length; i++) {
                 const arg = node.args[i]; 
@@ -657,7 +701,7 @@ export class Checker {
             node.type = new NoneType();
             return node.type;
         }
-        throw new RuntimeError("Not implemented yet");
+        throw new RuntimeError("Indirect procedure calls are not supported");
     }
 
     private unaryExpr(node: UnaryExprNode): Type {   
@@ -672,7 +716,7 @@ export class Checker {
         // The right side of arithmetic operations need to be BASIC types
         // while the left side can be POINTER and BASIC types (for add and sub)
         if (rightType.kind !== typeKind.BASIC) {
-            throw new RuntimeError("Cannot perform binary operations to none BASIC types");
+            throw new RuntimeError("Binary operators require basic values");
         }
         
         // the following code looks complicated but just goes over all the possibilities
@@ -701,7 +745,7 @@ export class Checker {
             case tokenType.STAR:
             case tokenType.SLASH: {
                 if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Cannot perform arithmetic operations to none BASIC types");
+                    throw new RuntimeError("Arithmetic operators require basic values");
                 }
                 if (leftType.type === basicKind.STRING ||
                     rightType.type === basicKind.STRING) {
@@ -715,11 +759,11 @@ export class Checker {
             }
             case tokenType.MOD: {
                 if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Cannot perform arithmetic operations to none BASIC types");
+                    throw new RuntimeError("Arithmetic operators require basic values");
                 }
                 if (leftType.type !== basicKind.INTEGER ||
                     rightType.type !== basicKind.INTEGER) {
-                    throw new RuntimeError("Cannot perform arithmetic operations to none INTEGERs")
+                    throw new RuntimeError("This operator requires INTEGER operands")
                 }
                 node.type = new BasicType(basicKind.INTEGER);
                 break;
@@ -732,7 +776,7 @@ export class Checker {
             case tokenType.LESS_EQUAL:
             case tokenType.GREATER_EQUAL: {
                 if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Cannot perform logical operations to none BASIC types");
+                    throw new RuntimeError("Comparison requires basic values");
                 }
                 if (leftType.type === basicKind.STRING ||
                     rightType.type === basicKind.STRING) {
@@ -747,25 +791,17 @@ export class Checker {
             case tokenType.AND:
             case tokenType.OR: {
                 if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Cannot perform logical operations to none BASIC types");
+                    throw new RuntimeError("Logical operators require basic values");
                 }
                 if (leftType.type !== basicKind.BOOLEAN ||
                     rightType.type !== basicKind.BOOLEAN) {
-                    throw new RuntimeError("Cannot perform logical operations to none BOOLEANs")
+                    throw new RuntimeError("Logical operators require BOOLEAN operands")
                 }
                 node.type = new BasicType(basicKind.BOOLEAN);
                 break;
             }
             case tokenType.AMPERSAND: {
-                if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Cannot perform logical operations to none BASIC types");
-                }
-                if (leftType.type !== basicKind.STRING ||
-                    rightType.type !== basicKind.STRING) {
-                    throw new RuntimeError("Cannot perform logical operations to STRINGs")
-                }
-                node.type = new BasicType(basicKind.STRING);
-                break;
+                throw new RuntimeError("String concatenation is not supported yet");
             }
             default:
                 unreachable();
@@ -776,7 +812,7 @@ export class Checker {
     private derefExpr(node: DerefExprNode): Type {
         node.type = this.visitExpr(node.lVal);
         if (node.type.kind !== typeKind.POINTER) {
-            throw new RuntimeError("Cannot dereference none POINTER types");
+            throw new RuntimeError("Only POINTER values can be dereferenced");
         }
         node.type = node.type.base;
         return node.type;
@@ -821,25 +857,32 @@ export class Checker {
     }
 
     private visitStmts(stmts: Array<Stmt>): void {
+        const failed = new Set<Stmt>();
         // Pre declare all FUNCTIONs and PROCEDUREs
         for (const stmt of stmts) {
+            if (this.errors && this.errors.length >= MAX_DIAGNOSTICS) return;
             try {
                 if (stmt.kind === nodeKind.FuncDefNode) this.declFunc(stmt);
                 else if (stmt.kind === nodeKind.ProcDefNode) this.declProc(stmt);
                 else if (stmt.kind === nodeKind.TypeDeclNode) this.declRecord(stmt);
                 else if (stmt.kind === nodeKind.PtrDeclNode) this.declPtr(stmt);
             } catch (error) {
-                this.locate(error, stmt);
+                failed.add(stmt);
+                this.markFailed(stmt);
+                this.report(error, stmt);
             }
         }
         // then run the other code
         for (const stmt of stmts) {
+            if (this.errors && this.errors.length >= MAX_DIAGNOSTICS) return;
+            if (failed.has(stmt)) continue;
             try {
                 if (stmt.kind === nodeKind.FuncDefNode) this.visitFuncDef(stmt);
                 else if (stmt.kind === nodeKind.ProcDefNode) this.visitProcDef(stmt);
                 else this.visitStmt(stmt);
             } catch (error) {
-                this.locate(error, stmt);
+                this.markFailed(stmt);
+                this.report(error, stmt);
             }
         }
     }
@@ -891,8 +934,10 @@ export class Checker {
             case nodeKind.ForNode:
                 this.visitForStmt(stmt);
                 break;
+            case nodeKind.CaseNode:
+                throw new RuntimeError("CASE statements are not supported yet");
             default:
-                throw new RuntimeError("Not implemented yet");
+                throw new Error("Internal compiler error: unknown statement node");
         }
     }
 
@@ -901,7 +946,7 @@ export class Checker {
         const leftType = this.visitExpr(node.expr);
         const rightType = this.curScope.getReturnType();
         if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
-            throw new RuntimeError("Cannot convert " + rightType + " to " + leftType);
+            throw new RuntimeError("Cannot convert " + leftType + " to " + rightType);
         }
 
         const leftBasicType = leftType.type;
@@ -977,7 +1022,7 @@ export class Checker {
         const stepType = this.visitExpr(node.step);
         
         if (varType.kind !== typeKind.BASIC || varType.type !== basicKind.INTEGER) {
-            throw new RuntimeError("For loops only iterate over for INTEGERs");
+            throw new RuntimeError("FOR loop variable must be INTEGER");
         }
         if (startType.kind !== typeKind.BASIC || startType.type !== basicKind.INTEGER) {
             throw new RuntimeError("Start value of for loops can only be INTEGERs");

@@ -5,7 +5,9 @@ import { Scanner } from "./lex/scanner";
 import { Parser } from "./syntax/parser";
 import { Generator } from "./codegen/generator";
 import { Checker } from "./type/checker";
-import { RuntimeError } from "./error";
+import { CompilationError, Diagnostic, RuntimeError, SyntaxError, toDiagnostic } from "./error";
+import { ProgramNode } from "./syntax/ast";
+import { Token } from "./lex/token";
 import { GLOBAL_DATA_START, HEAP_START, MEMORY_END, MEMORY_PAGES, STACK_START } from "./memory-layout";
 
 export class Compiler {
@@ -15,13 +17,35 @@ export class Compiler {
         this.input = input;
     }
 
+    private analyze(): {tokens: Array<Token>; ast?: ProgramNode; failures: Array<SyntaxError | RuntimeError>} {
+        const lexicalErrors: Array<SyntaxError> = [];
+        const tokens = new Scanner(this.input).scan(lexicalErrors);
+        if (lexicalErrors.length) return {tokens, failures: lexicalErrors};
+
+        const syntaxErrors: Array<SyntaxError> = [];
+        const ast = new Parser(tokens).parse(syntaxErrors);
+        if (syntaxErrors.length) return {tokens, failures: syntaxErrors};
+
+        const semanticErrors: Array<RuntimeError> = [];
+        new Checker(ast).check(semanticErrors);
+        return {tokens, ast, failures: semanticErrors};
+    }
+
+    /** Inspect all user-source errors without generating WebAssembly. */
+    diagnose(): ReadonlyArray<Diagnostic> {
+        return this.analyze().failures.map(toDiagnostic);
+    }
+
     compile(log: boolean = false): binaryen.Module {
-        const scanner = new Scanner(this.input);
-        const tokens = scanner.scan();
-        const parser = new Parser(tokens);
-        const ast = parser.parse();
-        const checker = new Checker(ast);
-        const typedAst = checker.check();
+        const {tokens, ast, failures} = this.analyze();
+        if (failures.length === 1) {
+            failures[0].source = this.input;
+            throw failures[0];
+        }
+        if (failures.length > 1) {
+            throw new CompilationError(failures.map(toDiagnostic), this.input);
+        }
+        const typedAst = ast!;
         if (log) {
             console.log(tokens);
             console.log(ast);
@@ -72,6 +96,7 @@ export class Compiler {
 
         const runtimeFailure = (message: string, line = 0, column = 0): never => {
             const error = new RuntimeError(message);
+            error.source = this.input;
             if (line > 0) {
                 error.line = line;
                 error.startColumn = Math.max(0, column - 1);
@@ -107,11 +132,11 @@ export class Compiler {
             const bytes = new TextEncoder().encode(str);
             return bytes[0];
         };
-        const inputString = async () => {
+        const inputString = async (line: number, column: number) => {
             const str = String(await nextInput());
             const bytes = new TextEncoder().encode(str);
             if (heapOffSet + bytes.length + 1 > MEMORY_END) {
-                runtimeFailure("Input string exceeds heap memory limit");
+                runtimeFailure("Input string exceeds heap memory limit", line, column);
             }
             const ptr = heapOffSet;
             heapOffSet += bytes.length + 1;
@@ -187,9 +212,9 @@ export class Compiler {
                     return index - lower;
                 },
                 checkPointer,
-                checkStack: (next: number) => {
+                checkStack: (next: number, line: number, column: number) => {
                     if (next < STACK_START || next > HEAP_START) {
-                        runtimeFailure("Stack memory limit exceeded");
+                        runtimeFailure("Stack memory limit exceeded", line, column);
                     }
                     return next;
                 },

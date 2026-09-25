@@ -24,7 +24,8 @@ export const keyWords = [
 
 export { Compiler } from "./compiler";
 export type { ExecutionResult } from "./compiler";
-export { SyntaxError, RuntimeError } from "./error";
+export { SyntaxError, RuntimeError, CompilationError, formatDiagnostic, MAX_DIAGNOSTICS } from "./error";
+export type { Diagnostic, DiagnosticPhase, SourceSpan } from "./error";
 export { Scanner } from "./lex/scanner";
 export { Parser } from "./syntax/parser";
 export { Checker } from "./type/checker";

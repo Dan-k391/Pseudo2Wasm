@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Checker, Compiler, Parser, Scanner, runCode } from "../dist/pseudo2wasm.node.mjs";
+import { Checker, CompilationError, Compiler, Parser, Scanner, SyntaxError, runCode } from "../dist/pseudo2wasm.node.mjs";
 
 function parse(source) {
     return new Parser(new Scanner(source).scan()).parse();
@@ -97,6 +97,8 @@ ENDPROCEDURE`, "Cannot store a pointer outside", 5);
 DECLARE b: ARRAY[0:1] OF INTEGER
 a <- b`, "Whole ARRAY", 3);
     expectLocatedFailure("RETURN 2", "RETURN is only valid inside", 1, 1);
+    expectLocatedFailure('OUTPUT "a" & "b"', "String concatenation is not supported", 1);
+    expectLocatedFailure("DECLARE x: INTEGER\nCASE OF x\nENDCASE", "CASE statements are not supported", 2);
     assert.throws(() => new Compiler("OUTPUT missing").compile(), error => error.name === "SemanticError");
 });
 
@@ -112,4 +114,80 @@ DECLARE a: ARRAY[0:200000] OF INTEGER
 RETURN 1
 ENDFUNCTION
 OUTPUT f()`, "Local data exceeds", 2);
+});
+
+test("scanner collects independent errors with exact structured spans", () => {
+    const compiler = new Compiler("OUTPUT @\nOUTPUT #");
+    const diagnostics = compiler.diagnose();
+    assert.deepEqual(diagnostics.map(d => d.code), ["E_LEX", "E_LEX"]);
+    assert.deepEqual(diagnostics.map(d => d.span), [
+        {line: 1, endLine: 1, startColumn: 7, endColumn: 8},
+        {line: 2, endLine: 2, startColumn: 7, endColumn: 8},
+    ]);
+    assert.throws(() => compiler.compile(), error => {
+        assert.ok(error instanceof CompilationError);
+        assert.equal(error.diagnostics.length, 2);
+        assert.match(String(error), /OUTPUT @\n\s*\^/);
+        return true;
+    });
+});
+
+test("parser recovers at statement boundaries without compiling a partial program", () => {
+    const compiler = new Compiler("OUTPUT\nOUTPUT\nOUTPUT 2");
+    const diagnostics = compiler.diagnose();
+    assert.equal(diagnostics.length, 2);
+    assert.deepEqual(diagnostics.map(d => d.phase), ["parse", "parse"]);
+    assert.deepEqual(diagnostics.map(d => d.span.line), [1, 2]);
+    assert.throws(() => compiler.compile(), CompilationError);
+    const nested = new Compiler(`FUNCTION f() RETURNS INTEGER
+OUTPUT
+OUTPUT
+RETURN 1
+ENDFUNCTION`);
+    assert.deepEqual(nested.diagnose().map(d => d.span.line), [2, 3]);
+    const malformedBlock = new Compiler("IF THEN\nOUTPUT 1\nENDIF\nOUTPUT\nOUTPUT 2");
+    assert.deepEqual(malformedBlock.diagnose().map(d => d.span.line), [1, 4]);
+    const missingEnd = new Compiler("IF TRUE THEN\nOUTPUT 1").diagnose();
+    assert.deepEqual(missingEnd[0].span, {
+        line: 2, endLine: 2, startColumn: 8, endColumn: 9,
+    });
+});
+
+test("checker collects independent errors and preserves single-error compatibility", () => {
+    const compiler = new Compiler("OUTPUT missing\nOUTPUT absent");
+    const diagnostics = compiler.diagnose();
+    assert.deepEqual(diagnostics.map(d => d.message), [
+        "Unknown variable 'missing'", "Unknown variable 'absent'",
+    ]);
+    assert.deepEqual(diagnostics.map(d => d.span.startColumn), [7, 7]);
+    assert.throws(() => compiler.compile(), CompilationError);
+
+    const single = new Compiler("OUTPUT missing");
+    assert.throws(() => single.compile(), error => {
+        assert.equal(error.name, "SemanticError");
+        assert.match(String(error), /OUTPUT missing\n\s*\^{7}/);
+        return true;
+    });
+    assert.throws(() => new Compiler("OUTPUT @").compile(), SyntaxError);
+});
+
+test("diagnostics are capped and failed declarations are not lowered", () => {
+    const many = new Compiler(Array.from({length: 25}, (_, i) => `OUTPUT unknown${i}`).join("\n"));
+    assert.equal(many.diagnose().length, 20);
+    const failedDeclaration = new Compiler("DECLARE x: MISSING\nOUTPUT 1");
+    assert.equal(failedDeclaration.diagnose().length, 1);
+    assert.match(failedDeclaration.diagnose()[0].message, /Unknown TYPE/);
+    assert.throws(() => failedDeclaration.compile());
+    const dependentUse = new Compiler("DECLARE x: MISSING\nOUTPUT x\nOUTPUT independent");
+    assert.deepEqual(dependentUse.diagnose().map(d => d.message), [
+        "Unknown TYPE 'MISSING'", "Unknown variable 'independent'",
+    ]);
+    const failedCallable = new Compiler(`FUNCTION f(x: INTEGER, x: INTEGER) RETURNS INTEGER
+RETURN x
+ENDFUNCTION
+OUTPUT f(1, 2)
+OUTPUT independent`);
+    assert.deepEqual(failedCallable.diagnose().map(d => d.message), [
+        "Duplicate parameter 'x'", "Unknown variable 'independent'",
+    ]);
 });

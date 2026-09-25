@@ -120,7 +120,8 @@ export class Generator {
         this.module.addFunctionImport("inputInteger", "env", "inputInteger", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("inputReal", "env", "inputReal", binaryen.createType([]), binaryen.f64);
         this.module.addFunctionImport("inputChar", "env", "inputChar", binaryen.createType([]), binaryen.i32);
-        this.module.addFunctionImport("inputString", "env", "inputString", binaryen.createType([]), binaryen.i32);
+        this.module.addFunctionImport("inputString", "env", "inputString",
+            binaryen.createType([binaryen.i32, binaryen.i32]), binaryen.i32);
         this.module.addFunctionImport("inputBoolean", "env", "inputBoolean", binaryen.createType([]), binaryen.i32);
         this.module.addFunctionImport("RAND", "env", "randomInteger", binaryen.createType([binaryen.i32]), binaryen.i32);
         this.module.addFunctionImport("STARTTIME", "env", "startTime", binaryen.createType([]), binaryen.none);
@@ -131,7 +132,8 @@ export class Generator {
         this.module.addFunctionImport("checkPointer", "env", "checkPointer", binaryen.createType([
             binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32
         ]), binaryen.i32);
-        this.module.addFunctionImport("checkStack", "env", "checkStack", binaryen.createType([binaryen.i32]), binaryen.i32);
+        this.module.addFunctionImport("checkStack", "env", "checkStack",
+            binaryen.createType([binaryen.i32, binaryen.i32, binaryen.i32]), binaryen.i32);
 
         // The stack grows upwards
         // stacktop, starts from 65536 * 10
@@ -184,14 +186,16 @@ export class Generator {
         );
     }
 
-    public incrementStackTop(value: number): ExpressionRef {
+    public incrementStackTop(value: number, line = 0, column = 0): ExpressionRef {
         return this.module.global.set(
             "__stackTop", 
             this.module.call("checkStack", [
                 this.module.i32.add(
                     this.module.global.get("__stackTop", binaryen.i32),
                     this.generateConstant(binaryen.i32, value)
-                )
+                ),
+                this.module.i32.const(line),
+                this.module.i32.const(column)
             ], binaryen.i32)
         );
     }
@@ -348,20 +352,22 @@ export class Generator {
         return mainFunciton;
     }
 
-    protected callablePrologue(): ExpressionRef {
+    protected callablePrologue(line = 0, column = 0): ExpressionRef {
         return this.module.block("__callablePrologue", [
             this.module.drop(this.module.call("checkStack", [
                 this.module.i32.add(
                     this.module.global.get("__stackTop", binaryen.i32),
                     this.generateConstant(binaryen.i32, 4)
-                )
+                ),
+                this.module.i32.const(line),
+                this.module.i32.const(column)
             ], binaryen.i32)),
             this.module.i32.store(0, 1, 
                 this.module.global.get("__stackTop", binaryen.i32),
                 this.module.global.get("__stackBase", binaryen.i32),
                 "0"
             ),
-            this.incrementStackTop(4),
+            this.incrementStackTop(4, line, column),
             this.module.global.set(
                 "__stackBase",
                 this.module.global.get("__stackTop", binaryen.i32)
@@ -424,8 +430,8 @@ export class Generator {
         const paramType = binaryen.createType(paramWasmTypes);
 
         const funcBody = [
-            this.callablePrologue(),
-            this.incrementStackTop(node.local.size()),
+            this.callablePrologue(node.ident.line, node.ident.startColumn + 1),
+            this.incrementStackTop(node.local.size(), node.ident.line, node.ident.startColumn + 1),
             this.initParams(node.params),
             ...this.generateStatements(node.body),
             this.callableEpilogue(),
@@ -455,8 +461,8 @@ export class Generator {
         const paramType = binaryen.createType(paramWasmTypes);
 
         const procBody = [
-            this.callablePrologue(),
-            this.incrementStackTop(node.local.size()),
+            this.callablePrologue(node.ident.line, node.ident.startColumn + 1),
+            this.incrementStackTop(node.local.size(), node.ident.line, node.ident.startColumn + 1),
             this.initParams(node.params),
             ...this.generateStatements(node.body),
             this.callableEpilogue(),
@@ -510,7 +516,7 @@ export class Generator {
             case nodeKind.BoolExprNode:
                 return this.boolExpression(expression);
             default:
-                throw new RuntimeError("Not implemented yet");
+                throw new Error("Internal compiler error: unknown expression reached Wasm lowering");
         }
     }
 
@@ -630,13 +636,13 @@ export class Generator {
                 ? this.checkedPointer(ptr, elemType.size(), node.source?.line || 0, (node.source?.startColumn ?? -1) + 1)
                 : ptr;
         }
-        throw new RuntimeError("Cannot perfrom 'index' operation to non ARRAY or POINTER types");
+        throw new Error("Internal compiler error: non-indexable value reached Wasm lowering");
     }
 
     public selectExpression(node: SelectExprNode): ExpressionRef {
         const rVal = node.expr.type;
         if (rVal.kind !== typeKind.RECORD) {
-            throw new RuntimeError("Cannot perfrom 'select' operation to non RECORD types");
+            throw new Error("Internal compiler error: non-record selection reached Wasm lowering");
         }
         const expr = this.generateAddr(node.expr);
         return this.module.i32.add(expr, this.generateConstant(binaryen.i32, rVal.offset(node.ident.lexeme)));
@@ -656,7 +662,7 @@ export class Generator {
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
         // closures and function pointers are not supported
-        throw new RuntimeError("Not implemented yet");
+        throw new Error("Internal compiler error: indirect function call reached Wasm lowering");
     }
 
     private callProcedureExpression(node: CallProcExprNode): ExpressionRef {
@@ -672,7 +678,7 @@ export class Generator {
         }
         // FIXME: The complicated call possibilities are not supported (calling a complex expression)
         // closures and function pointers are not supported
-        throw new RuntimeError("Not implemented yet");
+        throw new Error("Internal compiler error: indirect procedure call reached Wasm lowering");
     }
 
     private unaryExpression(node: UnaryExprNode): ExpressionRef {
@@ -698,7 +704,7 @@ export class Generator {
             case tokenType.NOT:
                 return this.module.i32.eq(this.generateExpression(node.expr), this.module.i32.const(0));
         }
-        throw new RuntimeError("Not implemented yet");
+        throw new Error("Internal compiler error: unsupported unary operator reached Wasm lowering");
 
     }
 
@@ -765,7 +771,7 @@ export class Generator {
             case tokenType.OR:
                 return this.module.i32.or(leftExpr, rightExpr);
         }
-        throw new RuntimeError("Not implemented yet");
+        throw new Error("Internal compiler error: unsupported binary operator reached Wasm lowering");
         // TODO: STRING
     }
 
@@ -846,7 +852,7 @@ export class Generator {
             case nodeKind.ForNode:
                 return this.forStatement(statement);
             default:
-                throw new RuntimeError("Not implemented yet");
+                throw new Error("Internal compiler error: unknown statement reached Wasm lowering");
         }
     }
 
@@ -900,7 +906,7 @@ export class Generator {
                 return this.module.call("logBoolean", [expr], binaryen.none);
         }
 
-        throw new RuntimeError("Not implemented yet");
+        throw new Error("Internal compiler error: unsupported OUTPUT type reached Wasm lowering");
         // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
     }
 
@@ -921,12 +927,15 @@ export class Generator {
             case basicKind.CHAR:
                 return this.store(type, ptr, this.module.call("inputChar", [], binaryen.i32));
             case basicKind.STRING:
-                return this.store(type, ptr, this.module.call("inputString", [], binaryen.i32));
+                return this.store(type, ptr, this.module.call("inputString", [
+                    this.module.i32.const(node.source?.line || 0),
+                    this.module.i32.const((node.source?.startColumn ?? -1) + 1)
+                ], binaryen.i32));
             case basicKind.BOOLEAN:
                 return this.store(type, ptr, this.module.call("inputBoolean", [], binaryen.i32));
         }
         
-        throw new RuntimeError("Not implemented yet");
+        throw new Error("Internal compiler error: unsupported INPUT type reached Wasm lowering");
     }
 
     // Local frame space is reserved once in the callable prologue, so a

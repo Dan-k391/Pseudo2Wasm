@@ -10,7 +10,7 @@
  * Furthermore, I strongly recommend the book above (It really helped on my first hand-writen parser).
  */
 
-import { SyntaxError } from "../error";
+import { MAX_DIAGNOSTICS, SyntaxError } from "../error";
 import { tokenType, Token } from "./token";
 
 
@@ -87,15 +87,21 @@ export class Scanner {
         this.endColumn = 0;
     }
 
-    public scan(): Array<Token> {
+    public scan(errors?: Array<SyntaxError>): Array<Token> {
         while (!this.isAtEnd()) {
             this.start = this.current;
             this.startLine = this.line;
             this.startColumn = this.endColumn;
-            this.scanToken();
+            try {
+                this.scanToken();
+            } catch (error) {
+                if (!(error instanceof SyntaxError) || !errors) throw error;
+                errors.push(error);
+                if (errors.length >= MAX_DIAGNOSTICS) break;
+            }
         }
 
-        this.tokens.push(new Token(tokenType.EOF, "", null, this.line, this.startColumn, this.endColumn));
+        this.tokens.push(new Token(tokenType.EOF, "", null, this.line, this.endColumn, this.endColumn));
         return this.tokens;
     }
 
@@ -141,7 +147,8 @@ export class Scanner {
                     this.identifier();
                 }
                 else {
-                    throw new SyntaxError("Unexpected character", this.line, this.startColumn, this.endColumn);
+                    throw new SyntaxError(`Unexpected character '${c}'`, this.line,
+                        this.startColumn, this.endColumn, this.line, "lex");
                 }
                 break;
         }
@@ -203,12 +210,14 @@ export class Scanner {
         }
 
         if (this.isAtEnd()) {
-            throw new SyntaxError("Unterminated char", this.startLine, this.startColumn, this.endColumn);
+            throw new SyntaxError("Unterminated character literal", this.startLine,
+                this.startColumn, this.endColumn, this.line, "lex");
         }
         // char only contains a single character
         // the first character is the '
         else if (this.current - this.start > 2) {
-            throw new SyntaxError("Char contains only a single character", this.startLine, this.startColumn, this.endColumn);
+            throw new SyntaxError("Character literal must contain exactly one character",
+                this.startLine, this.startColumn, this.endColumn, this.line, "lex");
         }
 
         this.advance();
@@ -223,7 +232,8 @@ export class Scanner {
         }
 
         if (this.isAtEnd()) {
-            throw new SyntaxError("Unterminated string", this.startLine, this.startColumn, this.endColumn);
+            throw new SyntaxError("Unterminated string literal", this.startLine,
+                this.startColumn, this.endColumn, this.line, "lex");
         }
 
         this.advance();
