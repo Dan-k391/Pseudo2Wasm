@@ -17,7 +17,8 @@ export const keyWords = [
     "BYVAL", "BYREF", "RETURNS", "RETURN", "CALL", "DECLARE",
     "ARRAY", "OF", "TYPE", "ENDTYPE", "IF", "THEN", "ELSE",
     "ENDIF", "WHILE", "ENDWHILE", "REPEAT", "UNTIL", "FOR",
-    "TO", "STEP", "NEXT", "MOD", "AND", "OR", "NOT",
+    "TO", "STEP", "NEXT", "CASE", "ENDCASE", "OTHERWISE",
+    "DIV", "MOD", "AND", "OR", "NOT",
     "OUTPUT", "INPUT", "RND", "TIME", "TRUE", "FALSE",
     "INTEGER", "REAL", "CHAR", "STRING", "BOOLEAN",
 ];

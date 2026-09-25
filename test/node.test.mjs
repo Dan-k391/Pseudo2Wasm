@@ -65,7 +65,7 @@ test("scanner and parser failures carry source locations", () => {
 
 test("semantic failures identify the relevant nested token", () => {
     expectLocatedFailure("OUTPUT 1\nIF TRUE THEN\n  OUTPUT missing\nENDIF", "Unknown variable", 3, 10);
-    expectLocatedFailure("OUTPUT 1\nOUTPUT \"text\" + 2", "STRINGs", 2);
+    expectLocatedFailure("OUTPUT 1\nOUTPUT \"text\" + 2", "Arithmetic requires INTEGER or REAL", 2);
     expectLocatedFailure("FUNCTION f(x: INTEGER) RETURNS INTEGER\nRETURN x\nENDFUNCTION\nOUTPUT f()", "expects 1 arguments", 4);
     expectLocatedFailure("DECLARE x: INTEGER\nDECLARE x: INTEGER", "Duplicate variable", 2);
     expectLocatedFailure("FUNCTION f(x: INTEGER, x: INTEGER) RETURNS INTEGER\nRETURN x\nENDFUNCTION", "Duplicate parameter", 1);
@@ -94,11 +94,10 @@ DECLARE local: INTEGER
 saved <- ^local
 ENDPROCEDURE`, "Cannot store a pointer outside", 5);
     expectLocatedFailure(`DECLARE a: ARRAY[0:1] OF INTEGER
-DECLARE b: ARRAY[0:1] OF INTEGER
-a <- b`, "Whole ARRAY", 3);
+DECLARE b: ARRAY[0:2] OF INTEGER
+a <- b`, "Cannot convert", 3);
     expectLocatedFailure("RETURN 2", "RETURN is only valid inside", 1, 1);
     expectLocatedFailure('OUTPUT "a" & "b"', "String concatenation is not supported", 1);
-    expectLocatedFailure("DECLARE x: INTEGER\nCASE OF x\nENDCASE", "CASE statements are not supported", 2);
     assert.throws(() => new Compiler("OUTPUT missing").compile(), error => error.name === "SemanticError");
 });
 
@@ -190,4 +189,92 @@ OUTPUT independent`);
     assert.deepEqual(failedCallable.diagnose().map(d => d.message), [
         "Duplicate parameter 'x'", "Unknown variable 'independent'",
     ]);
+});
+
+test("CASE parsing and checking follow the guide's line-oriented branches", () => {
+    const source = `DECLARE choice: INTEGER
+choice <- 2
+CASE OF choice
+1 : OUTPUT 10
+2 TO 3 : OUTPUT 20
+OTHERWISE : OUTPUT 30
+ENDCASE`;
+    const compiler = new Compiler(source);
+    assert.deepEqual(compiler.diagnose(), []);
+    assert.equal(compiler.compile().validate(), 1);
+    const node = parse(source).body[2];
+    assert.equal(node.constructor.name, "CaseNode");
+    assert.equal(node.bodies.length, 2);
+    assert.equal(node.bodies[0].length, 1);
+    assert.equal(node.otherwiseBody.length, 1);
+});
+
+test("CASE rejects mismatched and invalid labels before lowering", () => {
+    expectLocatedFailure(`DECLARE x: INTEGER
+CASE OF x
+"text" : OUTPUT 1
+ENDCASE`, "CASE label must be INTEGER", 3);
+    expectLocatedFailure(`DECLARE x: INTEGER
+CASE OF x
+5 TO 2 : OUTPUT 1
+ENDCASE`, "CASE range lower value exceeds", 3);
+    expectLocatedFailure(`DECLARE x: INTEGER
+CASE OF x
+OTHERWISE : OUTPUT 1
+2 : OUTPUT 2
+ENDCASE`, "OTHERWISE must be the last", 4);
+    expectLocatedFailure(`DECLARE x: STRING
+CASE OF x
+"a" : OUTPUT 1
+ENDCASE`, "STRING CASE selectors are not supported", 2);
+});
+
+test("numeric and Boolean rules reject accidental cross-type operations", () => {
+    expectLocatedFailure("OUTPUT TRUE + 1", "Arithmetic requires INTEGER or REAL", 1);
+    expectLocatedFailure("OUTPUT NOT 1", "NOT requires a BOOLEAN", 1);
+    expectLocatedFailure("IF 1 THEN\nOUTPUT 1\nENDIF", "IF condition must be BOOLEAN", 1);
+    expectLocatedFailure("DECLARE x: INTEGER\nx <- 1.5", "Cannot convert", 2);
+    expectLocatedFailure("OUTPUT 1 DIV 0.5", "DIV and MOD require INTEGER", 1);
+    assert.equal(new Compiler("OUTPUT 5 / 2, 5 DIV 2, 2.5 > 2").compile().validate(), 1);
+});
+
+test("whole-value array and record copies validate before execution", () => {
+    assert.equal(new Compiler(`DECLARE a: ARRAY[1:2] OF INTEGER
+DECLARE b: ARRAY[3:4] OF INTEGER
+b <- a`).compile().validate(), 1);
+    assert.equal(new Compiler(`TYPE Pair
+DECLARE x: INTEGER
+ENDTYPE
+DECLARE a: Pair
+DECLARE b: Pair
+b <- a`).compile().validate(), 1);
+});
+
+test("BYREF requires an assignable exact-type argument", () => {
+    expectLocatedFailure(`PROCEDURE set(BYREF x: INTEGER)
+x <- 1
+ENDPROCEDURE
+CALL set(1)`, "BYREF argument must be an assignable", 4);
+    expectLocatedFailure(`DECLARE n: REAL
+PROCEDURE set(BYREF x: INTEGER)
+x <- 1
+ENDPROCEDURE
+CALL set(n)`, "BYREF argument must be an assignable", 5);
+    expectLocatedFailure(`TYPE Pair
+DECLARE x: INTEGER
+ENDTYPE
+PROCEDURE use(p: Pair)
+ENDPROCEDURE`, "RECORD parameters are not supported", 4);
+});
+
+test("FOR rejects unsupported dynamic and zero steps before lowering", () => {
+    expectLocatedFailure(`DECLARE i: INTEGER
+FOR i <- 1 TO 3 STEP 0
+OUTPUT i
+NEXT i`, "FOR STEP must not be zero", 2);
+    expectLocatedFailure(`DECLARE i: INTEGER
+DECLARE step: INTEGER
+FOR i <- 1 TO 3 STEP step
+OUTPUT i
+NEXT i`, "dynamic steps are not supported", 3);
 });

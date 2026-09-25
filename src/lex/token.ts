@@ -24,8 +24,8 @@ export const enum tokenType {
     WHILE, ENDWHILE,
     REPEAT, UNTIL,
     FOR, TO, STEP, NEXT,
-    CASE, ENDCASE,
-    MOD, AND, OR, NOT,
+    CASE, ENDCASE, OTHERWISE,
+    DIV, MOD, AND, OR, NOT,
     OUTPUT, INPUT, RND, TIME,
     TRUE, FALSE,
 

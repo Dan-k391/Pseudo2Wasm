@@ -52,6 +52,7 @@ import { RecordType } from "./record";
 import { Symbol, symbolKind } from "./symbol";
 import { ArrTypeNode, TypeNode } from "../syntax/typenode";
 import { MEMORY_END } from "../memory-layout";
+import { passType } from "../syntax/param";
 
 /** A use of an already-invalid declaration is not an independent error. */
 class DependentDiagnostic extends Error {}
@@ -141,17 +142,12 @@ export class Checker {
         this.curScope = this.curScope.parent!;
     }
 
-    private static compatableBasic(leftBasicType: basicKind, rightBasicType: basicKind): boolean {
-        if (leftBasicType === basicKind.STRING &&
-            rightBasicType !== basicKind.STRING) {
-            return false;
-        }
-        if (leftBasicType !== basicKind.STRING &&
-            rightBasicType === basicKind.STRING) {
-            return false;
-        }
-        // compatable if both are not strings
-        return true;
+    private static compatableBasic(source: basicKind, target: basicKind): boolean {
+        return source === target || (source === basicKind.INTEGER && target === basicKind.REAL);
+    }
+
+    private static isNumeric(type: basicKind): boolean {
+        return type === basicKind.INTEGER || type === basicKind.REAL;
     }
 
     // sequence matters, ARRAYs are compatable with POINTERs
@@ -170,28 +166,20 @@ export class Checker {
             case typeKind.ARRAY:
                 // if the element types are same ARRAYs are compatable
                 if (rightType.kind === typeKind.ARRAY) {
-                    return Checker.compatable(leftType.elem, rightType.elem);
+                    return leftType.dimensions.length === rightType.dimensions.length &&
+                        leftType.dimensions.every((dimension, index) =>
+                            dimension.upper - dimension.lower ===
+                            rightType.dimensions[index].upper - rightType.dimensions[index].lower) &&
+                        Checker.compatable(leftType.elem, rightType.elem);
                 }
                 else if (rightType.kind === typeKind.POINTER) {
                     return Checker.compatable(leftType.elem, rightType.base);
                 }
                 return false;
             case typeKind.RECORD:
-                if (rightType.kind !== typeKind.RECORD) {
-                    return false;
-                }
-                if (leftType.fields.size !== rightType.fields.size) {
-                    return false;
-                }
-                for (let i = 0,
-                    leftFields = Array.from(leftType.fields.values()),
-                    rightFields = Array.from(rightType.fields.values());
-                    i < leftType.fields.size; i++) {
-                    if (!Checker.compatable(leftFields[i], rightFields[i])) {
-                        return false;
-                    }
-                }
-                return true;
+                // Named record types have identity; equal layouts do not make
+                // two separately declared types interchangeable.
+                return false;
             case typeKind.POINTER:
                 if (rightType.kind !== typeKind.POINTER) {
                     return false;
@@ -203,20 +191,11 @@ export class Checker {
     }
 
     private static commonBasicType(leftBasicType: basicKind, rightBasicType: basicKind): basicKind {
-        if (leftBasicType === basicKind.STRING) {
-            if (rightBasicType !== basicKind.STRING) {
-                throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-            }
-            return basicKind.STRING;
+        if (!Checker.isNumeric(leftBasicType) || !Checker.isNumeric(rightBasicType)) {
+            throw new RuntimeError("Numeric operator requires INTEGER or REAL operands");
         }
-        else if (rightBasicType === basicKind.STRING) {
-            throw new RuntimeError("Cannot convert " + rightBasicType + " to " + leftBasicType);
-        }
-        else if (leftBasicType === basicKind.REAL ||
-            rightBasicType === basicKind.REAL) {
-            return basicKind.REAL;
-        }
-        return basicKind.INTEGER;
+        return leftBasicType === basicKind.REAL || rightBasicType === basicKind.REAL
+            ? basicKind.REAL : basicKind.INTEGER;
     }
 
     private isGlobal(): boolean {
@@ -362,10 +341,16 @@ export class Checker {
                 throw new RuntimeError(`Duplicate parameter '${paramName}'`).at(param.ident);
             }
             param.type = this.resolveCallableType(param.typeNode);
+            if (param.type.kind === typeKind.RECORD) {
+                throw new RuntimeError("RECORD parameters are not supported").at(param.ident);
+            }
             funcParams.set(paramName, param.type);
         }
 
         node.type = this.resolveCallableType(node.typeNode);
+        if (node.type.kind === typeKind.RECORD || node.type.kind === typeKind.ARRAY) {
+            throw new RuntimeError("Composite FUNCTION returns are not supported").at(node.ident);
+        }
         const func = new FunctionType(funcParams, node.type);
         this.curScope.insertFunc(funcName, func);
     }
@@ -373,6 +358,7 @@ export class Checker {
     private declProc(node: ProcDefNode): void {
         const procName = node.ident.lexeme;
         const procParams = new Map<string, Type>();
+        const procModes = new Map<string, passType>();
 
         if (this.curScope.functions.has(procName) || this.curScope.procedures.has(procName)) {
             throw new RuntimeError(`Duplicate callable '${procName}'`).at(node.ident);
@@ -384,10 +370,17 @@ export class Checker {
                 throw new RuntimeError(`Duplicate parameter '${paramName}'`).at(param.ident);
             }
             param.type = this.resolveCallableType(param.typeNode);
+            if (param.type.kind === typeKind.RECORD) {
+                throw new RuntimeError("RECORD parameters are not supported").at(param.ident);
+            }
+            if (param.passType === passType.BYREF && param.type.kind !== typeKind.BASIC) {
+                throw new RuntimeError("BYREF currently requires a basic type").at(param.ident);
+            }
             procParams.set(paramName, param.type);
+            procModes.set(paramName, param.passType);
         }
 
-        const proc = new ProcedureType(procParams);
+        const proc = new ProcedureType(procParams, procModes);
         this.curScope.insertProc(procName, proc);
     }
 
@@ -475,6 +468,9 @@ export class Checker {
                 this.definitelyReturns(stmt.body) && this.definitelyReturns(stmt.elseBody)) {
                 return true;
             }
+            if (stmt.kind === nodeKind.CaseNode && stmt.otherwiseBody &&
+                stmt.bodies.every(branch => this.definitelyReturns(branch)) &&
+                this.definitelyReturns(stmt.otherwiseBody)) return true;
         }
         return false;
     }
@@ -594,7 +590,10 @@ export class Checker {
         }
 
         if (leftType.kind === typeKind.ARRAY || leftType.kind === typeKind.RECORD) {
-            throw new RuntimeError("Whole ARRAY and RECORD assignment is not supported; assign elements or fields instead");
+            if (rightType.kind !== leftType.kind || !this.isAssignable(node.right) ||
+                leftType.size() !== rightType.size()) {
+                throw new RuntimeError("Whole ARRAY or RECORD assignment requires a compatible variable of the same size");
+            }
         }
         if (leftType.kind === typeKind.POINTER && !this.isGlobal() &&
             this.writesOutsideCurrentFrame(node.left)) {
@@ -691,11 +690,18 @@ export class Checker {
                 const arg = node.args[i]; 
                 const argType = this.visitExpr(arg);
                 const paramType = proc.getParamType(paramNames[i]);
+                if (proc.paramModes.get(paramNames[i]) === passType.BYREF) {
+                    if (!this.isAssignable(arg) || !Checker.compatable(argType, paramType) ||
+                        !Checker.compatable(paramType, argType)) {
+                        throw new RuntimeError("BYREF argument must be an assignable value of exactly " + paramType);
+                    }
+                    continue;
+                }
                 if (!Checker.compatable(argType, paramType)) {
                     throw new RuntimeError("Cannot convert " + argType + " to " + paramType);
                 }
                 if (argType.kind === typeKind.BASIC && paramType.kind === typeKind.BASIC) {
-                    node.args[i] = this.arithConv(node.args[i], argType.type);
+                    node.args[i] = this.arithConv(node.args[i], paramType.type);
                 }
             }
             node.type = new NoneType();
@@ -704,105 +710,87 @@ export class Checker {
         throw new RuntimeError("Indirect procedure calls are not supported");
     }
 
-    private unaryExpr(node: UnaryExprNode): Type {   
-        node.type = this.visitExpr(node.expr);
+    private unaryExpr(node: UnaryExprNode): Type {
+        const operand = this.visitExpr(node.expr);
+        if (operand.kind !== typeKind.BASIC) {
+            throw new RuntimeError("Unary operators require a basic value");
+        }
+        if (node.operator.type === tokenType.NOT) {
+            if (operand.type !== basicKind.BOOLEAN) {
+                throw new RuntimeError("NOT requires a BOOLEAN operand");
+            }
+            node.type = new BasicType(basicKind.BOOLEAN);
+        } else {
+            if (!Checker.isNumeric(operand.type)) {
+                throw new RuntimeError("Unary + and - require INTEGER or REAL");
+            }
+            node.type = operand;
+        }
         return node.type;
     }
 
     private binaryExpr(node: BinaryExprNode): Type {
         const leftType = this.visitExpr(node.left);
         const rightType = this.visitExpr(node.right);
-
-        // The right side of arithmetic operations need to be BASIC types
-        // while the left side can be POINTER and BASIC types (for add and sub)
-        if (rightType.kind !== typeKind.BASIC) {
+        if (leftType.kind === typeKind.POINTER &&
+            (node.operator.type === tokenType.PLUS || node.operator.type === tokenType.MINUS)) {
+            throw new RuntimeError("Pointer arithmetic is not supported safely");
+        }
+        if (leftType.kind !== typeKind.BASIC || rightType.kind !== typeKind.BASIC) {
             throw new RuntimeError("Binary operators require basic values");
         }
-        
-        // the following code looks complicated but just goes over all the possibilities
-        // for basic types
-        // I do this because it then differs every type instead of converting them all
-        // into an INTEGER and see if promote to REAL
-        // for example, doing this does not allow a CHAR to convert to a REAL
+
         switch (node.operator.type) {
-            // arithmetic operations
             case tokenType.PLUS:
             case tokenType.MINUS:
-                if (leftType.kind === typeKind.BASIC) {
-                    if (leftType.type === basicKind.STRING ||
-                        rightType.type === basicKind.STRING) {
-                        throw new RuntimeError("Cannot perform arithmetic operations to STRINGs")
-                    }
-                    const type = Checker.commonBasicType(leftType.type, rightType.type);
-                    node.type = new BasicType(type);
-                    node.left = this.arithConv(node.left, type);
-                    node.right = this.arithConv(node.right, type);
-                }
-                else if (leftType.kind === typeKind.POINTER) {
-                    throw new RuntimeError("Pointer arithmetic is not supported safely");
-                }
-                break;
             case tokenType.STAR:
             case tokenType.SLASH: {
-                if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Arithmetic operators require basic values");
+                if (!Checker.isNumeric(leftType.type) || !Checker.isNumeric(rightType.type)) {
+                    throw new RuntimeError("Arithmetic requires INTEGER or REAL operands");
                 }
-                if (leftType.type === basicKind.STRING ||
-                    rightType.type === basicKind.STRING) {
-                    throw new RuntimeError("Cannot perform arithmetic operations to STRINGs")
-                }
-                const type = Checker.commonBasicType(leftType.type, rightType.type);
-                node.type = new BasicType(type);
+                const type = node.operator.type === tokenType.SLASH ? basicKind.REAL :
+                    Checker.commonBasicType(leftType.type, rightType.type);
                 node.left = this.arithConv(node.left, type);
                 node.right = this.arithConv(node.right, type);
+                node.type = new BasicType(type);
                 break;
             }
-            case tokenType.MOD: {
-                if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Arithmetic operators require basic values");
-                }
-                if (leftType.type !== basicKind.INTEGER ||
-                    rightType.type !== basicKind.INTEGER) {
-                    throw new RuntimeError("This operator requires INTEGER operands")
+            case tokenType.DIV:
+            case tokenType.MOD:
+                if (leftType.type !== basicKind.INTEGER || rightType.type !== basicKind.INTEGER) {
+                    throw new RuntimeError("DIV and MOD require INTEGER operands");
                 }
                 node.type = new BasicType(basicKind.INTEGER);
                 break;
-            }
-            // logical operators
             case tokenType.EQUAL:
             case tokenType.LESS_GREATER:
             case tokenType.LESS:
             case tokenType.GREATER:
             case tokenType.LESS_EQUAL:
             case tokenType.GREATER_EQUAL: {
-                if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Comparison requires basic values");
-                }
-                if (leftType.type === basicKind.STRING ||
-                    rightType.type === basicKind.STRING) {
-                    throw new RuntimeError("Cannot perform logical operations to STRINGs")
+                const equality = node.operator.type === tokenType.EQUAL ||
+                    node.operator.type === tokenType.LESS_GREATER;
+                if (Checker.isNumeric(leftType.type) && Checker.isNumeric(rightType.type)) {
+                    const type = Checker.commonBasicType(leftType.type, rightType.type);
+                    node.left = this.arithConv(node.left, type);
+                    node.right = this.arithConv(node.right, type);
+                } else if (leftType.type !== rightType.type ||
+                    leftType.type === basicKind.STRING ||
+                    (leftType.type === basicKind.BOOLEAN && !equality)) {
+                    throw new RuntimeError("Comparison requires compatible numeric, CHAR, or BOOLEAN operands");
                 }
                 node.type = new BasicType(basicKind.BOOLEAN);
-                const type = Checker.commonBasicType(leftType.type, rightType.type);
-                node.left = this.arithConv(node.left, type);
-                node.right = this.arithConv(node.right, type);
                 break;
             }
             case tokenType.AND:
-            case tokenType.OR: {
-                if (leftType.kind !== typeKind.BASIC) {
-                    throw new RuntimeError("Logical operators require basic values");
-                }
-                if (leftType.type !== basicKind.BOOLEAN ||
-                    rightType.type !== basicKind.BOOLEAN) {
-                    throw new RuntimeError("Logical operators require BOOLEAN operands")
+            case tokenType.OR:
+                if (leftType.type !== basicKind.BOOLEAN || rightType.type !== basicKind.BOOLEAN) {
+                    throw new RuntimeError("Logical operators require BOOLEAN operands");
                 }
                 node.type = new BasicType(basicKind.BOOLEAN);
                 break;
-            }
-            case tokenType.AMPERSAND: {
+            case tokenType.AMPERSAND:
                 throw new RuntimeError("String concatenation is not supported yet");
-            }
             default:
                 unreachable();
         }
@@ -935,7 +923,8 @@ export class Checker {
                 this.visitForStmt(stmt);
                 break;
             case nodeKind.CaseNode:
-                throw new RuntimeError("CASE statements are not supported yet");
+                this.visitCaseStmt(stmt);
+                break;
             default:
                 throw new Error("Internal compiler error: unknown statement node");
         }
@@ -960,8 +949,12 @@ export class Checker {
     }
 
     private visitOutputStmt(node: OutputNode): void {
-        // debugger;
-        this.visitExpr(node.expr);
+        for (const expr of node.exprs) {
+            const type = this.visitExpr(expr);
+            if (type.kind !== typeKind.BASIC) {
+                throw new RuntimeError("OUTPUT requires basic values");
+            }
+        }
     }
 
     private visitInputStmt(node: InputNode): void {
@@ -998,7 +991,10 @@ export class Checker {
     }
 
     private visitIfStmt(node: IfNode): void {
-        this.visitExpr(node.condition);
+        const condition = this.visitExpr(node.condition);
+        if (condition.kind !== typeKind.BASIC || condition.type !== basicKind.BOOLEAN) {
+            throw new RuntimeError("IF condition must be BOOLEAN");
+        }
         this.visitStmts(node.body);
         if (node.elseBody) {
             this.visitStmts(node.elseBody);
@@ -1006,12 +1002,18 @@ export class Checker {
     }
 
     private visitWhileStmt(node: WhileNode): void {
-        this.visitExpr(node.condition);
+        const condition = this.visitExpr(node.condition);
+        if (condition.kind !== typeKind.BASIC || condition.type !== basicKind.BOOLEAN) {
+            throw new RuntimeError("WHILE condition must be BOOLEAN");
+        }
         this.visitStmts(node.body);
     }
 
     private visitRepeatStmt(node: RepeatNode): void {
-        this.visitExpr(node.condition);
+        const condition = this.visitExpr(node.condition);
+        if (condition.kind !== typeKind.BASIC || condition.type !== basicKind.BOOLEAN) {
+            throw new RuntimeError("UNTIL condition must be BOOLEAN");
+        }
         this.visitStmts(node.body);
     }
 
@@ -1033,6 +1035,59 @@ export class Checker {
         if (stepType.kind !== typeKind.BASIC || stepType.type !== basicKind.INTEGER) {
             throw new RuntimeError("Step value of for loops can only be INTEGERs");
         }
+        const literalStep = node.step.kind === nodeKind.IntegerExprNode ? node.step.value :
+            node.step.kind === nodeKind.UnaryExprNode && node.step.expr.kind === nodeKind.IntegerExprNode ?
+                (node.step.operator.type === tokenType.MINUS ? -1 : 1) * node.step.expr.value : undefined;
+        if (literalStep === undefined) {
+            throw new RuntimeError("FOR STEP must be an integer literal; dynamic steps are not supported");
+        }
+        if (literalStep === 0) throw new RuntimeError("FOR STEP must not be zero");
         this.visitStmts(node.body);
+    }
+
+    private caseLiteralType(token: Token): basicKind {
+        switch (token.type) {
+            case tokenType.INT_CONST: return basicKind.INTEGER;
+            case tokenType.REAL_CONST: return basicKind.REAL;
+            case tokenType.CHAR_CONST: return basicKind.CHAR;
+            case tokenType.STRING_CONST: return basicKind.STRING;
+            case tokenType.TRUE:
+            case tokenType.FALSE: return basicKind.BOOLEAN;
+            default: throw new Error("Internal compiler error: invalid CASE literal token");
+        }
+    }
+
+    private caseLiteralValue(token: Token): number {
+        if (token.type === tokenType.CHAR_CONST) return token.literal.charCodeAt(0);
+        if (token.type === tokenType.TRUE) return 1;
+        if (token.type === tokenType.FALSE) return 0;
+        return token.literal;
+    }
+
+    private visitCaseStmt(node: CaseNode): void {
+        const type = this.lookUp(node.ident);
+        if (type.kind !== typeKind.BASIC) {
+            throw new RuntimeError("CASE selector must have a basic type").at(node.ident);
+        }
+        if (type.type === basicKind.STRING) {
+            throw new RuntimeError("STRING CASE selectors are not supported yet").at(node.ident);
+        }
+        node.type = type;
+        for (let i = 0; i < node.values.length; i++) {
+            const {from, to} = node.values[i];
+            if (this.caseLiteralType(from) !== type.type || this.caseLiteralType(to) !== type.type) {
+                throw new RuntimeError(`CASE label must be ${type.type}`).at(from);
+            }
+            if (from !== to) {
+                if (type.type === basicKind.BOOLEAN) {
+                    throw new RuntimeError("BOOLEAN CASE labels cannot be ranges").at(from);
+                }
+                if (this.caseLiteralValue(from) > this.caseLiteralValue(to)) {
+                    throw new RuntimeError("CASE range lower value exceeds upper value").at(from);
+                }
+            }
+            this.visitStmts(node.bodies[i]);
+        }
+        if (node.otherwiseBody) this.visitStmts(node.otherwiseBody);
     }
 }

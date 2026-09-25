@@ -1,6 +1,8 @@
 # OAC
 
 See [ROADMAP.md](ROADMAP.md) for the current milestones and progress checklist.
+See [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md) for the supported CAIE subset and
+precise language semantics.
 
 ## Development setup
 
@@ -128,8 +130,8 @@ ends at page 16, stack space occupies pages 16–24, and input strings use pages
 reserved once per call, including declarations inside loops.
 
 Every `FUNCTION` must have a `RETURN` on every statically visible path.
-`INPUT` needs an assignable basic-type target. Whole-array and whole-record
-assignments are rejected until the backend can copy them correctly.
+`INPUT` needs an assignable basic-type target. Compatible whole-array and
+whole-record assignments copy their values.
 
 Syntax and semantic errors include a 1-based `line:column` in their message.
 Their `startColumn` property is zero-based for editor integrations.
@@ -146,11 +148,9 @@ no WebAssembly is generated when diagnostics exist. Runtime array, pointer,
 stack, and input-string heap failures also include a source location where one
 is available. A stack overflow points to the function/procedure declaration.
 
-***I changed the type system into a where all basic types(except strings) can compat with each other***
-```
-OUTPUT 'a' > 3.5
-```
-This is **ALLOWED** for this compiler.
+The type checker permits same-type assignment and INTEGER-to-REAL widening;
+it rejects cross-type CHAR/BOOLEAN/numeric operations. `/` produces REAL,
+while `DIV` and `MOD` require INTEGER operands.
 
 ## Basic Grammar
 
@@ -189,7 +189,8 @@ The type of right side of the assignment is resolved and the compiler attempts t
 
 **Implicit type conversion**
 
-All basic types except STRINGs (INTEGER, REAL, CHAR, BOOLEAN) can interconvert with each other.
+Only INTEGER widens implicitly to REAL. Other basic types do not implicitly
+interconvert.
 
 INTEGER, CHAR and BOOLEAN are all i32 types after converted to wasm. REAL is f64.
 
@@ -262,8 +263,8 @@ FUNCTION foo (i: INTEGER) RETURNS INTEGER
     RETURN i
 ENDFUNCTION
 
-// BYREF passes the reference of the object
-PROCEDURE foo (BYREF: i: INTEGER)
+// BYREF passes an assignable basic-type variable by reference
+PROCEDURE foo (BYREF i: INTEGER)
     i <- i + 1
 ENDPROCEDURE
 
@@ -320,10 +321,8 @@ CASE OF <Identifier>
     ...
 ENDCASE
 ```
-Not implemented because i don't want to.
-***Theoretically,***
-***At the end of each statement, you have to put a semicolon.***
-***Just don't use this lol.***
+CASE is implemented with first-match behavior, inclusive ranges and optional
+`OTHERWISE`. No semicolon is needed. STRING selectors are not yet supported.
 
 #### Output
 ```

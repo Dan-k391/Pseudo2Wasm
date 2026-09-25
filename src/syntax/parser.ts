@@ -187,7 +187,7 @@ export class Parser {
 
     private factor(): Expr {
         let expr: Expr = this.unary();
-        while (this.match(tokenType.SLASH, tokenType.STAR, tokenType.MOD)) {
+        while (this.match(tokenType.SLASH, tokenType.STAR, tokenType.DIV, tokenType.MOD)) {
             const operator: Token = this.previous();
             const right: Expr = this.unary();
             expr = new BinaryExprNode(expr, operator, right);
@@ -343,8 +343,9 @@ export class Parser {
     } 
 
     private outputStatement(): Stmt {
-        const expr = this.expression();
-        return new OutputNode(expr);
+        const exprs = [this.expression()];
+        while (this.match(tokenType.COMMA)) exprs.push(this.expression());
+        return new OutputNode(exprs);
     }
 
     private inputStatement(): Stmt {
@@ -487,36 +488,75 @@ export class Parser {
         return new ForNode(ident, start, end, step, body);
     }
 
-    // Case ::= "CASE" "OF" IDENT {Values {"TO" Expr} ":" {Stmts} ";"} "ENDCASE"
+    private caseLiteral(): Token {
+        const sign = this.match(tokenType.MINUS, tokenType.PLUS) ? this.previous() : undefined;
+        const literal = this.consume("Expected CASE literal", tokenType.INT_CONST,
+            tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST,
+            tokenType.TRUE, tokenType.FALSE);
+        if (!sign) return literal;
+        if (literal.type !== tokenType.INT_CONST && literal.type !== tokenType.REAL_CONST) {
+            throw this.error(sign, "A sign is only valid on a numeric CASE literal");
+        }
+        return new Token(literal.type, sign.lexeme + literal.lexeme,
+            sign.type === tokenType.MINUS ? -literal.literal : literal.literal,
+            sign.line, sign.startColumn, literal.endColumn);
+    }
+
+    private isCaseLabel(): boolean {
+        let index = this.current;
+        if (this.tokens[index]?.type === tokenType.OTHERWISE) return true;
+        if (this.tokens[index]?.type === tokenType.MINUS ||
+            this.tokens[index]?.type === tokenType.PLUS) index++;
+        const literal = this.tokens[index]?.type;
+        if (literal !== tokenType.INT_CONST && literal !== tokenType.REAL_CONST &&
+            literal !== tokenType.CHAR_CONST && literal !== tokenType.STRING_CONST &&
+            literal !== tokenType.TRUE && literal !== tokenType.FALSE) return false;
+        index++;
+        if (this.tokens[index]?.type === tokenType.TO) {
+            index++;
+            if (this.tokens[index]?.type === tokenType.MINUS ||
+                this.tokens[index]?.type === tokenType.PLUS) index++;
+            index++;
+        }
+        return this.tokens[index]?.type === tokenType.COLON;
+    }
+
+    // CASE branches end at the next label or ENDCASE; semicolons remain optional
+    // for compatibility with older source files.
     private caseStatement(): CaseNode {
         this.consume("Expected 'OF'", tokenType.OF);
         const ident: Token = this.consume("Expected variable name", tokenType.IDENTIFIER);
         const bodies: Array<Array<Stmt>> = new Array<Array<Stmt>>();
         const values: Array<Values> = new Array<Values>();
-        // statements for current case
-        const statements: Array<Stmt> = new Array<Stmt>();
+        let otherwiseBody: Array<Stmt> | undefined;
         while (!this.check(tokenType.ENDCASE) && !this.isAtEnd()) {
-            if (this.isNewLine()) this.advance();
-            else {
-                const from: Token = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
-                // if there is no 'TO', the from and to value are the same
-                let to: Token = from;
-                if (this.match(tokenType.TO))
-                    to = this.consume("Expected Value", tokenType.INT_CONST, tokenType.REAL_CONST, tokenType.CHAR_CONST, tokenType.STRING_CONST, tokenType.BOOLEAN);
-                this.consume("Expected colon", tokenType.COLON);
-                while (!this.check(tokenType.SEMICOLON) && !this.isAtEnd()) {
+            if (this.isNewLine() || this.match(tokenType.SEMICOLON)) {
+                if (this.isNewLine()) this.advance();
+                continue;
+            }
+            if (otherwiseBody) throw this.error(this.peek(), "OTHERWISE must be the last CASE branch");
+            const otherwise = this.match(tokenType.OTHERWISE);
+            const from = otherwise ? undefined : this.caseLiteral();
+            const to = !otherwise && this.match(tokenType.TO) ? this.caseLiteral() : from;
+            this.consume("Expected ':' after CASE label", tokenType.COLON);
+            const body: Array<Stmt> = [];
+            while (!this.check(tokenType.ENDCASE) && !this.isAtEnd()) {
+                if (this.isNewLine() || this.match(tokenType.SEMICOLON)) {
                     if (this.isNewLine()) this.advance();
-                    else { const stmt = this.recoverStatement(); if (stmt) statements.push(stmt); }
+                    continue;
                 }
-                this.consume("Expected semicolon", tokenType.SEMICOLON);
-                bodies.push(statements);
-                // clear the statements
-                statements.length = 0;
-                values.push({from, to});
+                if (this.isCaseLabel()) break;
+                const stmt = this.recoverStatement();
+                if (stmt) body.push(stmt);
+            }
+            if (otherwise) otherwiseBody = body;
+            else {
+                values.push({from: from!, to: to!});
+                bodies.push(body);
             }
         }
         this.consume("Expected 'ENDCASE'", tokenType.ENDCASE);
-        return new CaseNode(ident, values, bodies);
+        return new CaseNode(ident, values, bodies, otherwiseBody);
     }
 
     private expressionStatement(): Stmt {

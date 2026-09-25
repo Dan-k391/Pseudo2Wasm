@@ -61,23 +61,28 @@ errors from malformed input; independent errors within a sound phase accumulate.
 
 ## Milestone 4: Specified language semantics
 
-- [ ] Make a CAIE pseudocode feature matrix with supported, partial, unsupported,
+- [x] Make a CAIE pseudocode feature matrix with supported, partial, unsupported,
       and intentionally different behavior; turn each supported rule into tests.
-- [ ] Define expression evaluation order, numeric conversions and overflow,
+- [x] Define expression evaluation order, numeric conversions and overflow,
       equality, string encoding/operations, array and record value semantics,
       parameter passing, and function return/definite-assignment rules.
-- [ ] Decide whether pointer arithmetic belongs in the language. If it does,
+- [x] Decide whether pointer arithmetic belongs in the language. If it does,
       specify element scaling, bounds, and lifetime behavior before implementing
       it; otherwise keep it explicitly rejected.
-- [ ] Implement `CASE` and other prioritized language gaps with parser, checker,
+- [x] Implement `CASE` and other prioritized language gaps with parser, checker,
       backend, positive, and negative tests together. Decide the file-I/O host
       contract before adding file operations.
-- [ ] Add table-driven edge cases and end-to-end reference programs so backend
+- [x] Add table-driven edge cases and end-to-end reference programs so backend
       behavior is checked against the specified semantics, not just Wasm validity.
 
 Done when the supported language is explicit and the checker rejects programs
 the backend cannot faithfully execute. Features are complete across every
 compiler stage, not merely recognized by the parser.
+
+Implemented subset and remaining gaps: [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md).
+The Milestone 4 prompt and acceptance criteria are in
+[MILESTONE4_PROMPT.md](MILESTONE4_PROMPT.md). `npm test` passes the Node,
+headless Edge, and packed-package checks.
 
 ## Milestone 5: Safe, efficient Wasm execution
 

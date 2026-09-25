@@ -18,7 +18,8 @@
   "files": [
     "dist",
     "node-entry.cjs",
-    "README.md"
+    "README.md",
+    "LANGUAGE_SUPPORT.md"
   ],
   "scripts": {
     "test": "npm run build && npm run build:test && node test/node.test.mjs && node scripts/run-browser-tests.mjs && node scripts/test-package.mjs",

@@ -33,6 +33,17 @@ import { code28 } from "./samples/code28";
 import { code29 } from "./samples/code29";
 import { code30 } from "./samples/code30";
 import { code31 } from "./samples/code31";
+import { code32 } from "./samples/code32";
+import { code33 } from "./samples/code33";
+import { code34 } from "./samples/code34";
+import { code35 } from "./samples/code35";
+import { code36 } from "./samples/code36";
+import { code37 } from "./samples/code37";
+import { code38 } from "./samples/code38";
+import { code39 } from "./samples/code39";
+import { code40 } from "./samples/code40";
+import { code41 } from "./samples/code41";
+import { code42 } from "./samples/code42";
 
 interface CompilerTestCase {
     name: string;
@@ -75,6 +86,17 @@ const tests: Array<CompilerTestCase> = [
     code29,
     code30,
     code31,
+    code32,
+    code33,
+    code34,
+    code35,
+    code36,
+    code37,
+    code38,
+    code39,
+    code40,
+    code41,
+    code42,
 ];
 
 async function assertTest(test: CompilerTestCase): Promise<void> {

@@ -563,12 +563,15 @@ export class CaseNode extends BaseNode {
     public ident: Token;
     public values: Array<Values>;
     public bodies: Array<Array<Stmt>>;
+    public otherwiseBody?: Array<Stmt>;
+    public type!: Type;
 
-    constructor(ident: Token, values: Array<Values>, bodies: Array<Array<Stmt>>) {
+    constructor(ident: Token, values: Array<Values>, bodies: Array<Array<Stmt>>, otherwiseBody?: Array<Stmt>) {
         super();
         this.ident = ident;
         this.values = values;
         this.bodies = bodies;
+        this.otherwiseBody = otherwiseBody;
     }
 
     public toString(): string {
@@ -594,10 +597,12 @@ export class ExprStmtNode extends BaseNode {
 export class OutputNode extends BaseNode {
     public readonly kind = nodeKind.OutputNode;
     public expr: Expr;
+    public exprs: Array<Expr>;
 
-    constructor(expr: Expr) {
+    constructor(exprs: Array<Expr>) {
         super();
-        this.expr = expr;
+        this.exprs = exprs;
+        this.expr = exprs[0];
     }
 
     public toString(): string {

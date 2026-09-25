@@ -23,6 +23,7 @@ import {
     WhileNode,
     RepeatNode,
     ForNode,
+    CaseNode,
     ExprStmtNode,
     VarExprNode,
     IndexExprNode,
@@ -110,7 +111,8 @@ export class Generator {
     public generate(): Module {
         // JSPI now uses WebAssembly.Suspending/promising at the host boundary;
         // recent Binaryen versions no longer provide a "jspi" transform pass.
-        this.module.setFeatures(binaryen.Features.ReferenceTypes);
+        this.module.setFeatures(binaryen.Features.ReferenceTypes | binaryen.Features.BulkMemory |
+            binaryen.Features.BulkMemoryOpt);
         // createType although it is useless
         this.module.addFunctionImport("logInteger", "env", "logInteger", binaryen.createType([binaryen.i32]), binaryen.none);
         this.module.addFunctionImport("logReal", "env", "logReal", binaryen.createType([binaryen.f64]), binaryen.none);
@@ -140,6 +142,9 @@ export class Generator {
         this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
         // stackbase, starts from 65536 * 10
         this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
+        // CASE selectors are captured once before testing ordered branches.
+        this.module.addGlobal("__caseI32", binaryen.i32, true, this.module.i32.const(0));
+        this.module.addGlobal("__caseF64", binaryen.f64, true, this.module.f64.const(0));
 
         this.generateBuiltins();
         // this.module.setStart(this.generateBody(this.ast.body));
@@ -404,6 +409,11 @@ export class Generator {
         for (const param of params) {
             const paramName = param.ident.lexeme;
             const paramType = param.type;
+            if (param.passType === passType.BYREF) {
+                this.setPointer(paramName, this.module.local.get(index, binaryen.i32));
+                index++;
+                continue;
+            }
             this.addVar(paramName, paramType);
             const ptr = this.getPointer(paramName);
             const wasmType = paramType.wasmType();
@@ -424,7 +434,7 @@ export class Generator {
         const paramWasmTypes = new Array<WasmType>();
 
         for (const value of node.params) {
-            paramWasmTypes.push(value.type.wasmType());
+            paramWasmTypes.push(value.passType === passType.BYREF ? binaryen.i32 : value.type.wasmType());
         }
 
         const paramType = binaryen.createType(paramWasmTypes);
@@ -455,7 +465,7 @@ export class Generator {
         const paramWasmTypes = new Array<WasmType>();
 
         for (const value of node.params) {
-            paramWasmTypes.push(value.type.wasmType());
+            paramWasmTypes.push(value.passType === passType.BYREF ? binaryen.i32 : value.type.wasmType());
         }
 
         const paramType = binaryen.createType(paramWasmTypes);
@@ -559,6 +569,11 @@ export class Generator {
     }
 
     public assignExpression(node: AssignNode): ExpressionRef {
+        if (node.type.kind === typeKind.ARRAY || node.type.kind === typeKind.RECORD) {
+            return this.module.memory.copy(
+                this.generateAddr(node.left), this.generateAddr(node.right),
+                this.module.i32.const(node.type.size()), "0", "0");
+        }
         const value = this.generateExpression(node.right);
         const ptr = this.generateAddr(node.left);
         // the type of assign node is the type of it's left node
@@ -672,7 +687,8 @@ export class Generator {
 
             for (let i = 0; i < node.args.length; i++) {
                 const arg = node.args[i];
-                procArgs.push(this.generateExpression(arg));
+                const mode = Array.from(this.curScope.lookUpProc(procName).paramModes.values())[i];
+                procArgs.push(mode === passType.BYREF ? this.generateAddr(arg) : this.generateExpression(arg));
             }
             return this.module.call(procName, procArgs, binaryen.none);
         }
@@ -710,15 +726,23 @@ export class Generator {
 
     // judge the expression type then perform the conversion and operation
     private binaryExpression(node: BinaryExprNode): ExpressionRef {
-        const type = node.type;      
+        const type = node.type;
         if (type.kind !== typeKind.BASIC) {
             throw new RuntimeError("Binary operations can only be performed on basic types");
         }
 
         let leftExpr = this.generateExpression(node.left);
         let rightExpr = this.generateExpression(node.right);
-        // if the type is REAL, convert the INTEGER to REAL
-        if (type.type === basicKind.REAL) {
+        // Wasm `if` evaluates only the selected branch, so side effects on the
+        // right of AND/OR are skipped when the left determines the result.
+        if (node.operator.type === tokenType.AND) {
+            return this.module.if(leftExpr, rightExpr, this.module.i32.const(0));
+        }
+        if (node.operator.type === tokenType.OR) {
+            return this.module.if(leftExpr, this.module.i32.const(1), rightExpr);
+        }
+        const operandType = node.left.type;
+        if (operandType.kind === typeKind.BASIC && operandType.type === basicKind.REAL) {
             switch(node.operator.type) {
                 case tokenType.PLUS:
                     return this.module.f64.add(leftExpr, rightExpr);
@@ -752,6 +776,8 @@ export class Generator {
                 return this.module.i32.mul(leftExpr, rightExpr);
             case tokenType.SLASH:
                 return this.module.i32.div_s(leftExpr, rightExpr);
+            case tokenType.DIV:
+                return this.module.i32.div_s(leftExpr, rightExpr);
             case tokenType.MOD:
                 return this.module.i32.rem_s(leftExpr, rightExpr);
             case tokenType.EQUAL:
@@ -766,10 +792,6 @@ export class Generator {
                 return this.module.i32.le_s(leftExpr, rightExpr);
             case tokenType.GREATER_EQUAL:
                 return this.module.i32.ge_s(leftExpr, rightExpr);
-            case tokenType.AND:
-                return this.module.i32.and(leftExpr, rightExpr);
-            case tokenType.OR:
-                return this.module.i32.or(leftExpr, rightExpr);
         }
         throw new Error("Internal compiler error: unsupported binary operator reached Wasm lowering");
         // TODO: STRING
@@ -851,6 +873,8 @@ export class Generator {
                 return this.repeatStatement(statement);
             case nodeKind.ForNode:
                 return this.forStatement(statement);
+            case nodeKind.CaseNode:
+                return this.caseStatement(statement);
             default:
                 throw new Error("Internal compiler error: unknown statement reached Wasm lowering");
         }
@@ -885,13 +909,17 @@ export class Generator {
     }
 
     private outputStatement(node: OutputNode): ExpressionRef {
-        const type = node.expr.type;
+        return this.module.block(null, node.exprs.map(expr => this.outputValue(expr)));
+    }
+
+    private outputValue(value: Expr): ExpressionRef {
+        const type = value.type;
         if (type.kind !== typeKind.BASIC) {
             throw new RuntimeError("Output can only be performed on basic types");
         }
 
         const basicType: basicKind = type.type;
-        const expr = this.generateExpression(node.expr);
+        const expr = this.generateExpression(value);
 
         switch (basicType) {
             case basicKind.INTEGER:
@@ -907,7 +935,6 @@ export class Generator {
         }
 
         throw new Error("Internal compiler error: unsupported OUTPUT type reached Wasm lowering");
-        // return this.module.call("logNumber", [this.generateExpression(node.expr)], binaryen.none);
     }
 
     private inputStatement(node: InputNode): ExpressionRef {
@@ -1040,14 +1067,16 @@ export class Generator {
 
         const initExpr = this.generateExpression(node.start);
 
-        // basically, in the for loop, there is first an assignment followed by a comparison, and then a step
-        // fuck it, just do not use the load function
         const init = this.module.i32.store(0, 1, ptr, initExpr, "0");
 
         const statements = this.generateStatements(node.body);
         const variable = this.module.i32.load(0, 1, ptr, "0");
 
-        const condition = this.module.i32.ge_s(this.generateExpression(node.end), variable);
+        const descending = node.step.kind === nodeKind.UnaryExprNode &&
+            node.step.operator.type === tokenType.MINUS;
+        const condition = descending
+            ? this.module.i32.ge_s(variable, this.generateExpression(node.end))
+            : this.module.i32.le_s(variable, this.generateExpression(node.end));
         const step = this.module.i32.store(0, 1, ptr,
             this.module.i32.add(
                 variable,
@@ -1064,5 +1093,36 @@ export class Generator {
                 this.module.if(condition, this.module.block(null, statements))
             )
         ]);
+    }
+
+    private caseValue(token: {type: tokenType; literal: any}): number {
+        if (token.type === tokenType.CHAR_CONST) return token.literal.charCodeAt(0);
+        if (token.type === tokenType.TRUE) return 1;
+        if (token.type === tokenType.FALSE) return 0;
+        return token.literal;
+    }
+
+    private caseStatement(node: CaseNode): ExpressionRef {
+        const real = node.type.kind === typeKind.BASIC && node.type.type === basicKind.REAL;
+        const wasmType = real ? binaryen.f64 : binaryen.i32;
+        const temp = real ? "__caseF64" : "__caseI32";
+        const selector = this.load(node.type, this.getPointer(node.ident.lexeme));
+        const current = () => this.module.global.get(temp, wasmType);
+        const literal = (value: number) => real ? this.module.f64.const(value) : this.module.i32.const(value);
+        let branch: ExpressionRef = node.otherwiseBody
+            ? this.generateBlock(node.otherwiseBody) : this.module.block(null, []);
+        for (let i = node.values.length - 1; i >= 0; i--) {
+            const {from, to} = node.values[i];
+            const lower = literal(this.caseValue(from));
+            const condition = from === to
+                ? (real ? this.module.f64.eq(current(), lower) : this.module.i32.eq(current(), lower))
+                : this.module.i32.and(
+                    real ? this.module.f64.ge(current(), lower) : this.module.i32.ge_s(current(), lower),
+                    real ? this.module.f64.le(current(), literal(this.caseValue(to))) :
+                        this.module.i32.le_s(current(), literal(this.caseValue(to)))
+                );
+            branch = this.module.if(condition, this.generateBlock(node.bodies[i]), branch);
+        }
+        return this.module.block(null, [this.module.global.set(temp, selector), branch]);
     }
 }
