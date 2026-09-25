@@ -70,6 +70,7 @@ export class Scanner {
     private start: number;
     private current: number;
     private line: number;
+    private startLine: number;
 
     private startColumn: number;
     private endColumn: number;
@@ -81,6 +82,7 @@ export class Scanner {
         this.start = 0;
         this.current = 0;
         this.line = 1;
+        this.startLine = 1;
         this.startColumn = 0;
         this.endColumn = 0;
     }
@@ -88,6 +90,7 @@ export class Scanner {
     public scan(): Array<Token> {
         while (!this.isAtEnd()) {
             this.start = this.current;
+            this.startLine = this.line;
             this.startColumn = this.endColumn;
             this.scanToken();
         }
@@ -129,7 +132,7 @@ export class Scanner {
             case ' ': break;
             case '\r': break;
             case '\t': break;
-            case '\n': this.addToken(tokenType.NEWLINE); this.line++; this.startColumn = 0; this.endColumn = 0; break;
+            case '\n': this.addToken(tokenType.NEWLINE); break;
             default: 
                 if (this.isDigit(c)) {
                     this.number();
@@ -158,18 +161,24 @@ export class Scanner {
         if (this.isAtEnd()) return false;
         if (this.source.charAt(this.current) !== expected) return false;
 
-        this.current++;
+        this.advance();
         return true;
     }
 
     private advance(): string {
-        this.endColumn++;
-        return this.source.charAt(this.current++);
+        const char = this.source.charAt(this.current++);
+        if (char === '\n') {
+            this.line++;
+            this.endColumn = 0;
+        } else {
+            this.endColumn++;
+        }
+        return char;
     }
 
     private addToken(type: tokenType, literal: unknown = null): void {
         const text: string = this.source.substring(this.start, this.current);
-        this.tokens.push(new Token(type, text, literal, this.line, this.startColumn, this.endColumn));
+        this.tokens.push(new Token(type, text, literal, this.startLine, this.startColumn, this.endColumn, this.line));
     }
 
     private isAtEnd(): boolean {
@@ -190,17 +199,16 @@ export class Scanner {
 
     private char(): void {
         while (this.peek() != "'" && !this.isAtEnd()) {
-            if (this.peek() == '\n') this.line++;
             this.advance();
         }
 
         if (this.isAtEnd()) {
-            throw new SyntaxError("Unterminated char", this.line, this.startColumn, this.endColumn);
+            throw new SyntaxError("Unterminated char", this.startLine, this.startColumn, this.endColumn);
         }
         // char only contains a single character
         // the first character is the '
         else if (this.current - this.start > 2) {
-            throw new SyntaxError("Char contains only a single character", this.line, this.startColumn, this.endColumn);
+            throw new SyntaxError("Char contains only a single character", this.startLine, this.startColumn, this.endColumn);
         }
 
         this.advance();
@@ -211,12 +219,11 @@ export class Scanner {
 
     private string(): void {
         while (this.peek() != '"' && !this.isAtEnd()) {
-            if (this.peek() == '\n') this.line++;
             this.advance();
         }
 
         if (this.isAtEnd()) {
-            throw new SyntaxError("Unterminated string", this.line, this.startColumn, this.endColumn);
+            throw new SyntaxError("Unterminated string", this.startLine, this.startColumn, this.endColumn);
         }
 
         this.advance();

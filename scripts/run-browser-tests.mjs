@@ -50,7 +50,9 @@ export async function runBrowserPage(htmlPath) {
     try {
         await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
         const address = server.address();
-        const url = `http://127.0.0.1:${address.port}/${path.basename(htmlPath)}`;
+        const filter = process.argv[2] || process.env.PSEUDO2WASM_TEST_FILTER;
+        const url = `http://127.0.0.1:${address.port}/${path.basename(htmlPath)}` +
+            (filter ? `?only=${encodeURIComponent(filter)}` : "");
         const args = [
             "--headless", "--disable-gpu", "--disable-extensions", "--no-first-run",
             "--no-default-browser-check", `--user-data-dir=${profile}`,
@@ -82,6 +84,7 @@ export async function runBrowserPage(htmlPath) {
         let nextId = 0;
         const pending = new Map();
         const browserErrors = [];
+        const browserLog = [];
         socket.addEventListener("message", event => {
             const message = JSON.parse(event.data);
             if (message.id && pending.has(message.id)) {
@@ -92,11 +95,21 @@ export async function runBrowserPage(htmlPath) {
                 browserErrors.push(message.params.exceptionDetails.text);
             } else if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") {
                 browserErrors.push(message.params.args.map(arg => arg.value || arg.description).join(" "));
+            } else if (message.method === "Runtime.consoleAPICalled") {
+                browserLog.push(message.params.args.map(arg => arg.value || arg.description).join(" "));
+                if (browserLog.length > 30) browserLog.shift();
             }
         });
         const send = (method, params = {}) => new Promise((resolve, reject) => {
             const id = ++nextId;
-            pending.set(id, { resolve, reject });
+            const timer = setTimeout(() => {
+                pending.delete(id);
+                reject(new Error(`Browser debugging command ${method} timed out; recent logs: ${browserLog.join(" | ")}; errors: ${browserErrors.join(" | ")}`));
+            }, 10000);
+            pending.set(id, {
+                resolve: value => { clearTimeout(timer); resolve(value); },
+                reject: error => { clearTimeout(timer); reject(error); },
+            });
             socket.send(JSON.stringify({ id, method, params }));
         });
         await send("Runtime.enable");
@@ -110,14 +123,20 @@ export async function runBrowserPage(htmlPath) {
             });
             result = evaluation.result.value;
             if (result?.status) break;
-            if (child.exitCode !== null) break;
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         if (result?.status !== "passed") {
-            throw new Error(`Browser tests ${result?.status || "timed out"}: ${result?.detail || browserErrors.join("; ") || stderr}`);
+            throw new Error(`Browser tests ${result?.status || "timed out"}: ${result?.detail || browserErrors.join("; ") || stderr}; recent logs: ${browserLog.join(" | ")}`);
         }
         console.log(`Browser tests passed in ${path.basename(browser)}`);
     } finally {
+        if (socket?.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ id: 999999, method: "Browser.close" }));
+            await Promise.race([
+                new Promise(resolve => socket.addEventListener("close", resolve, { once: true })),
+                new Promise(resolve => setTimeout(resolve, 3000)),
+            ]);
+        }
         socket?.close();
         if (child && child.exitCode === null) {
             child.kill();
@@ -126,8 +145,14 @@ export async function runBrowserPage(htmlPath) {
                 new Promise(resolve => setTimeout(resolve, 5000)),
             ]);
         }
-        server.close();
-        await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+        try {
+            await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+        } catch (error) {
+            // Edge can briefly retain a child-process database handle on Windows.
+            console.warn(`Could not remove temporary browser profile ${profile}: ${error}`);
+        }
     }
 }
 

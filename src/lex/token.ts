@@ -40,14 +40,16 @@ export class Token {
     public lexeme: string;
     public literal: any;
     public line: number;
+    public endLine: number;
     public startColumn: number;
     public endColumn: number;
 
-    constructor(type: tokenType, lexeme: string, literal: any, line: number, startColumn: number, endColumn: number) {
+    constructor(type: tokenType, lexeme: string, literal: any, line: number, startColumn: number, endColumn: number, endLine: number = line) {
         this.type = type;
         this.lexeme = lexeme;
         this.literal = literal;
         this.line = line;
+        this.endLine = endLine;
         this.startColumn = startColumn;
         this.endColumn = endColumn;
     }

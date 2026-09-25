@@ -58,6 +58,8 @@ export const enum nodeKind {
 
 export abstract class BaseNode {
     public abstract readonly kind: nodeKind;
+    /** Token responsible for this node, used in compiler diagnostics. */
+    public source?: Token;
 
     public abstract toString(): string;
 }

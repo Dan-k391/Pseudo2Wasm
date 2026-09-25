@@ -8,6 +8,7 @@
 
 import {
     nodeKind,
+    BaseNode,
 
     Expr,
     Stmt,
@@ -60,6 +61,11 @@ export class Parser {
     constructor(tokens: Array<Token>) {
         this.tokens = tokens;
         this.current = 0;
+    }
+
+    private sourced<T extends BaseNode>(node: T, token: Token): T {
+        node.source = token;
+        return node;
     }
 
     public parse(): ProgramNode {
@@ -161,14 +167,15 @@ export class Parser {
 
     private pointer(): Expr {
         if (this.match(tokenType.CARET)) {
+            const operator = this.previous();
             const leftValue: Expr = this.pointer();
-            return new AddrExprNode(leftValue);
+            return this.sourced(new AddrExprNode(leftValue), operator);
         }
 
         // FIXME: A very hard problem here, this.call() should be this.pointer().
         let expr = this.call();
 
-        while (this.match(tokenType.CARET)) expr = new DerefExprNode(expr);
+        while (this.match(tokenType.CARET)) expr = this.sourced(new DerefExprNode(expr), this.previous());
         return expr;
     }           
 
@@ -223,6 +230,7 @@ export class Parser {
         let expr: Expr = this.primary();
         while (true) {
             if (this.match(tokenType.LEFT_BRACKET)) {
+                const bracket = this.previous();
                 const indexes: Array<Expr> = new Array<Expr>();
                 if (!this.check(tokenType.RIGHT_BRACKET)) {
                     do {
@@ -235,7 +243,7 @@ export class Parser {
                     while (this.match(tokenType.COMMA));
                 }
                 this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
-                expr = new IndexExprNode(expr, indexes);
+                expr = this.sourced(new IndexExprNode(expr, indexes), bracket);
             }
             else if (this.match(tokenType.DOT)) {
                 const ident: Token = this.consume("Expected field name", tokenType.IDENTIFIER);
@@ -249,12 +257,12 @@ export class Parser {
     }
 
     private primary(): Expr {
-        if (this.match(tokenType.FALSE)) return new BoolExprNode(false);
-        if (this.match(tokenType.TRUE)) return new BoolExprNode(true);
-        if (this.match(tokenType.INT_CONST)) return new IntegerExprNode(this.previous().literal);
-        if (this.match(tokenType.REAL_CONST)) return new RealExprNode(this.previous().literal);
-        if (this.match(tokenType.CHAR_CONST)) return new CharExprNode(this.previous().literal);
-        if (this.match(tokenType.STRING_CONST)) return new StringExprNode(this.previous().literal);
+        if (this.match(tokenType.FALSE)) return this.sourced(new BoolExprNode(false), this.previous());
+        if (this.match(tokenType.TRUE)) return this.sourced(new BoolExprNode(true), this.previous());
+        if (this.match(tokenType.INT_CONST)) return this.sourced(new IntegerExprNode(this.previous().literal), this.previous());
+        if (this.match(tokenType.REAL_CONST)) return this.sourced(new RealExprNode(this.previous().literal), this.previous());
+        if (this.match(tokenType.CHAR_CONST)) return this.sourced(new CharExprNode(this.previous().literal), this.previous());
+        if (this.match(tokenType.STRING_CONST)) return this.sourced(new StringExprNode(this.previous().literal), this.previous());
         if (this.match(tokenType.IDENTIFIER)) return new VarExprNode(this.previous());
         if (this.match(tokenType.LEFT_PAREN)) {
             const expr: Expr = this.expression();
@@ -268,7 +276,10 @@ export class Parser {
     private statement(): Stmt {
         if (this.match(tokenType.OUTPUT)) return this.outputStatement();
         if (this.match(tokenType.INPUT)) return this.inputStatement();
-        if (this.match(tokenType.RETURN)) return this.returnStatement();
+        if (this.match(tokenType.RETURN)) {
+            const keyword = this.previous();
+            return this.sourced(this.returnStatement(), keyword);
+        }
         // FIXME: declaration only supports variable
         if (this.match(tokenType.DECLARE)) return this.declaration();
         // FIXME: type declaration only supports pointer
@@ -278,7 +289,10 @@ export class Parser {
         if (this.match(tokenType.WHILE)) return this.whileStatement();
         if (this.match(tokenType.REPEAT)) return this.repeatStatement();
         if (this.match(tokenType.FOR)) return this.forStatement();
-        if (this.match(tokenType.CASE)) return this.caseStatement();
+        if (this.match(tokenType.CASE)) {
+            const keyword = this.previous();
+            return this.sourced(this.caseStatement(), keyword);
+        }
 
         return this.expressionStatement();
     } 
@@ -300,6 +314,7 @@ export class Parser {
 
     private expectType(): TypeNode {
         if (this.match(tokenType.ARRAY)) {
+            const arrayToken = this.previous();
             this.consume("Expected '['", tokenType.LEFT_BRACKET);
             const dimensions: Array<Dimension> = new Array<Dimension>;
             if (!this.check(tokenType.RIGHT_BRACKET)) {
@@ -312,7 +327,7 @@ export class Parser {
                     this.consume("Expected colon", tokenType.COLON);
                     const upper: Token = this.consume("Expected INTEGER for ARRAY upper bound", tokenType.INT_CONST);
                     // use interfaces
-                    const dimension: Dimension = {lower: lower.literal, upper: upper.literal};
+                    const dimension: Dimension = {lower: lower.literal, upper: upper.literal, source: lower};
                     dimensions.push(dimension);
                 }
                 while (this.match(tokenType.COMMA));
@@ -320,7 +335,7 @@ export class Parser {
             this.consume("Expected ']'", tokenType.RIGHT_BRACKET);
             this.consume("Expected 'OF'", tokenType.OF);
             const type: TypeNode = this.expectType();
-            return new ArrTypeNode(type, dimensions);
+            return this.sourced(new ArrTypeNode(type, dimensions), arrayToken);
         }
         const type: Token = this.consume("Expected type", tokenType.INTEGER, tokenType.REAL, tokenType.CHAR, tokenType.STRING, tokenType.BOOLEAN, tokenType.IDENTIFIER);
         return new BasicTypeNode(type);
@@ -576,7 +591,7 @@ export class Parser {
     }
 
     private error(token: Token, message: string): void {
-        throw new SyntaxError(message, token.line, token.startColumn, token.endColumn);
+        throw new SyntaxError(message, token.line, token.startColumn, token.endColumn, token.endLine);
     }
 
     private synchronize() {

@@ -96,7 +96,7 @@ export class Scope {
     public lookUpProc(name: string): ProcedureType {
         if (!this.procedures.has(name)) {
             if (!this.parent) {
-                throw new RuntimeError("Unknown PROCUDURE '" + name + "'");
+                throw new RuntimeError("Unknown PROCEDURE '" + name + "'");
             }
             return this.parent.lookUpProc(name);
         }

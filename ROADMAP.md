@@ -18,17 +18,18 @@ reports a clear pass or failure without manually opening DevTools.
 
 ## Milestone 2: Correctness and useful errors
 
-- [ ] Add source locations to scanner, parser, and type-checker errors.
-- [ ] Add regression tests for invalid syntax, names and scopes, type errors,
+- [x] Add source locations to scanner, parser, and type-checker errors.
+- [x] Add regression tests for invalid syntax, names and scopes, type errors,
       function calls, and nested control flow.
-- [ ] Decide and document the behavior of out-of-bounds array access, then
+- [x] Decide and document the behavior of out-of-bounds array access, then
       enforce it with tests.
-- [ ] Define and test invalid/null pointer behavior and memory limits.
-- [ ] Remove generic failures such as "Module validation error" where a
+- [x] Define and test invalid/null pointer behavior and memory limits.
+- [x] Remove generic failures such as "Module validation error" where a
       specific source-level error can be reported.
 
-Done when common mistakes point to the relevant pseudocode line and unsafe
-access cannot silently corrupt unrelated data.
+Done: common mistakes point to the relevant pseudocode line, array accesses
+trap before leaving declared bounds, and null/out-of-memory pointer accesses
+trap. This is not full pointer provenance or lifetime safety; see README.
 
 ## Milestone 3: Predictable runtime and package API
 

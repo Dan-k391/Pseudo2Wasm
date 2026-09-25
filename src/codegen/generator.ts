@@ -60,6 +60,7 @@ import {
 } from "./std/builtin";
 import { Symbol, symbolKind } from "../type/symbol";
 import { Scope } from "../type/scope";
+import { GLOBAL_DATA_START, HEAP_START, MEMORY_PAGES, STACK_START } from "../memory-layout";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -69,9 +70,7 @@ type WasmType = binaryen.Type;
 
 
 export class Generator {
-    private readonly pageSize: number = 65536;
-    private readonly pageNum: number = 30;
-    private readonly stackStart: number = this.pageSize * 10;
+    private readonly stackStart: number = STACK_START;
 
     private ast: ProgramNode;
     private module: binaryen.Module;
@@ -88,7 +87,6 @@ export class Generator {
     // the local offset (relative to the stackbase)
     // set to 0 when entering a new scope
     private localOffset: number;
-    private size: number;
     private label: number;
     public strings: Array<String>;
 
@@ -100,10 +98,7 @@ export class Generator {
         this.global = this.ast.global;
         this.curScope = this.global;
 
-        // memory size, not used for now
-        this.size = this.pageSize * this.pageNum;
-        // first page is data section, second page is stack and heap (maybe)
-        this.globalOffset = 0;
+        this.globalOffset = GLOBAL_DATA_START;
         this.localOffset = 0;
 
         // all the strings are set together so record them
@@ -130,6 +125,13 @@ export class Generator {
         this.module.addFunctionImport("RAND", "env", "randomInteger", binaryen.createType([binaryen.i32]), binaryen.i32);
         this.module.addFunctionImport("STARTTIME", "env", "startTime", binaryen.createType([]), binaryen.none);
         this.module.addFunctionImport("ENDTIME", "env", "endTime", binaryen.createType([]), binaryen.none);
+        this.module.addFunctionImport("checkIndex", "env", "checkIndex", binaryen.createType([
+            binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32
+        ]), binaryen.i32);
+        this.module.addFunctionImport("checkPointer", "env", "checkPointer", binaryen.createType([
+            binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32
+        ]), binaryen.i32);
+        this.module.addFunctionImport("checkStack", "env", "checkStack", binaryen.createType([binaryen.i32]), binaryen.i32);
 
         // The stack grows upwards
         // stacktop, starts from 65536 * 10
@@ -143,7 +145,7 @@ export class Generator {
 
         const encoder = new TextEncoder();
         // the first and second number stand for memory page numbers
-        this.module.setMemory(0, 65536, null, 
+        this.module.setMemory(0, MEMORY_PAGES, null,
             this.strings.map(str => ({
                 offset: str.ptr,
                 data: encoder.encode(str.value + '\0'),
@@ -185,10 +187,12 @@ export class Generator {
     public incrementStackTop(value: number): ExpressionRef {
         return this.module.global.set(
             "__stackTop", 
-            this.module.i32.add(
-                this.module.global.get("__stackTop", binaryen.i32),
-                this.generateConstant(binaryen.i32, value)
-            )
+            this.module.call("checkStack", [
+                this.module.i32.add(
+                    this.module.global.get("__stackTop", binaryen.i32),
+                    this.generateConstant(binaryen.i32, value)
+                )
+            ], binaryen.i32)
         );
     }
 
@@ -246,12 +250,18 @@ export class Generator {
     public getGlobalOffset(type: Type): number {
         const old = this.globalOffset;
         this.globalOffset += type.size();
+        if (!Number.isSafeInteger(this.globalOffset) || this.globalOffset > STACK_START) {
+            throw new RuntimeError(`Global data exceeds ${STACK_START} bytes of reserved space`);
+        }
         return old;
     }
 
     public getLocalOffset(type: Type): number {
         const old = this.localOffset;
         this.localOffset += type.size();
+        if (!Number.isSafeInteger(this.localOffset) || this.localOffset > HEAP_START - STACK_START) {
+            throw new RuntimeError(`Local data exceeds ${HEAP_START - STACK_START} bytes of stack space`);
+        }
         return old;
     }
 
@@ -340,6 +350,12 @@ export class Generator {
 
     protected callablePrologue(): ExpressionRef {
         return this.module.block("__callablePrologue", [
+            this.module.drop(this.module.call("checkStack", [
+                this.module.i32.add(
+                    this.module.global.get("__stackTop", binaryen.i32),
+                    this.generateConstant(binaryen.i32, 4)
+                )
+            ], binaryen.i32)),
             this.module.i32.store(0, 1, 
                 this.module.global.get("__stackTop", binaryen.i32),
                 this.module.global.get("__stackBase", binaryen.i32),
@@ -378,13 +394,11 @@ export class Generator {
     // for callables
     private initParams(params: Array<ParamNode>): ExpressionRef {
         const statements = new Array<ExpressionRef>();
-        let totalSize = 0;
         let index = 0;
         for (const param of params) {
             const paramName = param.ident.lexeme;
             const paramType = param.type;
             this.addVar(paramName, paramType);
-            totalSize += paramType.size();
             const ptr = this.getPointer(paramName);
             const wasmType = paramType.wasmType();
             statements.push(this.store(
@@ -394,8 +408,6 @@ export class Generator {
             ));
             index++;
         }
-        // grow the stack at the total param size
-        statements.push(this.incrementStackTop(totalSize));
         return this.module.block("__paramInit", statements);
     }
 
@@ -413,6 +425,7 @@ export class Generator {
 
         const funcBody = [
             this.callablePrologue(),
+            this.incrementStackTop(node.local.size()),
             this.initParams(node.params),
             ...this.generateStatements(node.body),
             this.callableEpilogue(),
@@ -443,6 +456,7 @@ export class Generator {
 
         const procBody = [
             this.callablePrologue(),
+            this.incrementStackTop(node.local.size()),
             this.initParams(node.params),
             ...this.generateStatements(node.body),
             this.callableEpilogue(),
@@ -482,7 +496,7 @@ export class Generator {
             case nodeKind.BinaryExprNode:
                 return this.binaryExpression(expression);
             case nodeKind.DerefExprNode:
-                return this.load(expression.type, this.generateExpression(expression.lVal));
+                return this.load(expression.type, this.generateAddr(expression));
             case nodeKind.AddrExprNode:
                 return this.generateAddr(expression.lVal);
             case nodeKind.IntegerExprNode:
@@ -509,7 +523,10 @@ export class Generator {
             case nodeKind.SelectExprNode:
                 return this.selectExpression(expression);
             case nodeKind.DerefExprNode:
-                return this.generateExpression(expression.lVal);
+                return this.checkedPointer(
+                    this.generateExpression(expression.lVal), expression.type.size(),
+                    expression.source?.line || 0, (expression.source?.startColumn ?? -1) + 1
+                );
             default:
                 throw new RuntimeError(expression.toString() + " cannot be a left value");
         }
@@ -548,6 +565,15 @@ export class Generator {
         return this.getPointer(varName);
     }
 
+    private checkedPointer(ptr: ExpressionRef, size: number, line: number, column: number): ExpressionRef {
+        return this.module.call("checkPointer", [
+            ptr,
+            this.generateConstant(binaryen.i32, size),
+            this.generateConstant(binaryen.i32, line),
+            this.generateConstant(binaryen.i32, column),
+        ], binaryen.i32);
+    }
+
     // obtain the pointer of the value but not setting or loading it
     public indexExpression(node: IndexExprNode): ExpressionRef {
         // check whether the expr exists and whether it is an ARRAY
@@ -576,25 +602,33 @@ export class Generator {
                     // add 1 because Pseudocode ARRAYs include upper and lower bound
                     section *= rValType.dimensions[j].upper - rValType.dimensions[j].lower + 1;
                 }
+                const dimension = rValType.dimensions[i];
+                const checkedIndex = this.module.call("checkIndex", [
+                    this.generateExpression(node.indexes[i]),
+                    this.generateConstant(binaryen.i32, dimension.lower),
+                    this.generateConstant(binaryen.i32, dimension.upper),
+                    this.generateConstant(binaryen.i32, node.source?.line || 0),
+                    this.generateConstant(binaryen.i32, (node.source?.startColumn ?? -1) + 1),
+                ], binaryen.i32);
                 index = this.module.i32.add(
                     index,
                     // and then multiple the index to the section
                     this.module.i32.mul(
-                        this.module.i32.sub(
-                            this.generateExpression(node.indexes[i]),
-                            this.generateConstant(binaryen.i32, rValType.dimensions[i].lower)
-                        ),
+                        checkedIndex,
                         this.generateConstant(binaryen.i32, section)
                     )
                 )
             }
-            return this.module.i32.add(
+            const ptr = this.module.i32.add(
                 this.load(rValType, base),
                 this.module.i32.mul(
                     index,
                     this.generateConstant(binaryen.i32, elemType.size())
                 )
             );
+            return rValType.kind === typeKind.POINTER
+                ? this.checkedPointer(ptr, elemType.size(), node.source?.line || 0, (node.source?.startColumn ?? -1) + 1)
+                : ptr;
         }
         throw new RuntimeError("Cannot perfrom 'index' operation to non ARRAY or POINTER types");
     }
@@ -751,7 +785,11 @@ export class Generator {
     // strings are stored in the global memory section
     public stringExpression(node: StringExprNode): ExpressionRef {
         const stringIndex = this.globalOffset;
-        this.globalOffset += node.value.length + 1;
+        this.globalOffset += new TextEncoder().encode(node.value).length + 1;
+        if (this.globalOffset > STACK_START) {
+            throw new RuntimeError(`Global string data exceeds ${STACK_START} bytes of reserved space`)
+                .at(node.source!);
+        }
         // add this string to strings with type interface String Lol
         this.strings.push({ptr: this.generateConstant(binaryen.i32, stringIndex), value: node.value});
         return this.module.i32.const(stringIndex);
@@ -891,22 +929,19 @@ export class Generator {
         throw new RuntimeError("Not implemented yet");
     }
 
-    // for declaration, unlike regular assembly which allocates the stack at the very start of a function
-    // here the stack is allocated when the variable is declared
+    // Local frame space is reserved once in the callable prologue, so a
+    // declaration inside a loop cannot grow the stack on each iteration.
     private declStatement(node: DeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
         // FIXME: only basic types supported
         const varType = node.type;
-        this.addVar(varName, varType);
-        // increment stacktop and stackbase if the variable is global
-        const kind = this.curScope.lookUp(varName).kind;
-        if (kind === symbolKind.GLOBAL) {
-            // do nothing, just set the pointer
-            return this.module.block(null, []);
+        try {
+            this.addVar(varName, varType);
+        } catch (error) {
+            if (error instanceof RuntimeError) throw error.at(node.ident);
+            throw error;
         }
-        else {
-            return this.incrementStackTop(varType.size());
-        }
+        return this.module.block(null, []);
     }
 
     private typeDeclStatement(node: TypeDeclNode): ExpressionRef {

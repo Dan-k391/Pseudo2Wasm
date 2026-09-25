@@ -3,6 +3,7 @@ import { RuntimeError } from "../error";
 import { Token, tokenType } from "../lex/token";
 import {
     nodeKind,
+    BaseNode,
 
     Expr,
     Stmt,
@@ -50,6 +51,7 @@ import { ProcedureType } from "./procedure";
 import { RecordType } from "./record";
 import { Symbol, symbolKind } from "./symbol";
 import { ArrTypeNode, TypeNode } from "../syntax/typenode";
+import { MEMORY_END } from "../memory-layout";
 
 
 export class Checker {
@@ -178,7 +180,7 @@ export class Checker {
                 }
                 for (let i = 0,
                     leftFields = Array.from(leftType.fields.values()),
-                    rightFields = Array.from(leftType.fields.values());
+                    rightFields = Array.from(rightType.fields.values());
                     i < leftType.fields.size; i++) {
                     if (!Checker.compatable(leftFields[i], rightFields[i])) {
                         return false;
@@ -217,29 +219,55 @@ export class Checker {
     }
 
     private insert(name: Token, type: Type, kind: symbolKind): void {
+        if (this.curScope.elems.has(name.lexeme)) {
+            throw new RuntimeError(`Duplicate variable '${name.lexeme}'`).at(name);
+        }
         this.curScope.insert(name.lexeme, new Symbol(type, kind));
     }
 
     // return the look up type in the current scope
     private lookUp(name: Token): Type {
-        return this.curScope.lookUp(name.lexeme).type;
+        try {
+            return this.curScope.lookUp(name.lexeme).type;
+        } catch (error) {
+            if (error instanceof RuntimeError) throw error.at(name);
+            throw error;
+        }
     }
 
     private getFuncType(name: Token): FunctionType {
-        return this.curScope.lookUpFunc(name.lexeme);
+        try {
+            return this.curScope.lookUpFunc(name.lexeme);
+        } catch (error) {
+            if (error instanceof RuntimeError) throw error.at(name);
+            throw error;
+        }
     }
 
     private getProcType(name: Token): ProcedureType {
-        return this.curScope.lookUpProc(name.lexeme);
+        try {
+            return this.curScope.lookUpProc(name.lexeme);
+        } catch (error) {
+            if (error instanceof RuntimeError) throw error.at(name);
+            throw error;
+        }
     }
 
     private insertType(name: Token, type: Type): void {
+        if (this.curScope.types.has(name.lexeme)) {
+            throw new RuntimeError(`Duplicate TYPE '${name.lexeme}'`).at(name);
+        }
         this.curScope.insertType(name.lexeme, type);
     }
 
     // TODO: add pointer types and enum
     private getType(name: Token): Type {
-        return this.curScope.lookUpType(name.lexeme);
+        try {
+            return this.curScope.lookUpType(name.lexeme);
+        } catch (error) {
+            if (error instanceof RuntimeError) throw error.at(name);
+            throw error;
+        }
     }
 
     private resolveBasicType(typeToken: Token): Type {
@@ -261,9 +289,27 @@ export class Checker {
         }
     }
 
-    private resolveArrType(node: ArrTypeNode): Type {
+    private resolveArrType(node: ArrTypeNode): ArrayType {
+        if (node.dimensions.length === 0) {
+            throw new RuntimeError("ARRAY needs at least one dimension").at(node.source!);
+        }
+        for (const dimension of node.dimensions) {
+            if (!Number.isSafeInteger(dimension.lower) || !Number.isSafeInteger(dimension.upper) ||
+                dimension.lower < 0 || dimension.upper > 2147483647) {
+                throw new RuntimeError("ARRAY bounds must fit a nonnegative 32-bit INTEGER")
+                    .at(dimension.source!);
+            }
+            if (dimension.lower > dimension.upper) {
+                throw new RuntimeError(`ARRAY lower bound ${dimension.lower} exceeds upper bound ${dimension.upper}`)
+                    .at(dimension.source!);
+            }
+        }
         const elemType = this.resolveType(node.type);
-        return new ArrayType(elemType, node.dimensions);
+        const array = new ArrayType(elemType, node.dimensions);
+        if (!Number.isSafeInteger(array.size()) || array.size() > MEMORY_END) {
+            throw new RuntimeError("ARRAY size exceeds linear memory limit").at(node.source!);
+        }
+        return array;
     }
 
     private resolveType(typeNode: TypeNode): Type {
@@ -285,8 +331,8 @@ export class Checker {
             case nodeKind.BasicTypeNode:
                 return this.resolveBasicType(node.type);
             case nodeKind.ArrTypeNode: {
-                const elemType = this.resolveType(node.type);
-                return new PointerType(elemType, node.dimensions);
+                const array = this.resolveArrType(node);
+                return new PointerType(array.elem, array.dimensions);
             }
             default:
                 throw new RuntimeError("Not implemented yet");
@@ -297,8 +343,15 @@ export class Checker {
         const funcName = node.ident.lexeme;
         const funcParams = new Map<string, Type>();
 
+        if (this.curScope.functions.has(funcName) || this.curScope.procedures.has(funcName)) {
+            throw new RuntimeError(`Duplicate callable '${funcName}'`).at(node.ident);
+        }
+
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
+            if (funcParams.has(paramName)) {
+                throw new RuntimeError(`Duplicate parameter '${paramName}'`).at(param.ident);
+            }
             param.type = this.resolveCallableType(param.typeNode);
             funcParams.set(paramName, param.type);
         }
@@ -312,8 +365,15 @@ export class Checker {
         const procName = node.ident.lexeme;
         const procParams = new Map<string, Type>();
 
+        if (this.curScope.functions.has(procName) || this.curScope.procedures.has(procName)) {
+            throw new RuntimeError(`Duplicate callable '${procName}'`).at(node.ident);
+        }
+
         for (const param of node.params) {
             const paramName = param.ident.lexeme;
+            if (procParams.has(paramName)) {
+                throw new RuntimeError(`Duplicate parameter '${paramName}'`).at(param.ident);
+            }
             param.type = this.resolveCallableType(param.typeNode);
             procParams.set(paramName, param.type);
         }
@@ -326,6 +386,9 @@ export class Checker {
     private declRecord(node: TypeDeclNode): void {
         const fields = new Map<string, Type>();
         for (const decl of node.body) {
+            if (fields.has(decl.ident.lexeme)) {
+                throw new RuntimeError(`Duplicate field '${decl.ident.lexeme}'`).at(decl.ident);
+            }
             // do not assign the type to the declarations in the typedecl
             // not necessary
             fields.set(decl.ident.lexeme, this.resolveType(decl.typeNode));
@@ -352,6 +415,9 @@ export class Checker {
             this.insert(param.ident, param.type, symbolKind.LOCAL);
         }
         this.visitStmts(node.body);
+        if (!this.definitelyReturns(node.body)) {
+            throw new RuntimeError(`Function '${node.ident.lexeme}' may finish without RETURN`).at(node.ident);
+        }
         // set the local scope of the function
         node.local = this.curScope;
         this.endScope();
@@ -376,7 +442,64 @@ export class Checker {
         return node;
     }
 
+    private tokenFor(node: BaseNode): Token | undefined {
+        const located = node as BaseNode & {
+            ident?: Token; operator?: Token; expr?: Expr; condition?: Expr;
+            callee?: Expr; left?: Expr; lVal?: Expr; start?: Expr;
+        };
+        return located.source || located.operator || located.ident ||
+            (located.callee && this.tokenFor(located.callee)) ||
+            (located.left && this.tokenFor(located.left)) ||
+            (located.lVal && this.tokenFor(located.lVal)) ||
+            (located.expr && this.tokenFor(located.expr)) ||
+            (located.condition && this.tokenFor(located.condition)) ||
+            (located.start && this.tokenFor(located.start));
+    }
+
+    private definitelyReturns(body: ReadonlyArray<Stmt>): boolean {
+        for (const stmt of body) {
+            if (stmt.kind === nodeKind.ReturnNode) return true;
+            if (stmt.kind === nodeKind.IfNode && stmt.elseBody &&
+                this.definitelyReturns(stmt.body) && this.definitelyReturns(stmt.elseBody)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private isAssignable(expr: Expr): boolean {
+        return expr.kind === nodeKind.VarExprNode || expr.kind === nodeKind.IndexExprNode ||
+            expr.kind === nodeKind.SelectExprNode || expr.kind === nodeKind.DerefExprNode;
+    }
+
+    private writesOutsideCurrentFrame(expr: Expr): boolean {
+        if (expr.kind === nodeKind.DerefExprNode) return true;
+        if (expr.kind === nodeKind.VarExprNode) {
+            return this.curScope.lookUp(expr.ident.lexeme).kind === symbolKind.GLOBAL;
+        }
+        if (expr.kind === nodeKind.IndexExprNode || expr.kind === nodeKind.SelectExprNode) {
+            return this.writesOutsideCurrentFrame(expr.expr);
+        }
+        return false;
+    }
+
+    private locate(error: unknown, node: BaseNode): never {
+        if (error instanceof RuntimeError) {
+            const token = this.tokenFor(node);
+            if (token) error.at(token);
+        }
+        throw error;
+    }
+
     private visitExpr(expr: Expr): Type {
+        try {
+            return this.visitExprCore(expr);
+        } catch (error) {
+            return this.locate(error, expr);
+        }
+    }
+
+    private visitExprCore(expr: Expr): Type {
         switch (expr.kind) {
             case nodeKind.AssignNode:
                 return this.assignExpr(expr);
@@ -416,11 +539,22 @@ export class Checker {
     // TODO: check if can convert
     // assign has no type
     private assignExpr(node: AssignNode): Type {
+        if (!this.isAssignable(node.left)) {
+            throw new RuntimeError("Assignment target must be a variable, array element, field, or pointer dereference");
+        }
         const leftType = this.visitExpr(node.left);
         const rightType = this.visitExpr(node.right);
 
         if (!Checker.compatable(rightType, leftType)) {
             throw new RuntimeError("Cannot convert " + rightType + " to " + leftType);
+        }
+
+        if (leftType.kind === typeKind.ARRAY || leftType.kind === typeKind.RECORD) {
+            throw new RuntimeError("Whole ARRAY and RECORD assignment is not supported; assign elements or fields instead");
+        }
+        if (leftType.kind === typeKind.POINTER && !this.isGlobal() &&
+            this.writesOutsideCurrentFrame(node.left)) {
+            throw new RuntimeError("Cannot store a pointer outside the current function frame");
         }
 
         if (leftType.kind === typeKind.BASIC && rightType.kind === typeKind.BASIC) {
@@ -444,16 +578,24 @@ export class Checker {
                 throw new RuntimeError("The index dimension numbers do not match for " + base.toString());
             }
             for (const index of node.indexes) {
-                this.visitExpr(index);
+                const indexType = this.visitExpr(index);
+                if (indexType.kind !== typeKind.BASIC || indexType.type !== basicKind.INTEGER) {
+                    throw new RuntimeError("ARRAY index must be INTEGER");
+                }
             }
             node.type = base.elem;
             return node.type;
         }
         else if (base.kind === typeKind.POINTER) {
-            if (node.indexes.length !== 1) {
+            if (node.indexes.length !== base.dimensions.length) {
                 throw new RuntimeError("The index dimension numbers do not match for " + base.toString());
             }
-            this.visitExpr(node.indexes[0]);
+            for (const index of node.indexes) {
+                const indexType = this.visitExpr(index);
+                if (indexType.kind !== typeKind.BASIC || indexType.type !== basicKind.INTEGER) {
+                    throw new RuntimeError("POINTER index must be INTEGER");
+                }
+            }
             node.type = base.base;
             return node.type;
         }
@@ -553,10 +695,7 @@ export class Checker {
                     node.right = this.arithConv(node.right, type);
                 }
                 else if (leftType.kind === typeKind.POINTER) {
-                    if (rightType.type !== basicKind.INTEGER) {
-                        throw new RuntimeError("Cannot perform arithmetic operations to none INTEGER types");
-                    }
-                    node.type = leftType;
+                    throw new RuntimeError("Pointer arithmetic is not supported safely");
                 }
                 break;
             case tokenType.STAR:
@@ -626,6 +765,7 @@ export class Checker {
                     throw new RuntimeError("Cannot perform logical operations to STRINGs")
                 }
                 node.type = new BasicType(basicKind.STRING);
+                break;
             }
             default:
                 unreachable();
@@ -643,6 +783,9 @@ export class Checker {
     }
 
     private addrExpr(node: AddrExprNode): Type {
+        if (!this.isAssignable(node.lVal)) {
+            throw new RuntimeError("Address-of target must be assignable");
+        }
         // if (node.lVal.kind === nodeKind.DerefExprNode) {
         //     node = node.lVal.lVal;
         // }
@@ -680,37 +823,36 @@ export class Checker {
     private visitStmts(stmts: Array<Stmt>): void {
         // Pre declare all FUNCTIONs and PROCEDUREs
         for (const stmt of stmts) {
-            if (stmt.kind === nodeKind.FuncDefNode) {
-                this.declFunc(stmt);
-            }
-            else if (stmt.kind === nodeKind.ProcDefNode) {
-                this.declProc(stmt);
-            }
-            // do type declarations really need to be pre declared?
-            // i am not sure
-            // they indeed need to, otherwise types in functions cannot be resolved
-            else if (stmt.kind === nodeKind.TypeDeclNode) {
-                this.declRecord(stmt);
-            }
-            else if (stmt.kind === nodeKind.PtrDeclNode) {
-                this.declPtr(stmt);
+            try {
+                if (stmt.kind === nodeKind.FuncDefNode) this.declFunc(stmt);
+                else if (stmt.kind === nodeKind.ProcDefNode) this.declProc(stmt);
+                else if (stmt.kind === nodeKind.TypeDeclNode) this.declRecord(stmt);
+                else if (stmt.kind === nodeKind.PtrDeclNode) this.declPtr(stmt);
+            } catch (error) {
+                this.locate(error, stmt);
             }
         }
         // then run the other code
         for (const stmt of stmts) {
-            if (stmt.kind === nodeKind.FuncDefNode) {
-                this.visitFuncDef(stmt);
-            }
-            else if (stmt.kind === nodeKind.ProcDefNode) {
-                this.visitProcDef(stmt);
-            }
-            else {
-                this.visitStmt(stmt);
+            try {
+                if (stmt.kind === nodeKind.FuncDefNode) this.visitFuncDef(stmt);
+                else if (stmt.kind === nodeKind.ProcDefNode) this.visitProcDef(stmt);
+                else this.visitStmt(stmt);
+            } catch (error) {
+                this.locate(error, stmt);
             }
         }
     }
 
     private visitStmt(stmt: Stmt): void {
+        try {
+            this.visitStmtCore(stmt);
+        } catch (error) {
+            this.locate(error, stmt);
+        }
+    }
+
+    private visitStmtCore(stmt: Stmt): void {
         switch (stmt.kind) {
             case nodeKind.ExprStmtNode:
                 this.visitExpr(stmt.expr);
@@ -718,7 +860,7 @@ export class Checker {
             case nodeKind.ReturnNode:
                 // can only return in functions
                 if (!this.curScope.isFunc) {
-                    throw new RuntimeError("Really? What were you expecting it to return?");
+                    throw new RuntimeError("RETURN is only valid inside a FUNCTION");
                 }
                 this.visitReturn(stmt);
                 break;
@@ -778,7 +920,15 @@ export class Checker {
     }
 
     private visitInputStmt(node: InputNode): void {
-        this.visitExpr(node.expr);
+        if (!this.isAssignable(node.expr)) {
+            const error = new RuntimeError("INPUT target must be assignable");
+            const token = this.tokenFor(node.expr);
+            throw token ? error.at(token) : error;
+        }
+        const type = this.visitExpr(node.expr);
+        if (type.kind !== typeKind.BASIC) {
+            throw new RuntimeError("INPUT target must have a basic type");
+        }
     }
 
     private visitDeclStmt(node: DeclNode): void {

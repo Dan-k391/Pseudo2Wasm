@@ -21,6 +21,18 @@ import { code16 } from "./samples/code16";
 import { code17 } from "./samples/code17";
 import { code18 } from "./samples/code18";
 import { code19 } from "./samples/code19";
+import { code20 } from "./samples/code20";
+import { code21 } from "./samples/code21";
+import { code22 } from "./samples/code22";
+import { code23 } from "./samples/code23";
+import { code24 } from "./samples/code24";
+import { code25 } from "./samples/code25";
+import { code26 } from "./samples/code26";
+import { code27 } from "./samples/code27";
+import { code28 } from "./samples/code28";
+import { code29 } from "./samples/code29";
+import { code30 } from "./samples/code30";
+import { code31 } from "./samples/code31";
 
 interface CompilerTestCase {
     name: string;
@@ -51,6 +63,18 @@ const tests: Array<CompilerTestCase> = [
     code17,
     code18,
     code19,
+    code20,
+    code21,
+    code22,
+    code23,
+    code24,
+    code25,
+    code26,
+    code27,
+    code28,
+    code29,
+    code30,
+    code31,
 ];
 
 async function assertTest(test: CompilerTestCase): Promise<void> {
@@ -89,8 +113,10 @@ async function assertPublishedApiCompatibility(): Promise<void> {
 
 async function runTests(): Promise<void> {
     const failures: Array<{name: string, error: unknown}> = [];
+    const filter = new URLSearchParams(window.location.search).get("only");
+    const selectedTests = filter ? tests.filter(test => test.name.includes(filter)) : tests;
 
-    for (const test of tests) {
+    for (const test of selectedTests) {
         try {
             await assertTest(test);
             console.log(`✓ ${test.name}`);
@@ -111,7 +137,7 @@ async function runTests(): Promise<void> {
         console.error(`✗ ${compatibilityTestName}`, error);
     }
 
-    const total = tests.length + 1;
+    const total = selectedTests.length + 1;
     console.log(`${total - failures.length}/${total} tests passed`);
     expect(failures, failures.map(failure => failure.name).join(", ")).to.be.empty;
 }

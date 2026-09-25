@@ -5,6 +5,8 @@ import { Scanner } from "./lex/scanner";
 import { Parser } from "./syntax/parser";
 import { Generator } from "./codegen/generator";
 import { Checker } from "./type/checker";
+import { RuntimeError } from "./error";
+import { GLOBAL_DATA_START, HEAP_START, MEMORY_END, MEMORY_PAGES, STACK_START } from "./memory-layout";
 
 export class Compiler {
     private input: string;
@@ -51,7 +53,7 @@ export class Compiler {
         // module.optimize();
 
         if (!module.validate()) {
-            throw new Error("Module validation error");
+            throw new Error("Internal compiler error: generated WebAssembly failed validation; please report this pseudocode as a bug");
         }
 
         // uncomment following two lines to see the text format
@@ -65,13 +67,26 @@ export class Compiler {
         // 11-20: stack
         // 21-30: heap
         // takes up totally 1.875MB
-        const pages = 30;
-        const pageSize = 65536;
-        const heapStart = 20 * pageSize;
-        // initialize import objects
-        const memory = new WebAssembly.Memory({ initial: pages, maximum: pages });
-        const maxSize = pageSize * pages - 1;
-        let heapOffSet = heapStart;
+        const memory = new WebAssembly.Memory({ initial: MEMORY_PAGES, maximum: MEMORY_PAGES });
+        let heapOffSet = HEAP_START;
+
+        const runtimeFailure = (message: string, line = 0, column = 0): never => {
+            const error = new RuntimeError(message);
+            if (line > 0) {
+                error.line = line;
+                error.startColumn = Math.max(0, column - 1);
+                error.endColumn = error.startColumn + 1;
+            }
+            throw error;
+        };
+
+        const checkPointer = (ptr: number, size: number, line: number, column: number): number => {
+            if (ptr === 0) runtimeFailure("Null pointer dereference", line, column);
+            if (ptr < GLOBAL_DATA_START || size < 1 || ptr + size > MEMORY_END) {
+                runtimeFailure(`Pointer access outside linear memory at address ${ptr}`, line, column);
+            }
+            return ptr;
+        };
 
         const nextInput = (): unknown | Promise<unknown> => {
             if (inputProvider) {
@@ -95,13 +110,14 @@ export class Compiler {
         const inputString = async () => {
             const str = String(await nextInput());
             const bytes = new TextEncoder().encode(str);
-            // currently allocate on the heap
-            // maybe allocate on a separate page later
+            if (heapOffSet + bytes.length + 1 > MEMORY_END) {
+                runtimeFailure("Input string exceeds heap memory limit");
+            }
             const ptr = heapOffSet;
-            heapOffSet += bytes.length;
-            const len = bytes.length;
-            const view = new Uint8Array(memory.buffer, ptr, len);
+            heapOffSet += bytes.length + 1;
+            const view = new Uint8Array(memory.buffer, ptr, bytes.length + 1);
             view.set(bytes);
+            view[bytes.length] = 0;
             return ptr;
         };
         const inputBoolean = async () => {
@@ -150,7 +166,8 @@ export class Compiler {
                     emit(String.fromCharCode(output));
                 },
                 logString: (output: number) => {
-                    const bytes = new Uint8Array(memory.buffer, output, maxSize - output);
+                    checkPointer(output, 1, 0, 0);
+                    const bytes = new Uint8Array(memory.buffer, output, MEMORY_END - output);
                     let str = new TextDecoder("utf8").decode(bytes);
                     str = str.split('\0')[0];
                     emit(str);
@@ -163,6 +180,19 @@ export class Compiler {
                 inputChar: suspendingInputChar,
                 inputString: suspendingInputString,
                 inputBoolean: suspendingInputBoolean,
+                checkIndex: (index: number, lower: number, upper: number, line: number, column: number) => {
+                    if (index < lower || index > upper) {
+                        runtimeFailure(`Array index ${index} outside [${lower}:${upper}]`, line, column);
+                    }
+                    return index - lower;
+                },
+                checkPointer,
+                checkStack: (next: number) => {
+                    if (next < STACK_START || next > HEAP_START) {
+                        runtimeFailure("Stack memory limit exceeded");
+                    }
+                    return next;
+                },
                 randomInteger: (range: number) => {
                     // includes 0 and range
                     return Math.floor(Math.random() * (range + 1));

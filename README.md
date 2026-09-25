@@ -75,9 +75,11 @@ It uses the following process.
 6. Optimization
 7. Runtime
 
-The semantic analysis is very basic and currently only has type check and validation(like those stuff).
+The checker validates names, types, function returns, array dimensions, and
+assignment targets before WebAssembly generation.
 
 ### RoadMap
+The notes below are historical. See [ROADMAP.md](ROADMAP.md) for the current plan.
 - [x] OUTPUT
 - [x] 变量操作
 - [x] IF
@@ -101,7 +103,9 @@ The semantic analysis is very basic and currently only has type check and valida
 
 ## Precautions
 
-***This compiler treats PseudoCode as a totally static typed language(I tried to make most of the standards same as C)***
+This compiler treats pseudocode as a statically typed language. Array indexes
+must be `INTEGER` values within every declared inclusive dimension. Invalid
+reads and writes raise `RuntimeError` before accessing memory:
 
 So, for example
 ```
@@ -109,8 +113,26 @@ DECLARE i: ARRAY[0: 9] OF INTEGER
 
 i[10] <- 20
 ```
-This is **ALLOWED** for this compiler(at least currently).
-I may add a more sophisticated semantic analyzer in the future.....Well lets see.
+This now raises `Array index 10 outside [0:9]` with a source location.
+
+Address zero is null, and null dereferences trap. Pointer arithmetic is
+rejected by the checker. The checker also rejects pointer writes to nonlocal
+storage from inside a function or procedure. Pointers outside linear memory
+trap, but this is **not a fully memory-safe pointer system**: provenance is not
+tracked, so an alias to reused stack storage may still become stale. Do not
+rely on C-style arbitrary pointer manipulation.
+
+Memory is currently fixed at 30 WebAssembly pages (1.875 MiB): global data
+ends at page 16, stack space occupies pages 16–24, and input strings use pages
+24–30. Exceeding a region raises an explicit error. Function local frames are
+reserved once per call, including declarations inside loops.
+
+Every `FUNCTION` must have a `RETURN` on every statically visible path.
+`INPUT` needs an assignable basic-type target. Whole-array and whole-record
+assignments are rejected until the backend can copy them correctly.
+
+Syntax and semantic errors include a 1-based `line:column` in their message.
+Their `startColumn` property is zero-based for editor integrations.
 
 ***I changed the type system into a where all basic types(except strings) can compat with each other***
 ```
@@ -274,9 +296,9 @@ DECLARE a: intptr
 i <- 19
 a <- ^i
 OUTPUT a^
-OUTPUT (a + 1)^
 ```
-You can perform pointer arithmetic on pointers. But the pointer has to be on the left side of the operator.
+Pointer arithmetic is not supported; dereference only a valid pointer to a
+live object.
 
 #### Case
 ```
