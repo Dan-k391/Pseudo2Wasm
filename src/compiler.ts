@@ -10,11 +10,18 @@ import { ProgramNode } from "./syntax/ast";
 import { Token } from "./lex/token";
 import { GLOBAL_DATA_START, HEAP_START, MEMORY_END, MEMORY_PAGES, STACK_START } from "./memory-layout";
 
+export interface CompilerOptions {
+    /** Default is "none"; O2 trades compile time for smaller Wasm. */
+    optimization?: "none" | "binaryen-o2";
+}
+
 export class Compiler {
     private input: string;
+    private options: CompilerOptions;
 
-    constructor(input: string) {
+    constructor(input: string, options: CompilerOptions = {}) {
         this.input = input;
+        this.options = options;
     }
 
     private analyze(): {tokens: Array<Token>; ast?: ProgramNode; failures: Array<SyntaxError | RuntimeError>} {
@@ -53,7 +60,20 @@ export class Compiler {
         }
         const generator = new Generator(typedAst);
         const module = generator.generate();
-        return module;
+        if (this.options.optimization !== "binaryen-o2") return module;
+        // Binaryen 132's LocalCSE can assert on the live expression graph;
+        // round-trip through Wasm to optimize a canonicalized module.
+        const optimized = binaryen.readBinary(module.emitBinary());
+        // BulkMemoryOpt is an optimizer feature flag, not encoded in Wasm.
+        optimized.setFeatures(module.getFeatures());
+        const previousLevel = binaryen.getOptimizeLevel();
+        try {
+            binaryen.setOptimizeLevel(2);
+            optimized.optimize();
+        } finally {
+            binaryen.setOptimizeLevel(previousLevel);
+        }
+        return optimized;
     }
 
     async runtime(
@@ -87,10 +107,7 @@ export class Compiler {
         // from a Uint8Array that could be backed by SharedArrayBuffer).
         const wasm = new Uint8Array(module.emitBinary());
 
-        // 0-10: global variables
-        // 11-20: stack
-        // 21-30: heap
-        // takes up totally 1.875MB
+        // Fixed, disjoint global/stack/input-string regions; see MEMORY_MODEL.md.
         const memory = new WebAssembly.Memory({ initial: MEMORY_PAGES, maximum: MEMORY_PAGES });
         let heapOffSet = HEAP_START;
 
@@ -205,19 +222,14 @@ export class Compiler {
                 inputChar: suspendingInputChar,
                 inputString: suspendingInputString,
                 inputBoolean: suspendingInputBoolean,
-                checkIndex: (index: number, lower: number, upper: number, line: number, column: number) => {
-                    if (index < lower || index > upper) {
-                        runtimeFailure(`Array index ${index} outside [${lower}:${upper}]`, line, column);
-                    }
-                    return index - lower;
+                failIndex: (index: number, lower: number, upper: number, line: number, column: number) =>
+                    runtimeFailure(`Array index ${index} outside [${lower}:${upper}]`, line, column),
+                failPointer: (ptr: number, size: number, line: number, column: number) => {
+                    checkPointer(ptr, size, line, column);
+                    runtimeFailure(`Invalid pointer access at address ${ptr}`, line, column);
                 },
-                checkPointer,
-                checkStack: (next: number, line: number, column: number) => {
-                    if (next < STACK_START || next > HEAP_START) {
-                        runtimeFailure("Stack memory limit exceeded", line, column);
-                    }
-                    return next;
-                },
+                failStack: (_next: number, line: number, column: number) =>
+                    runtimeFailure("Stack memory limit exceeded", line, column),
                 randomInteger: (range: number) => {
                     // includes 0 and range
                     return Math.floor(Math.random() * (range + 1));

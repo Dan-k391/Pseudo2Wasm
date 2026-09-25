@@ -44,6 +44,9 @@ import { code39 } from "./samples/code39";
 import { code40 } from "./samples/code40";
 import { code41 } from "./samples/code41";
 import { code42 } from "./samples/code42";
+import { code43 } from "./samples/code43";
+import { code44 } from "./samples/code44";
+import { code45 } from "./samples/code45";
 
 interface CompilerTestCase {
     name: string;
@@ -97,10 +100,13 @@ const tests: Array<CompilerTestCase> = [
     code40,
     code41,
     code42,
+    code43,
+    code44,
+    code45,
 ];
 
-async function assertTest(test: CompilerTestCase): Promise<void> {
-    const compiler = new Compiler(test.code);
+async function assertTest(test: CompilerTestCase, optimization: "none" | "binaryen-o2"): Promise<void> {
+    const compiler = new Compiler(test.code, {optimization});
 
     if (test.error.length > 0) {
         let thrown: unknown;
@@ -139,13 +145,16 @@ async function runTests(): Promise<void> {
     const selectedTests = filter ? tests.filter(test => test.name.includes(filter)) : tests;
 
     for (const test of selectedTests) {
-        try {
-            await assertTest(test);
-            console.log(`✓ ${test.name}`);
-        }
-        catch (error) {
-            failures.push({name: test.name, error});
-            console.error(`✗ ${test.name}`, error);
+        for (const optimization of ["none", "binaryen-o2"] as const) {
+            const name = `${test.name} (${optimization})`;
+            try {
+                await assertTest(test, optimization);
+                console.log(`✓ ${name}`);
+            }
+            catch (error) {
+                failures.push({name, error});
+                console.error(`✗ ${name}`, error);
+            }
         }
     }
 
@@ -159,9 +168,9 @@ async function runTests(): Promise<void> {
         console.error(`✗ ${compatibilityTestName}`, error);
     }
 
-    const total = selectedTests.length + 1;
+    const total = selectedTests.length * 2 + 1;
     console.log(`${total - failures.length}/${total} tests passed`);
-    expect(failures, failures.map(failure => failure.name).join(", ")).to.be.empty;
+    expect(failures, failures.map(failure => `${failure.name}: ${String(failure.error)}`).join(" | ")).to.be.empty;
 }
 
 runTests().then(

@@ -1,0 +1,24 @@
+{
+  "environment": {
+    "node": "v22.23.1",
+    "os": "Windows 10.0.26200",
+    "cpu": "AMD Ryzen 9 9955HX3D 16-Core Processor",
+    "binaryen": "132.0.0",
+    "compileSamples": 9,
+    "runSamples": 25
+  },
+  "rows": [
+    {"workload":"numeric-loop","mode":"none","wasmBytes":597,"compileMedianMs":0.676,"startupMedianMs":0.030,"runtimeMedianMs":0.608,"ioCalls":1},
+    {"workload":"numeric-loop","mode":"binaryen-o2","wasmBytes":142,"compileMedianMs":1.153,"startupMedianMs":0.012,"runtimeMedianMs":1.022,"ioCalls":1},
+    {"workload":"array-loop","mode":"none","wasmBytes":799,"compileMedianMs":0.503,"startupMedianMs":0.098,"runtimeMedianMs":0.067,"ioCalls":1},
+    {"workload":"array-loop","mode":"binaryen-o2","wasmBytes":349,"compileMedianMs":2.602,"startupMedianMs":0.070,"runtimeMedianMs":0.054,"ioCalls":1},
+    {"workload":"pointer-array-loop","mode":"none","wasmBytes":1010,"compileMedianMs":0.770,"startupMedianMs":0.082,"runtimeMedianMs":0.120,"ioCalls":1},
+    {"workload":"pointer-array-loop","mode":"binaryen-o2","wasmBytes":587,"compileMedianMs":6.644,"startupMedianMs":0.013,"runtimeMedianMs":0.105,"ioCalls":1},
+    {"workload":"function-calls","mode":"none","wasmBytes":761,"compileMedianMs":0.463,"startupMedianMs":0.024,"runtimeMedianMs":0.486,"ioCalls":1},
+    {"workload":"function-calls","mode":"binaryen-o2","wasmBytes":319,"compileMedianMs":2.016,"startupMedianMs":0.011,"runtimeMedianMs":0.203,"ioCalls":1},
+    {"workload":"recursion","mode":"none","wasmBytes":796,"compileMedianMs":0.325,"startupMedianMs":0.018,"runtimeMedianMs":0.964,"ioCalls":1},
+    {"workload":"recursion","mode":"binaryen-o2","wasmBytes":357,"compileMedianMs":1.455,"startupMedianMs":0.012,"runtimeMedianMs":0.957,"ioCalls":1},
+    {"workload":"string-io","mode":"none","wasmBytes":592,"compileMedianMs":0.234,"startupMedianMs":0.021,"runtimeMedianMs":0.091,"ioCalls":300},
+    {"workload":"string-io","mode":"binaryen-o2","wasmBytes":228,"compileMedianMs":1.496,"startupMedianMs":0.014,"runtimeMedianMs":0.082,"ioCalls":300}
+  ]
+}

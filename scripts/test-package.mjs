@@ -30,7 +30,7 @@ try {
     const [packed] = JSON.parse(output);
     const files = new Set(packed.files.map(file => file.path));
     for (const file of [
-        "package.json", "README.md", "node-entry.cjs", "dist/pseudo2wasm.js",
+        "package.json", "README.md", "BENCHMARKS.md", "MEMORY_MODEL.md", "node-entry.cjs", "dist/pseudo2wasm.js",
         "dist/pseudo2wasm.node.mjs", "dist/types/index.d.ts",
     ]) {
         assert.ok(files.has(file), `npm package is missing ${file}; packed: ${[...files].join(", ")}`);
@@ -43,6 +43,7 @@ try {
     const nodeApi = await require(path.join(packageRoot, "node-entry.cjs"));
     assert.equal(typeof nodeApi.Compiler, "function");
     assert.equal(new nodeApi.Compiler("OUTPUT 42").compile().validate(), 1);
+    assert.equal(new nodeApi.Compiler("OUTPUT 42", {optimization: "binaryen-o2"}).compile().validate(), 1);
 
     const browserPage = path.join(temp, "package-browser.html");
     await writeFile(browserPage, `<!doctype html><html><body>
@@ -52,7 +53,8 @@ try {
   try {
     const api = await window.pseudo2wasm;
     if (typeof api.Compiler !== "function" ||
-        !new api.Compiler("OUTPUT 42").compile().validate()) {
+        !new api.Compiler("OUTPUT 42").compile().validate() ||
+        !new api.Compiler("OUTPUT 42", {optimization: "binaryen-o2"}).compile().validate()) {
       throw new Error("Packed browser API could not compile a program");
     }
     document.documentElement.setAttribute("data-pseudo2wasm-tests", "passed");

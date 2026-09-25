@@ -3,6 +3,10 @@
 See [ROADMAP.md](ROADMAP.md) for the current milestones and progress checklist.
 See [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md) for the supported CAIE subset and
 precise language semantics.
+See [MEMORY_MODEL.md](MEMORY_MODEL.md) for the fixed Wasm layout and pointer-safety
+boundary.
+See [BENCHMARKS.md](BENCHMARKS.md) for reproducible performance measurements and
+the optional Binaryen O2 mode.
 
 ## Development setup
 
@@ -15,6 +19,7 @@ Use Node.js 22 or newer and npm, then install the locked dependencies with `npm 
 | `npm run build:test` | Build the browser test page in `dist-test/`. |
 | `npm test` | Build, run Node and headless-browser tests, then test the packed npm artifact; exits nonzero on failure. |
 | `npm run test:browser` | Serve the browser test page for interactive debugging. |
+| `npm run bench` | Build the Node package and benchmark unoptimized versus Binaryen O2 Wasm. |
 
 `tsconfig.json` is the shared editor/type-checking configuration. It uses
 TypeScript's `bundler` module resolution because Webpack resolves the source's
@@ -127,7 +132,9 @@ rely on C-style arbitrary pointer manipulation.
 Memory is currently fixed at 30 WebAssembly pages (1.875 MiB): global data
 ends at page 16, stack space occupies pages 16–24, and input strings use pages
 24–30. Exceeding a region raises an explicit error. Function local frames are
-reserved once per call, including declarations inside loops.
+reserved once per call, including declarations inside loops. Routine index,
+pointer-range, and stack checks execute in Wasm; JavaScript is called only on
+their failure paths to report a located error.
 
 Every `FUNCTION` must have a `RETURN` on every statically visible path.
 `INPUT` needs an assignable basic-type target. Compatible whole-array and

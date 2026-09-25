@@ -61,7 +61,7 @@ import {
 } from "./std/builtin";
 import { Symbol, symbolKind } from "../type/symbol";
 import { Scope } from "../type/scope";
-import { GLOBAL_DATA_START, HEAP_START, MEMORY_PAGES, STACK_START } from "../memory-layout";
+import { GLOBAL_DATA_START, HEAP_START, MEMORY_END, MEMORY_PAGES, STACK_START } from "../memory-layout";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -77,18 +77,15 @@ export class Generator {
     private module: binaryen.Module;
     private global: Scope;
     private curScope: Scope;
-    // memory
-    //            stackbase (starts from 65536 * 10)
-    //                ⬇
-    // ----------------------------------------------
-    // | data section | stack->       <-heap(maybe) |
-    // ----------------------------------------------
+    // Fixed global, stack, and input-string regions; see MEMORY_MODEL.md.
     // the global offset
     private globalOffset: number;
     // the local offset (relative to the stackbase)
     // set to 0 when entering a new scope
     private localOffset: number;
     private label: number;
+    private checkValueLocal = 0;
+    private checkPointerLocal = 1;
     public strings: Array<String>;
 
     constructor(ast: ProgramNode) {
@@ -128,19 +125,19 @@ export class Generator {
         this.module.addFunctionImport("RAND", "env", "randomInteger", binaryen.createType([binaryen.i32]), binaryen.i32);
         this.module.addFunctionImport("STARTTIME", "env", "startTime", binaryen.createType([]), binaryen.none);
         this.module.addFunctionImport("ENDTIME", "env", "endTime", binaryen.createType([]), binaryen.none);
-        this.module.addFunctionImport("checkIndex", "env", "checkIndex", binaryen.createType([
+        this.module.addFunctionImport("failIndex", "env", "failIndex", binaryen.createType([
             binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32
-        ]), binaryen.i32);
-        this.module.addFunctionImport("checkPointer", "env", "checkPointer", binaryen.createType([
+        ]), binaryen.none);
+        this.module.addFunctionImport("failPointer", "env", "failPointer", binaryen.createType([
             binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32
-        ]), binaryen.i32);
-        this.module.addFunctionImport("checkStack", "env", "checkStack",
-            binaryen.createType([binaryen.i32, binaryen.i32, binaryen.i32]), binaryen.i32);
+        ]), binaryen.none);
+        this.module.addFunctionImport("failStack", "env", "failStack",
+            binaryen.createType([binaryen.i32, binaryen.i32, binaryen.i32]), binaryen.none);
 
         // The stack grows upwards
-        // stacktop, starts from 65536 * 10
+        // stacktop starts at the stack region's lower boundary.
         this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
-        // stackbase, starts from 65536 * 10
+        // stackbase starts at the stack region's lower boundary.
         this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
         // CASE selectors are captured once before testing ordered branches.
         this.module.addGlobal("__caseI32", binaryen.i32, true, this.module.i32.const(0));
@@ -194,15 +191,22 @@ export class Generator {
     public incrementStackTop(value: number, line = 0, column = 0): ExpressionRef {
         return this.module.global.set(
             "__stackTop", 
-            this.module.call("checkStack", [
-                this.module.i32.add(
-                    this.module.global.get("__stackTop", binaryen.i32),
-                    this.generateConstant(binaryen.i32, value)
-                ),
-                this.module.i32.const(line),
-                this.module.i32.const(column)
-            ], binaryen.i32)
+            this.checkedStackTop(this.module.i32.add(
+                this.module.global.get("__stackTop", binaryen.i32),
+                this.generateConstant(binaryen.i32, value)
+            ), line, column)
         );
+    }
+
+    private checkedStackTop(next: ExpressionRef, line: number, column: number): ExpressionRef {
+        const current = () => this.module.local.get(this.checkValueLocal, binaryen.i32);
+        return this.module.block(null, [
+            this.module.local.set(this.checkValueLocal, next),
+            this.module.if(this.module.i32.gt_u(current(), this.module.i32.const(HEAP_START)),
+                this.module.call("failStack", [current(), this.module.i32.const(line),
+                    this.module.i32.const(column)], binaryen.none)),
+            current()
+        ], binaryen.i32);
     }
 
     public decrementStackBase(value: number): ExpressionRef {
@@ -352,21 +356,18 @@ export class Generator {
         const stmts = this.generateStatements(body);
         const block = this.module.block(null, stmts);
 
-        const mainFunciton = this.module.addFunction("__main", binaryen.none, binaryen.none, new Array<WasmType>(), block);
+        const mainFunciton = this.module.addFunction("__main", binaryen.none, binaryen.none,
+            [binaryen.i32, binaryen.i32], block);
         this.module.addFunctionExport("__main", "main");
         return mainFunciton;
     }
 
     protected callablePrologue(line = 0, column = 0): ExpressionRef {
         return this.module.block("__callablePrologue", [
-            this.module.drop(this.module.call("checkStack", [
-                this.module.i32.add(
+            this.module.drop(this.checkedStackTop(this.module.i32.add(
                     this.module.global.get("__stackTop", binaryen.i32),
                     this.generateConstant(binaryen.i32, 4)
-                ),
-                this.module.i32.const(line),
-                this.module.i32.const(column)
-            ], binaryen.i32)),
+                ), line, column)),
             this.module.i32.store(0, 1, 
                 this.module.global.get("__stackTop", binaryen.i32),
                 this.module.global.get("__stackBase", binaryen.i32),
@@ -429,6 +430,10 @@ export class Generator {
 
     private generateFunctionDefinition(node: FuncDefNode): void {
         this.enterScope(node.local);
+        const previousCheckValueLocal = this.checkValueLocal;
+        const previousCheckPointerLocal = this.checkPointerLocal;
+        this.checkValueLocal = node.params.length + 1; // after the return local
+        this.checkPointerLocal = node.params.length + 2;
 
         const funcName = node.ident.lexeme;
         const paramWasmTypes = new Array<WasmType>();
@@ -453,14 +458,20 @@ export class Generator {
             funcName,
             paramType,
             node.type.wasmType(),
-            [node.type.wasmType()],
+            [node.type.wasmType(), binaryen.i32, binaryen.i32],
             this.module.block(null, funcBody)
         );
         this.leaveScope();
+        this.checkValueLocal = previousCheckValueLocal;
+        this.checkPointerLocal = previousCheckPointerLocal;
     }
 
     private generateProcedureDefinition(node: ProcDefNode): void {
         this.enterScope(node.local);
+        const previousCheckValueLocal = this.checkValueLocal;
+        const previousCheckPointerLocal = this.checkPointerLocal;
+        this.checkValueLocal = node.params.length;
+        this.checkPointerLocal = node.params.length + 1;
         const procName = node.ident.lexeme;
         const paramWasmTypes = new Array<WasmType>();
 
@@ -483,10 +494,12 @@ export class Generator {
             procName,
             paramType,
             binaryen.none,
-            [],
+            [binaryen.i32, binaryen.i32],
             this.module.block(null, procBody)
         );
         this.leaveScope();
+        this.checkValueLocal = previousCheckValueLocal;
+        this.checkPointerLocal = previousCheckPointerLocal;
     }
 
     // Expressions
@@ -587,11 +600,31 @@ export class Generator {
     }
 
     private checkedPointer(ptr: ExpressionRef, size: number, line: number, column: number): ExpressionRef {
-        return this.module.call("checkPointer", [
-            ptr,
-            this.generateConstant(binaryen.i32, size),
-            this.generateConstant(binaryen.i32, line),
-            this.generateConstant(binaryen.i32, column),
+        const current = () => this.module.local.get(this.checkPointerLocal, binaryen.i32);
+        const invalidSize = size < 1 || size > MEMORY_END - GLOBAL_DATA_START;
+        return this.module.block(null, [
+            this.module.local.set(this.checkPointerLocal, ptr),
+            this.module.if(invalidSize ? this.module.i32.const(1) : this.module.i32.or(
+                this.module.i32.lt_u(current(), this.module.i32.const(GLOBAL_DATA_START)),
+                this.module.i32.gt_u(current(), this.module.i32.const(MEMORY_END - size))
+            ), this.module.call("failPointer", [current(), this.module.i32.const(size),
+                this.module.i32.const(line), this.module.i32.const(column)], binaryen.none)),
+            current()
+        ], binaryen.i32);
+    }
+
+    private checkedIndex(index: ExpressionRef, lower: number, upper: number,
+        line: number, column: number): ExpressionRef {
+        const current = () => this.module.local.get(this.checkValueLocal, binaryen.i32);
+        return this.module.block(null, [
+            this.module.local.set(this.checkValueLocal, index),
+            this.module.if(this.module.i32.or(
+                this.module.i32.lt_s(current(), this.module.i32.const(lower)),
+                this.module.i32.gt_s(current(), this.module.i32.const(upper))
+            ), this.module.call("failIndex", [current(), this.module.i32.const(lower),
+                this.module.i32.const(upper), this.module.i32.const(line),
+                this.module.i32.const(column)], binaryen.none)),
+            this.module.i32.sub(current(), this.module.i32.const(lower))
         ], binaryen.i32);
     }
 
@@ -624,13 +657,14 @@ export class Generator {
                     section *= rValType.dimensions[j].upper - rValType.dimensions[j].lower + 1;
                 }
                 const dimension = rValType.dimensions[i];
-                const checkedIndex = this.module.call("checkIndex", [
-                    this.generateExpression(node.indexes[i]),
-                    this.generateConstant(binaryen.i32, dimension.lower),
-                    this.generateConstant(binaryen.i32, dimension.upper),
-                    this.generateConstant(binaryen.i32, node.source?.line || 0),
-                    this.generateConstant(binaryen.i32, (node.source?.startColumn ?? -1) + 1),
-                ], binaryen.i32);
+                const indexExpr = node.indexes[i];
+                // A literal proven inside its dimension has no runtime failure path.
+                const checkedIndex = indexExpr.kind === nodeKind.IntegerExprNode &&
+                    indexExpr.value >= dimension.lower && indexExpr.value <= dimension.upper
+                    ? this.module.i32.const(indexExpr.value - dimension.lower)
+                    : this.checkedIndex(this.generateExpression(indexExpr),
+                        dimension.lower, dimension.upper, node.source?.line || 0,
+                        (node.source?.startColumn ?? -1) + 1);
                 index = this.module.i32.add(
                     index,
                     // and then multiple the index to the section
@@ -640,16 +674,23 @@ export class Generator {
                     )
                 )
             }
+            const basePointer = this.load(rValType, base);
+            const checkedBase = rValType.kind === typeKind.POINTER
+                ? this.checkedPointer(basePointer, rValType.dimensions.reduce(
+                    (length, dimension) => length * (dimension.upper - dimension.lower + 1),
+                    elemType.size()), node.source?.line || 0, (node.source?.startColumn ?? -1) + 1)
+                : basePointer;
             const ptr = this.module.i32.add(
-                this.load(rValType, base),
+                checkedBase,
                 this.module.i32.mul(
                     index,
                     this.generateConstant(binaryen.i32, elemType.size())
                 )
             );
-            return rValType.kind === typeKind.POINTER
-                ? this.checkedPointer(ptr, elemType.size(), node.source?.line || 0, (node.source?.startColumn ?? -1) + 1)
-                : ptr;
+            // checkedBase covers the entire declared pointer view; each index
+            // is range-checked and the statically bounded offset lies inside it.
+            // A second check on the final element address is therefore redundant.
+            return ptr;
         }
         throw new Error("Internal compiler error: non-indexable value reached Wasm lowering");
     }

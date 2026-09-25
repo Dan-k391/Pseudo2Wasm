@@ -86,17 +86,17 @@ headless Edge, and packed-package checks.
 
 ## Milestone 5: Safe, efficient Wasm execution
 
-- [ ] Specify the memory model: globals, stack, heap, strings, allocation growth,
+- [x] Specify the memory model: globals, stack, heap, strings, allocation growth,
       alignment, pointer validity, and what happens when each region is exhausted.
       Replace or justify the fixed 30-page layout.
-- [ ] Choose and implement a pointer safety contract. Track allocation bounds
+- [x] Choose and implement a pointer safety contract. Track allocation bounds
       and lifetime if promising safe pointers; otherwise document and test the
       exact unsafe cases rather than implying linear-memory checks are enough.
-- [ ] Lower common array/pointer/stack checks to Wasm. Keep host calls for
+- [x] Lower common array/pointer/stack checks to Wasm. Keep host calls for
       reporting failures and genuine I/O, not on every successful memory access.
-- [ ] Preserve source locations for Wasm-side traps and verify reads, writes,
+- [x] Preserve source locations for Wasm-side traps and verify reads, writes,
       multidimensional bounds, recursion, and string allocation at the limits.
-- [ ] Audit generated Wasm for validation, alignment, evaluation-once behavior,
+- [x] Audit generated Wasm for validation, alignment, evaluation-once behavior,
       overflow in address calculations, and unsupported constructs. Add focused
       regression tests for each corrected code-generation bug.
 
@@ -104,24 +104,38 @@ Done when valid memory-heavy programs run without a JS callback per access,
 invalid accesses fail deterministically, and the documented safety contract
 matches what the generated Wasm actually enforces.
 
+The chosen contract is **linear-memory range checking, not allocation-safe
+pointers**. The fixed 30-page partition is retained as a deterministic cap.
+See [MEMORY_MODEL.md](MEMORY_MODEL.md) for layout, alignment, exhaustion,
+unsafe aliases, and known limits; [MILESTONE5_PROMPT.md](MILESTONE5_PROMPT.md)
+records the implementation brief. The generated-Wasm test checks that failure
+imports are conditional; browser tests exercise the memory boundaries.
+
 ## Milestone 6: Measured compiler and runtime performance
 
-- [ ] Establish reproducible benchmarks for compile time, Wasm size, startup,
+- [x] Establish reproducible benchmarks for compile time, Wasm size, startup,
       numeric loops, array loops, function calls, recursion, and string/I/O
       workloads; record a baseline and the test environment.
-- [ ] Separate typed semantic representation from Wasm lowering where needed so
+- [x] Separate typed semantic representation from Wasm lowering where needed so
       optimization passes can preserve source spans and language semantics.
-- [ ] Add safe constant folding, dead-code elimination, and redundant-check
+- [x] Add safe constant folding, dead-code elimination, and redundant-check
       removal where benchmarks justify them. Evaluate Binaryen optimization
       levels separately from compiler-owned transformations.
-- [ ] Compare optimized and unoptimized execution on the same correctness suite;
+- [x] Compare optimized and unoptimized execution on the same correctness suite;
       add differential or property-based tests for edge cases and optimizer bugs.
-- [ ] Track compile latency, runtime, binary size, and host-call counts. Set
+- [x] Track compile latency, runtime, binary size, and host-call counts. Set
       regression budgets from measured baselines rather than an arbitrary speed
       claim; document tradeoffs when one metric improves at another's expense.
 
 Done when performance claims have reproducible evidence, hot loops stay in Wasm,
 and optimization cannot silently change program results or diagnostics.
+
+The existing checked AST already separates semantic analysis from Wasm
+lowering; no new IR was needed for the demonstrated local transforms. Binaryen
+O2 is opt-in because measured compile/runtime tradeoffs vary by workload.
+See [BENCHMARKS.md](BENCHMARKS.md), its recorded baseline and budgets, and
+[MILESTONE6_PROMPT.md](MILESTONE6_PROMPT.md). Timing budgets remain advisory
+until measurements are stable in a controlled environment.
 
 ## Milestone 7: Predictable runtime and package API
 

@@ -278,3 +278,42 @@ FOR i <- 1 TO 3 STEP step
 OUTPUT i
 NEXT i`, "dynamic steps are not supported", 3);
 });
+
+test("memory checks lower to conditional Wasm failure calls", () => {
+    const source = `DECLARE a: ARRAY[1:2] OF INTEGER
+DECLARE i: INTEGER
+TYPE ip = ^INTEGER
+DECLARE p: ip
+FUNCTION f() RETURNS INTEGER
+    DECLARE local: INTEGER
+    RETURN local
+ENDFUNCTION
+OUTPUT a[i]
+OUTPUT p^
+OUTPUT f()`;
+    const module = new Compiler(source).compile();
+    assert.equal(module.validate(), 1);
+    const wat = module.emitText();
+    assert.match(wat, /\(import "env" "failIndex"/);
+    assert.match(wat, /\(import "env" "failPointer"/);
+    assert.match(wat, /\(import "env" "failStack"/);
+    assert.doesNotMatch(wat, /\(import "env" "check(?:Index|Pointer|Stack)"/);
+    for (const name of ["failIndex", "failPointer", "failStack"]) {
+        assert.match(wat, new RegExp(`\\(if[\\s\\S]*?\\(then\\s+\\(call \\$${name}`));
+    }
+});
+
+test("proven static indexes and pointer views avoid redundant checks", () => {
+    const inBounds = new Compiler(`DECLARE a: ARRAY[1:2] OF INTEGER
+OUTPUT a[1]`).compile().emitText();
+    assert.doesNotMatch(inBounds, /\(call \$failIndex/);
+    const outOfBounds = new Compiler(`DECLARE a: ARRAY[1:2] OF INTEGER
+OUTPUT a[3]`).compile().emitText();
+    assert.match(outOfBounds, /\(call \$failIndex/);
+    const pointerView = new Compiler(`PROCEDURE read(a: ARRAY[0:1] OF INTEGER)
+OUTPUT a[1]
+ENDPROCEDURE
+DECLARE values: ARRAY[0:1] OF INTEGER
+CALL read(values)`).compile().emitText();
+    assert.equal((pointerView.match(/\(call \$failPointer/g) || []).length, 1);
+});
