@@ -8,7 +8,9 @@ boundary.
 See [BENCHMARKS.md](BENCHMARKS.md) for reproducible performance measurements and
 the optional Binaryen O2 mode.
 See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) for the value/storage
-design, scalar value lowering, and the AssemblyScript-inspired architecture milestone.
+design and scalar value lowering. See [CODE_STYLE.md](CODE_STYLE.md) for the
+AssemblyScript-inspired formatting and organization conventions; runtime design
+is independent of that inspiration.
 
 ## Development setup
 
@@ -22,7 +24,7 @@ Use Node.js 22 or newer and npm, then install the locked dependencies with `npm 
 | `npm test` | Build, run Node and headless-browser tests, then test the packed npm artifact; exits nonzero on failure. |
 | `npm run test:browser` | Serve the browser test page for interactive debugging. |
 | `npm run bench` | Build the Node package and benchmark unoptimized versus Binaryen O2 Wasm. |
-| `npm run bench:compare -- --require-all` | Compare portable workloads with Emscripten and AssemblyScript; optional tool setup is in `BENCHMARKS.md`. |
+| `npm run bench:compare -- --require-all` | Compare seven workloads across both Pseudo2Wasm modes, AssemblyScript, Emscripten, and native MSVC C++; optional tool setup is in `BENCHMARKS.md`. |
 
 `tsconfig.json` is the shared editor/type-checking configuration. It uses
 TypeScript's `bundler` module resolution because Webpack resolves the source's

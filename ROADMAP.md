@@ -137,12 +137,13 @@ See [BENCHMARKS.md](BENCHMARKS.md), its recorded baseline and budgets, and the
 ignored local `MILESTONE6_PROMPT.md`. Timing budgets remain advisory
 until measurements are stable in a controlled environment.
 
-## Milestone 7: AssemblyScript-inspired compiler architecture and value lowering
+## Milestone 7: Compiler organization and value lowering
 
-Status: **implemented with conservative safety boundaries**. Adopt explicit typed analysis, per-function backend
-state, and direct Wasm value operations. Keep CAIE syntax and the existing
-public API; this is not a new TypeScript-like source language or a port of the
-compiler itself to AssemblyScript. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md).
+Status: **implemented with conservative safety boundaries**. AssemblyScript
+informs source formatting and organization, not runtime architecture. Variable,
+function, stack, and optimization choices can draw on any suitable compiler
+techniques. Keep CAIE syntax and the existing public API. See
+[CODE_STYLE.md](CODE_STYLE.md) and [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md).
 
 - [x] Add an exhaustive, read-only executable-syntax traversal for analysis;
       do not walk cyclic scope/type metadata or mix analysis with code emission.
@@ -167,6 +168,10 @@ compiler itself to AssemblyScript. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHI
       merely to match unchecked C benchmark results.
 - [x] Complete module/API naming and invariant documentation incrementally;
       keep legacy exported names compatible instead of a broad cosmetic rename.
+- [x] Apply reproducible four-space formatting to old and new compiler source;
+      separate analysis, runtime ABI, and check emission; retain fixture text.
+- [x] Share function return cleanup, allocate temporaries on demand, and use
+      equivalent unsigned range checks with boundary/evaluation-order tests.
 
 Done when storage decisions and analyses have explicit contracts, eligible
 scalar-heavy code avoids unnecessary memory traffic, aliasing/diagnostic

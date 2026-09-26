@@ -118,6 +118,8 @@ export function toDiagnostic(error: SyntaxError | RuntimeError): Diagnostic {
         startColumn: error.startColumn ?? 0,
         endColumn: error.endColumn ?? (error.startColumn ?? 0) + 1,
     };
-    return {code: error.code, severity: "error", phase: error.phase,
-        message: error.message, span};
+    return {
+        code: error.code, severity: "error", phase: error.phase,
+        message: error.message, span
+    };
 }

@@ -50,6 +50,64 @@ export const workloads = [
             return a;
         },
     },
+    {
+        name: "n-queens", n: 11,
+        edges: [[0, 0], [1, 0], [4, 0], [5, 17], [8, 9], [12, 123]],
+        reference(n, seed) {
+            // Independent bitset search, not the timed three-array algorithm.
+            const mask = (1 << n) - 1;
+            function visit(columns, left, right) {
+                if (columns === mask) return 1;
+                let free = mask & ~(columns | left | right), total = 0;
+                while (free) {
+                    const bit = free & -free;
+                    free -= bit;
+                    total += visit(columns | bit, ((left | bit) << 1) & mask, (right | bit) >>> 1);
+                }
+                return total;
+            }
+            return visit(0, 0, 0);
+        },
+    },
+    {
+        name: "heap-sort", n: 16384,
+        edges: [[0, 0], [1, 17], [2, 123], [127, 9], [16384, 0]],
+        reference(n, seed) {
+            const values = [];
+            let state = seed;
+            for (let i = 0; i < n; i++) {
+                state = (state * 17 + 23) % 65521;
+                values.push(state);
+            }
+            values.sort((a, b) => a - b);
+            return values.reduce((checksum, value) => (checksum * 17 + value) % 65521, 0);
+        },
+    },
+    {
+        name: "floyd-warshall", n: 96,
+        edges: [[0, 0], [1, 17], [2, 0], [16, 123], [96, 0]],
+        reference(n, seed) {
+            // Repeated dense Dijkstra is independent of Floyd-Warshall.
+            let total = 0;
+            for (let source = 0; source < n; source++) {
+                const distance = Array(n).fill(Infinity), visited = Array(n).fill(false);
+                distance[source] = 0;
+                for (let step = 0; step < n; step++) {
+                    let best = -1;
+                    for (let v = 0; v < n; v++) {
+                        if (!visited[v] && (best < 0 || distance[v] < distance[best])) best = v;
+                    }
+                    visited[best] = true;
+                    for (let v = 0; v < n; v++) {
+                        const weight = best === v ? 0 : (best * 17 + v * 31 + seed) % 1000 + 1;
+                        distance[v] = Math.min(distance[v], distance[best] + weight);
+                    }
+                }
+                total += distance.reduce((sum, value) => sum + value, 0);
+            }
+            return total;
+        },
+    },
 ];
 
 export function casesFor(workload) {

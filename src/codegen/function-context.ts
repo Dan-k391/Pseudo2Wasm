@@ -1,13 +1,15 @@
 import binaryen from "binaryen";
 import { Symbol } from "../type/symbol";
 import { StorageLocation } from "./storage";
-import { IntegerRange } from "./loop-ranges";
+import { IntegerRange } from "../analysis/loop-ranges";
 
 /** Function-local backend state; indices never leak between emitted functions. */
 export class FunctionContext {
     readonly returnLocal: number | undefined;
-    readonly checkValueLocal: number;
-    readonly checkPointerLocal: number;
+    readonly returnLabel = "__return";
+    private valueScratch?: number;
+    private pointerScratch?: number;
+    private readonly caseLocals = new Map<binaryen.Type, number>();
     readonly localTypes: binaryen.Type[];
     readonly storage = new Map<Symbol, StorageLocation>();
     readonly ranges = new Map<Symbol, IntegerRange>();
@@ -22,11 +24,24 @@ export class FunctionContext {
     ) {
         const hasResult = resultType !== binaryen.none;
         this.returnLocal = hasResult ? parameterCount : undefined;
-        this.checkValueLocal = parameterCount + (hasResult ? 1 : 0);
-        this.checkPointerLocal = this.checkValueLocal + 1;
-        this.localTypes = hasResult
-            ? [resultType, binaryen.i32, binaryen.i32]
-            : [binaryen.i32, binaryen.i32];
+        this.localTypes = hasResult ? [resultType] : [];
+    }
+
+    get checkValueLocal(): number {
+        return this.valueScratch ??= this.allocateLocal(binaryen.i32);
+    }
+
+    get checkPointerLocal(): number {
+        return this.pointerScratch ??= this.allocateLocal(binaryen.i32);
+    }
+
+    caseLocal(type: binaryen.Type): number {
+        let index = this.caseLocals.get(type);
+        if (index === undefined) {
+            index = this.allocateLocal(type);
+            this.caseLocals.set(type, index);
+        }
+        return index;
     }
 
     allocateLocal(type: binaryen.Type): number {

@@ -1,6 +1,7 @@
 import { Expr, Stmt, nodeKind } from "../syntax/ast";
 import { Scope } from "../type/scope";
 import { Symbol, symbolKind } from "../type/symbol";
+import { typeKind } from "../type/type";
 
 /** Structured forward must-analysis. null is an unreachable continuation. */
 type State = Set<Symbol> | null;
@@ -50,7 +51,8 @@ export function uninitializedReads(body: ReadonlyArray<Stmt>, scope: Scope,
         if (node.kind === nodeKind.SelectExprNode) return address(node.expr, state);
         if (node.kind === nodeKind.IndexExprNode) {
             // Array values are storage; pointer views read their base pointer.
-            address(node.expr, state);
+            if (node.expr.type.kind === typeKind.POINTER) expression(node.expr, state);
+            else address(node.expr, state);
             node.indexes.forEach(index => expression(index, state));
             return;
         }
@@ -80,7 +82,7 @@ export function uninitializedReads(body: ReadonlyArray<Stmt>, scope: Scope,
                 case nodeKind.CaseNode:
                     read(node.ident.lexeme, state);
                     state = join([...node.bodies.map(body => statements(body, state!)),
-                        statements(node.otherwiseBody ?? [], state)]);
+                    statements(node.otherwiseBody ?? [], state)]);
                     break;
                 case nodeKind.WhileNode:
                     expression(node.condition, state);

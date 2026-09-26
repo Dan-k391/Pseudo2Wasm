@@ -1,10 +1,9 @@
 /**
  * I tried to use the visitor pattern but I found that it really was not necessary.
- * 
- * Some of the statements contain a typeNode and a type.
- * The typeNode is assigned in the parser as a placeholder for arrays and basic types.
- * storing the token recording the type.
- * The type is assigned in the checker and is a resolved version with type Type.
+ *
+ * Syntax nodes retain source tokens for diagnostics. The parser records written
+ * types in typeNode; the checker attaches resolved semantic types in type.
+ * Read-only structural traversal is provided by syntax/walk.ts.
  */
 
 import { Token, tokenType } from "../lex/token";

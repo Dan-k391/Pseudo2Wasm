@@ -1,4 +1,4 @@
-// TODO: get rid of the main function
+/** Public compilation pipeline and execution host. */
 import binaryen from "binaryen";
 
 import { Scanner } from "./lex/scanner";
@@ -24,18 +24,18 @@ export class Compiler {
         this.options = options;
     }
 
-    private analyze(): {tokens: Array<Token>; ast?: ProgramNode; failures: Array<SyntaxError | RuntimeError>} {
+    private analyze(): { tokens: Array<Token>; ast?: ProgramNode; failures: Array<SyntaxError | RuntimeError> } {
         const lexicalErrors: Array<SyntaxError> = [];
         const tokens = new Scanner(this.input).scan(lexicalErrors);
-        if (lexicalErrors.length) return {tokens, failures: lexicalErrors};
+        if (lexicalErrors.length) return { tokens, failures: lexicalErrors };
 
         const syntaxErrors: Array<SyntaxError> = [];
         const ast = new Parser(tokens).parse(syntaxErrors);
-        if (syntaxErrors.length) return {tokens, failures: syntaxErrors};
+        if (syntaxErrors.length) return { tokens, failures: syntaxErrors };
 
         const semanticErrors: Array<RuntimeError> = [];
         new Checker(ast).check(semanticErrors);
-        return {tokens, ast, failures: semanticErrors};
+        return { tokens, ast, failures: semanticErrors };
     }
 
     /** Collect up to 20 errors from the earliest failing phase, without generating Wasm. */
@@ -45,7 +45,7 @@ export class Compiler {
 
     /** The caller owns the returned Binaryen module and must dispose it after use. */
     compile(log: boolean = false): binaryen.Module {
-        const {tokens, ast, failures} = this.analyze();
+        const { tokens, ast, failures } = this.analyze();
         if (failures.length === 1) {
             failures[0].source = this.input;
             throw failures[0];

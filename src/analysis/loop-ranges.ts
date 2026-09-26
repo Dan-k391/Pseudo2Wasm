@@ -35,5 +35,5 @@ export function proveLoopRange(node: ForNode): IntegerRange | undefined {
                 expr.left.ident.lexeme === node.ident.lexeme) stable = false;
         },
     });
-    return stable ? {lower: Math.min(start, end), upper: Math.max(start, end)} : undefined;
+    return stable ? { lower: Math.min(start, end), upper: Math.max(start, end) } : undefined;
 }

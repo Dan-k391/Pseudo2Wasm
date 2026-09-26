@@ -17,7 +17,6 @@ import {
     RepeatNode,
     ForNode,
     CaseNode,
-    ExprStmtNode,
     VarExprNode,
     IndexExprNode,
     SelectExprNode,
@@ -36,26 +35,27 @@ import {
 } from "../syntax/ast";
 import { ParamNode, passType } from "../syntax/param";
 
-import { 
+import {
     Type,
     typeKind
 } from "../type/type";
 import { basicKind } from "../type/basic";
 import { String } from "./string";
-import { 
+import {
     Length,
     UCase,
     LCase,
 } from "./std/builtin";
 import { Symbol, symbolKind } from "../type/symbol";
 import { Scope } from "../type/scope";
-import { GLOBAL_DATA_START, HEAP_START, MEMORY_END, MEMORY_PAGES, STACK_START } from "../memory-layout";
+import { GLOBAL_DATA_START, HEAP_START, MEMORY_PAGES, STACK_START } from "../memory-layout";
 import { FunctionContext } from "./function-context";
-import { analyzeValues, CallableNode, ValuePlan } from "./value-analysis";
+import { analyzeValues, CallableNode, ValuePlan } from "../analysis/value-analysis";
 import { MemoryLocation, StorageLocation } from "./storage";
-import { proveLoopRange } from "./loop-ranges";
+import { proveLoopRange } from "../analysis/loop-ranges";
+import { addRuntimeImports } from "./runtime-abi";
+import { RuntimeChecks } from "./runtime-checks";
 
-// TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
 type FunctionRef = binaryen.FunctionRef;
 type ExpressionRef = binaryen.ExpressionRef;
@@ -77,17 +77,18 @@ export class Generator {
     private localOffset: number;
     private label: number;
     private context = new FunctionContext();
+    private checks: RuntimeChecks;
     private readonly valuePlans: ReadonlyMap<CallableNode, ValuePlan>;
     private readonly globalStorage = new Map<Symbol, StorageLocation>();
     public strings: Array<String>;
 
     private get checkValueLocal(): number { return this.context.checkValueLocal; }
-    private get checkPointerLocal(): number { return this.context.checkPointerLocal; }
 
     constructor(ast: ProgramNode) {
         this.ast = ast;
         this.valuePlans = analyzeValues(ast);
         this.module = new binaryen.Module();
+        this.checks = new RuntimeChecks(this.module, this.context);
 
         // all variables in the body are global variables
         this.global = this.ast.global;
@@ -98,7 +99,7 @@ export class Generator {
 
         // all the strings are set together so record them
         this.strings = new Array<String>();
-        
+
         this.label = 0;
     }
 
@@ -107,41 +108,15 @@ export class Generator {
         // recent Binaryen versions no longer provide a "jspi" transform pass.
         this.module.setFeatures(binaryen.Features.ReferenceTypes | binaryen.Features.BulkMemory |
             binaryen.Features.BulkMemoryOpt);
-        // createType although it is useless
-        this.module.addFunctionImport("logInteger", "env", "logInteger", binaryen.createType([binaryen.i32]), binaryen.none);
-        this.module.addFunctionImport("logReal", "env", "logReal", binaryen.createType([binaryen.f64]), binaryen.none);
-        this.module.addFunctionImport("logChar", "env", "logChar", binaryen.createType([binaryen.i32]), binaryen.none);
-        this.module.addFunctionImport("logString", "env", "logString", binaryen.createType([binaryen.i32]), binaryen.none);
-        this.module.addFunctionImport("logBoolean", "env", "logBoolean", binaryen.createType([binaryen.i32]), binaryen.none);
-        this.module.addFunctionImport("inputInteger", "env", "inputInteger", binaryen.createType([]), binaryen.i32);
-        this.module.addFunctionImport("inputReal", "env", "inputReal", binaryen.createType([]), binaryen.f64);
-        this.module.addFunctionImport("inputChar", "env", "inputChar", binaryen.createType([]), binaryen.i32);
-        this.module.addFunctionImport("inputString", "env", "inputString",
-            binaryen.createType([binaryen.i32, binaryen.i32]), binaryen.i32);
-        this.module.addFunctionImport("inputBoolean", "env", "inputBoolean", binaryen.createType([]), binaryen.i32);
-        this.module.addFunctionImport("RAND", "env", "randomInteger", binaryen.createType([binaryen.i32]), binaryen.i32);
-        this.module.addFunctionImport("STARTTIME", "env", "startTime", binaryen.createType([]), binaryen.none);
-        this.module.addFunctionImport("ENDTIME", "env", "endTime", binaryen.createType([]), binaryen.none);
-        this.module.addFunctionImport("failIndex", "env", "failIndex", binaryen.createType([
-            binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32
-        ]), binaryen.none);
-        this.module.addFunctionImport("failPointer", "env", "failPointer", binaryen.createType([
-            binaryen.i32, binaryen.i32, binaryen.i32, binaryen.i32
-        ]), binaryen.none);
-        this.module.addFunctionImport("failStack", "env", "failStack",
-            binaryen.createType([binaryen.i32, binaryen.i32, binaryen.i32]), binaryen.none);
+        addRuntimeImports(this.module);
 
         // The stack grows upwards
         // stacktop starts at the stack region's lower boundary.
         this.module.addGlobal("__stackTop", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
         // stackbase starts at the stack region's lower boundary.
         this.module.addGlobal("__stackBase", binaryen.i32, true, this.generateConstant(binaryen.i32, this.stackStart));
-        // CASE selectors are captured once before testing ordered branches.
-        this.module.addGlobal("__caseI32", binaryen.i32, true, this.module.i32.const(0));
-        this.module.addGlobal("__caseF64", binaryen.f64, true, this.module.f64.const(0));
 
         this.generateBuiltins();
-        // this.module.setStart(this.generateBody(this.ast.body));
         this.generateBody(this.ast.body);
 
         const encoder = new TextEncoder();
@@ -180,7 +155,7 @@ export class Generator {
 
     public incrementStackBase(value: number): ExpressionRef {
         return this.module.global.set(
-            "__stackBase", 
+            "__stackBase",
             this.module.i32.add(
                 this.module.global.get("__stackBase", binaryen.i32),
                 this.generateConstant(binaryen.i32, value)
@@ -190,7 +165,7 @@ export class Generator {
 
     public incrementStackTop(value: number, line = 0, column = 0): ExpressionRef {
         return this.module.global.set(
-            "__stackTop", 
+            "__stackTop",
             this.checkedStackTop(this.module.i32.add(
                 this.module.global.get("__stackTop", binaryen.i32),
                 this.generateConstant(binaryen.i32, value)
@@ -199,19 +174,12 @@ export class Generator {
     }
 
     private checkedStackTop(next: ExpressionRef, line: number, column: number): ExpressionRef {
-        const current = () => this.module.local.get(this.checkValueLocal, binaryen.i32);
-        return this.module.block(null, [
-            this.module.local.set(this.checkValueLocal, next),
-            this.module.if(this.module.i32.gt_u(current(), this.module.i32.const(HEAP_START)),
-                this.module.call("failStack", [current(), this.module.i32.const(line),
-                    this.module.i32.const(column)], binaryen.none)),
-            current()
-        ], binaryen.i32);
+        return this.checks.stack(next, line, column);
     }
 
     public decrementStackBase(value: number): ExpressionRef {
         return this.module.global.set(
-            "__stackBase", 
+            "__stackBase",
             this.module.i32.sub(
                 this.module.global.get("__stackBase", binaryen.i32),
                 this.generateConstant(binaryen.i32, value)
@@ -221,7 +189,7 @@ export class Generator {
 
     public decrementStackTop(value: number): ExpressionRef {
         return this.module.global.set(
-            "__stackTop", 
+            "__stackTop",
             this.module.i32.sub(
                 this.module.global.get("__stackTop", binaryen.i32),
                 this.generateConstant(binaryen.i32, value)
@@ -260,7 +228,7 @@ export class Generator {
 
     public setPointer(name: string, ptr: ExpressionRef): void {
         const symbol = this.curScope.lookUp(name);
-        this.storageMap(symbol).set(symbol, {kind: "explicit", expression: ptr});
+        this.storageMap(symbol).set(symbol, { kind: "explicit", expression: ptr });
     }
 
     private storageMap(symbol: Symbol): Map<Symbol, StorageLocation> {
@@ -277,12 +245,12 @@ export class Generator {
         // pointer of global variables: offset
         if (kind === symbolKind.GLOBAL) {
             const offset = this.getGlobalOffset(type);
-            location = {kind: "global", address: offset};
+            location = { kind: "global", address: offset };
         }
         // pointer of local variables: stackbase + offset
         else {
             const offset = this.getLocalOffset(type);
-            location = {kind: "frame", offset};
+            location = { kind: "frame", offset };
         }
         if (existing?.kind === "local") {
             // Preserve historical slot order for compatibility-mode shadow stores.
@@ -376,10 +344,10 @@ export class Generator {
             // Check the saved-base slot and complete frame before either write.
             // checkedStackTop leaves the reserved end in checkValueLocal.
             this.module.drop(this.checkedStackTop(this.module.i32.add(
-                    this.module.global.get("__stackTop", binaryen.i32),
-                    this.generateConstant(binaryen.i32, 4 + frameSize)
-                ), line, column)),
-            this.module.i32.store(0, 1, 
+                this.module.global.get("__stackTop", binaryen.i32),
+                this.generateConstant(binaryen.i32, 4 + frameSize)
+            ), line, column)),
+            this.module.i32.store(0, 1,
                 this.module.global.get("__stackTop", binaryen.i32),
                 this.module.global.get("__stackBase", binaryen.i32),
                 "0"
@@ -398,7 +366,7 @@ export class Generator {
     // Restore the caller's base, or release only the frameless logical charge.
     protected callableEpilogue(): ExpressionRef {
         if (this.context.frameless) return this.decrementStackTop(this.context.frameBytes);
-        // Multiple RETURN paths emit this sequence; no branch targets its block.
+        // Each callable emits one cleanup, shared by all RETURN paths.
         return this.module.block(null, [
             this.module.global.set(
                 "__stackTop",
@@ -407,7 +375,7 @@ export class Generator {
             this.decrementStackTop(4),
             this.module.global.set(
                 "__stackBase",
-                this.module.i32.load(0, 1, 
+                this.module.i32.load(0, 1,
                     this.module.global.get("__stackTop", binaryen.i32), "0"
                 )
             )
@@ -422,7 +390,7 @@ export class Generator {
             const paramName = param.ident.lexeme;
             const paramType = param.type;
             if (param.passType === passType.BYREF) {
-                this.context.storage.set(this.curScope.lookUp(paramName), {kind: "indirect", parameter: index});
+                this.context.storage.set(this.curScope.lookUp(paramName), { kind: "indirect", parameter: index });
                 index++;
                 continue;
             }
@@ -439,11 +407,13 @@ export class Generator {
 
     private generateCallableDefinition(node: CallableNode): void {
         const previousContext = this.context;
+        const previousChecks = this.checks;
         const previousScope = this.curScope;
         const previousOffset = this.localOffset;
         const resultType = node.kind === nodeKind.FuncDefNode ? node.type.wasmType() : binaryen.none;
         this.enterScope(node.local);
         this.context = new FunctionContext(node.params.length, resultType);
+        this.checks = new RuntimeChecks(this.module, this.context);
         const plan = this.valuePlans.get(node)!;
         this.context.frameless = plan.frameless;
         this.context.shadowWrites = plan.shadowWrites;
@@ -452,7 +422,7 @@ export class Generator {
         for (const symbol of plan.promoted) {
             const parameterIndex = node.params.findIndex(param => node.local.lookUp(param.ident.lexeme) === symbol);
             const index = parameterIndex >= 0 ? parameterIndex : this.context.allocateLocal(symbol.type.wasmType());
-            this.context.storage.set(symbol, {kind: "local", index});
+            this.context.storage.set(symbol, { kind: "local", index });
         }
         try {
             const parameterTypes = node.params.map(param =>
@@ -460,13 +430,24 @@ export class Generator {
             const body = [
                 this.callablePrologue(node.ident.line, node.ident.startColumn + 1, node.local.size()),
                 this.initParams(node.params),
-                ...this.generateStatements(node.body),
-                this.callableEpilogue(),
             ];
+            const statements = this.generateStatements(node.body);
+            if (this.context.returnLocal !== undefined) {
+                // Branch values are evaluated before leaving the function body.
+                // All return sites converge before releasing the logical frame.
+                const returns = this.module.block(this.context.returnLabel,
+                    [...statements, this.module.unreachable()], resultType);
+                body.push(this.module.local.set(this.context.returnLocal, returns),
+                    this.callableEpilogue(),
+                    this.module.local.get(this.context.returnLocal, resultType));
+            } else {
+                body.push(...statements, this.callableEpilogue());
+            }
             this.module.addFunction(node.ident.lexeme, binaryen.createType(parameterTypes),
-                resultType, this.context.localTypes, this.module.block(null, body));
+                resultType, this.context.localTypes, this.module.block(null, body, resultType));
         } finally {
             this.context = previousContext;
+            this.checks = previousChecks;
             this.curScope = previousScope;
             this.localOffset = previousOffset;
         }
@@ -571,32 +552,12 @@ export class Generator {
     }
 
     private checkedPointer(ptr: ExpressionRef, size: number, line: number, column: number): ExpressionRef {
-        const current = () => this.module.local.get(this.checkPointerLocal, binaryen.i32);
-        const invalidSize = size < 1 || size > MEMORY_END - GLOBAL_DATA_START;
-        return this.module.block(null, [
-            this.module.local.set(this.checkPointerLocal, ptr),
-            this.module.if(invalidSize ? this.module.i32.const(1) : this.module.i32.or(
-                this.module.i32.lt_u(current(), this.module.i32.const(GLOBAL_DATA_START)),
-                this.module.i32.gt_u(current(), this.module.i32.const(MEMORY_END - size))
-            ), this.module.call("failPointer", [current(), this.module.i32.const(size),
-                this.module.i32.const(line), this.module.i32.const(column)], binaryen.none)),
-            current()
-        ], binaryen.i32);
+        return this.checks.pointer(ptr, size, line, column);
     }
 
     private checkedIndex(index: ExpressionRef, lower: number, upper: number,
         line: number, column: number): ExpressionRef {
-        const current = () => this.module.local.get(this.checkValueLocal, binaryen.i32);
-        return this.module.block(null, [
-            this.module.local.set(this.checkValueLocal, index),
-            this.module.if(this.module.i32.or(
-                this.module.i32.lt_s(current(), this.module.i32.const(lower)),
-                this.module.i32.gt_s(current(), this.module.i32.const(upper))
-            ), this.module.call("failIndex", [current(), this.module.i32.const(lower),
-                this.module.i32.const(upper), this.module.i32.const(line),
-                this.module.i32.const(column)], binaryen.none)),
-            this.module.i32.sub(current(), this.module.i32.const(lower))
-        ], binaryen.i32);
+        return this.checks.index(index, lower, upper, line, column);
     }
 
     // obtain the pointer of the value but not setting or loading it
@@ -636,11 +597,11 @@ export class Generator {
                 const checkedIndex = provenRange
                     ? this.module.i32.sub(this.generateExpression(indexExpr), this.module.i32.const(dimension.lower))
                     : indexExpr.kind === nodeKind.IntegerExprNode &&
-                    indexExpr.value >= dimension.lower && indexExpr.value <= dimension.upper
-                    ? this.module.i32.const(indexExpr.value - dimension.lower)
-                    : this.checkedIndex(this.generateExpression(indexExpr),
-                        dimension.lower, dimension.upper, node.source?.line || 0,
-                        (node.source?.startColumn ?? -1) + 1);
+                        indexExpr.value >= dimension.lower && indexExpr.value <= dimension.upper
+                        ? this.module.i32.const(indexExpr.value - dimension.lower)
+                        : this.checkedIndex(this.generateExpression(indexExpr),
+                            dimension.lower, dimension.upper, node.source?.line || 0,
+                            (node.source?.startColumn ?? -1) + 1);
                 index = this.module.i32.add(
                     index,
                     // and then multiple the index to the section
@@ -760,7 +721,7 @@ export class Generator {
         }
         const operandType = node.left.type;
         if (operandType.kind === typeKind.BASIC && operandType.type === basicKind.REAL) {
-            switch(node.operator.type) {
+            switch (node.operator.type) {
                 case tokenType.PLUS:
                     return this.module.f64.add(leftExpr, rightExpr);
                 case tokenType.MINUS:
@@ -784,7 +745,7 @@ export class Generator {
             }
         }
 
-        switch(node.operator.type) {
+        switch (node.operator.type) {
             case tokenType.PLUS:
                 return this.module.i32.add(leftExpr, rightExpr);
             case tokenType.MINUS:
@@ -836,7 +797,7 @@ export class Generator {
                 .at(node.source!);
         }
         // add this string to strings with type interface String Lol
-        this.strings.push({ptr: this.generateConstant(binaryen.i32, stringIndex), value: node.value});
+        this.strings.push({ ptr: this.generateConstant(binaryen.i32, stringIndex), value: node.value });
         return this.module.i32.const(stringIndex);
     }
 
@@ -899,20 +860,7 @@ export class Generator {
         if (returnLocal === undefined) {
             throw new Error("Internal compiler error: RETURN outside a value-returning function");
         }
-        const returnVal = this.generateExpression(node.expr);
-        return this.module.block(null, [
-            this.module.local.set(
-                returnLocal,
-                returnVal
-            ),
-            this.callableEpilogue(),
-            this.module.return(
-                this.module.local.get(
-                    returnLocal,
-                    node.expr.type.wasmType()
-                )
-            )
-        ]);
+        return this.module.br(this.context.returnLabel, undefined, this.generateExpression(node.expr));
     }
 
     private outputStatement(node: OutputNode): ExpressionRef {
@@ -970,7 +918,7 @@ export class Generator {
             case basicKind.BOOLEAN:
                 return storeInput(this.module.call("inputBoolean", [], binaryen.i32));
         }
-        
+
         throw new Error("Internal compiler error: unsupported INPUT type reached Wasm lowering");
     }
 
@@ -978,7 +926,6 @@ export class Generator {
     // declaration inside a loop cannot grow the stack on each iteration.
     private declStatement(node: DeclNode): ExpressionRef {
         const varName = node.ident.lexeme;
-        // FIXME: only basic types supported
         const varType = node.type;
         try {
             this.addVar(varName, varType);
@@ -990,14 +937,12 @@ export class Generator {
     }
 
     private typeDeclStatement(node: TypeDeclNode): ExpressionRef {
-        // just a placeholder for ExpressionRef
-        // TODO: maybe remove later
+        // Type declarations have no runtime effect.
         return this.module.block(null, []);
     }
 
     private pointerDeclStatement(node: PtrDeclNode): ExpressionRef {
-        // just a placeholder for ExpressionRef
-        // TODO: maybe remove later
+        // Pointer type declarations have no runtime effect.
         return this.module.block(null, []);
     }
 
@@ -1007,7 +952,7 @@ export class Generator {
                 this.generateExpression(node.condition),
                 this.generateBlock(node.body),
                 this.generateBlock(node.elseBody)
-            ); 
+            );
         }
         else {
             return this.module.if(
@@ -1048,7 +993,7 @@ export class Generator {
         //   )
         //  )
         // )
-        
+
         const statements = this.generateStatements(node.body);
         const condition = this.generateExpression(node.condition);
         statements.push(
@@ -1114,7 +1059,7 @@ export class Generator {
         ]);
     }
 
-    private caseValue(token: {type: tokenType; literal: any}): number {
+    private caseValue(token: { type: tokenType; literal: any }): number {
         if (token.type === tokenType.CHAR_CONST) return token.literal.charCodeAt(0);
         if (token.type === tokenType.TRUE) return 1;
         if (token.type === tokenType.FALSE) return 0;
@@ -1124,14 +1069,14 @@ export class Generator {
     private caseStatement(node: CaseNode): ExpressionRef {
         const real = node.type.kind === typeKind.BASIC && node.type.type === basicKind.REAL;
         const wasmType = real ? binaryen.f64 : binaryen.i32;
-        const temp = real ? "__caseF64" : "__caseI32";
+        const temp = this.context.caseLocal(wasmType);
         const selector = this.readVariable(node.ident.lexeme, node.type);
-        const current = () => this.module.global.get(temp, wasmType);
+        const current = () => this.module.local.get(temp, wasmType);
         const literal = (value: number) => real ? this.module.f64.const(value) : this.module.i32.const(value);
         let branch: ExpressionRef = node.otherwiseBody
             ? this.generateBlock(node.otherwiseBody) : this.module.block(null, []);
         for (let i = node.values.length - 1; i >= 0; i--) {
-            const {from, to} = node.values[i];
+            const { from, to } = node.values[i];
             const lower = literal(this.caseValue(from));
             const condition = from === to
                 ? (real ? this.module.f64.eq(current(), lower) : this.module.i32.eq(current(), lower))
@@ -1142,6 +1087,6 @@ export class Generator {
                 );
             branch = this.module.if(condition, this.generateBlock(node.bodies[i]), branch);
         }
-        return this.module.block(null, [this.module.global.set(temp, selector), branch]);
+        return this.module.block(null, [this.module.local.set(temp, selector), branch]);
     }
 }

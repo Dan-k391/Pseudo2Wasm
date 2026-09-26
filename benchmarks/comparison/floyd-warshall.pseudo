@@ -1,0 +1,34 @@
+DECLARE distances: ARRAY[0:9215] OF INTEGER
+DECLARE n: INTEGER
+DECLARE seed: INTEGER
+DECLARE i: INTEGER
+DECLARE j: INTEGER
+DECLARE k: INTEGER
+DECLARE candidate: INTEGER
+DECLARE total: INTEGER
+INPUT n
+INPUT seed
+FOR i <- 0 TO n - 1
+    FOR j <- 0 TO n - 1
+        IF i = j THEN
+            distances[i * n + j] <- 0
+        ELSE
+            distances[i * n + j] <- (i * 17 + j * 31 + seed) MOD 1000 + 1
+        ENDIF
+    NEXT j
+NEXT i
+FOR k <- 0 TO n - 1
+    FOR i <- 0 TO n - 1
+        FOR j <- 0 TO n - 1
+            candidate <- distances[i * n + k] + distances[k * n + j]
+            IF candidate < distances[i * n + j] THEN
+                distances[i * n + j] <- candidate
+            ENDIF
+        NEXT j
+    NEXT i
+NEXT k
+total <- 0
+FOR i <- 0 TO n * n - 1
+    total <- total + distances[i]
+NEXT i
+OUTPUT total

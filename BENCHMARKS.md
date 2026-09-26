@@ -1,7 +1,9 @@
 # Performance measurement and optimization policy
 
-For comparisons with C/Emscripten and AssemblyScript, see
-[Cross-compiler performance](#cross-compiler-performance) below. The original
+For the latest five-way comparison, see
+[Native C++ and larger algorithmic workloads](#native-c-and-larger-algorithmic-workloads).
+The earlier C/Emscripten and AssemblyScript baselines are under
+[Cross-compiler performance](#cross-compiler-performance). The original
 suite in this first section tracks changes within Pseudo2Wasm only.
 
 Run `npm run bench` after `npm ci` to build the Node package and print a JSON
@@ -103,8 +105,9 @@ and assess whether the 14.4 MiB browser compiler bundle can be split or reduced.
 
 The portable comparison suite is in [benchmarks/comparison](benchmarks/comparison)
 and runs through [scripts/compare-compilers.mjs](scripts/compare-compilers.mjs).
-It compares equivalent algorithms compiled to **WebAssembly in the same Node/V8
-process**, not Wasm against native C executables. These are small, portable
+The original four-way baseline below compares equivalent algorithms compiled to
+**WebAssembly in the same Node/V8 process**. The later native section extends
+this with MSVC executables and three larger workloads. These are portable
 microbenchmarks, not an official universal benchmark or a claim about all
 applications. The JavaScript references verify results; they are not a timed
 competitor.
@@ -262,18 +265,21 @@ The SDK is a substantial download into an ignored directory; it is not installed
 globally. An existing activated SDK can instead be selected using `EMSDK` (and
 `EMSDK_PYTHON` if needed). On Unix, use `./emsdk` instead of `emsdk.bat`; an `emcc`
 executable on PATH is also supported. The runner never downloads tools itself.
+These commands now run the expanded suite: `--require-all` additionally requires
+Windows/MSVC as described in the native section below. Omit that option to run
+the available Wasm tools on other platforms.
 
 `npm run bench:compare -- --quick --require-all` performs a shorter smoke run,
 not a publication-quality measurement. Without `--require-all`, absent external
 tools are explicitly reported as unavailable and skipped, never assigned a fake
 time. A detected compiler that fails to compile a workload fails the run.
 Normal `npm test` checks the references, harness, and both Pseudo2Wasm modes
-without requiring either external compiler. Cross-compiler correctness is
+without requiring external compiler SDKs. Cross-compiler correctness is
 checked whenever the comparison runs.
 
 ### Parameter-read lowering
 
-The first AssemblyScript-inspired architecture slice (historical) reused initialized,
+The first scalar-read architecture slice (historical) reused initialized,
 immutable scalar Wasm parameters for reads, while retaining frame sizes and
 initialization stores. It did not promote mutable locals or eliminate frames.
 Its whole-program alias fallback has since been refined; see the completed
@@ -360,3 +366,216 @@ Median fresh-process build times across the four workloads were 271–317 ms
 (Emscripten). These include startup and are not frontend-only timings. Every
 timed invocation retained two input calls, one output call, and zero failure
 calls. The internal suite's 12 size/host-call budgets also passed unchanged.
+
+### Source organization and backend refinement
+
+AssemblyScript is a formatting/organization reference, not a runtime mandate.
+This follow-up separates analysis and runtime-check emission, unifies function
+return cleanup, allocates scratch locals on demand, and replaces two-sided
+index/pointer comparisons with equivalent unsigned interval checks. These are
+general backend techniques; no source-language or stack-budget change is needed.
+The broad TypeScript formatting pass itself is **not** a runtime optimization.
+
+Three full runs on 2026-09-26 UTC used the same tools, host, reference cases,
+warmup, and rotated-batch methodology as above:
+[run 1](benchmarks/comparison/results-organization.json),
+[run 2](benchmarks/comparison/results-organization-run2.json), and
+[run 3](benchmarks/comparison/results-organization-run3.json).
+All report compiler source hash
+`256475ce64a891532be3943277643350d5f9e2133275d2598c85aaabf5842324`.
+This is still unreleased working source under package version 1.2.0.
+The subsequent four-space formatting and personal-comment restoration change
+the source hash, not the measured Wasm: rebuilding matched all 24 Pseudo2Wasm
+binary hashes across these three reports. The historical reports are unchanged.
+
+Median of three run medians, microseconds per invocation:
+
+| Workload | Pseudo2Wasm default | Pseudo2Wasm O2 | AssemblyScript O3 | Emscripten O3 |
+| --- | ---: | ---: | ---: | ---: |
+| Integer recurrence | 551.89 | 552.37 | 551.73 | 552.03 |
+| Prime sieve | 4.40 | 4.25 | 20.60 | 2.25 |
+| Matrix multiplication | 11.76 | 11.76 | 39.67 | 6.69 |
+| Recursive Fibonacci | 105.01 | 103.84 | 119.71 | 51.99 |
+
+Compared with the preceding milestone-7 three-run medians:
+
+| Workload, Pseudo2Wasm O2 | Previous → current time | Previous → current Wasm |
+| --- | ---: | ---: |
+| Integer recurrence | 555.68 → 552.37 µs | 237 → 237 B |
+| Prime sieve | 8.57 → 4.25 µs | 522 → 498 B |
+| Matrix multiplication | 17.14 → 11.76 µs | 679 → 643 B |
+| Recursive Fibonacci | 161.62 → 103.84 µs | 244 → 234 B |
+
+Default Wasm sizes changed from 262/599/771/256 to 264/565/719/248 bytes.
+The arithmetic kernel is **two bytes larger** without O2 because shared-exit
+lowering adds control structure; O2 removes the size difference. The other
+default kernels shrink. O2 run medians ranged from 551.80–553.03 µs, 4.25–4.27 µs,
+11.71–11.88 µs, and 103.48–103.94 µs respectively.
+
+Sieve, matrix, and Fibonacci show about 50%, 31%, and 36% lower O2 execution
+times in these snapshots. Those are workload-specific measurements, not a
+universal compiler speedup or proof of how much each individual transform
+contributed. Arithmetic is effectively unchanged, and Emscripten still leads
+the other three workloads. This run puts Pseudo2Wasm ahead of AssemblyScript on
+all three, but their runtime/safety contracts differ; do not generalize that
+ordering to other programs. O2 remains optional, not inherently faster.
+
+All bounds/pointer checks still enforce the same conditions and report original
+values and locations. Each timed invocation still made two input calls, one
+output call, and no failure calls. Median fresh-process build times ranged from
+266–315 ms (default), 356–407 ms (O2), 547–638 ms (AssemblyScript), and 874–890 ms
+(Emscripten). The full correctness suite and existing size/host-call budgets
+remain the acceptance gates; do not loosen them to obtain a favorable chart.
+
+## Native C++ and larger algorithmic workloads
+
+The suite now compares **five configurations**: Pseudo2Wasm default and O2,
+AssemblyScript O3, Emscripten O3, and native **MSVC x64 C++ `/O2`**. The first
+four execute Wasm in Node/V8; the fifth is a real Windows executable built by
+the installed Visual Studio 2026 Community toolchain, MSVC 19.51.36244.
+The same `.c` kernel used by Emscripten is compiled as C++ with `/TP` for MSVC;
+there is no different native algorithm or hard-coded answer.
+
+### Added workloads
+
+| Workload | Timed work per invocation | Independent correctness reference |
+| --- | --- | --- |
+| N-Queens | Enumerate all 2,680 solutions for 11 queens using recursive backtracking and column/diagonal occupancy arrays; seed rotates column traversal | JavaScript bitset search plus known counts (5 queens = 10, 8 = 92, 12 = 14,200) |
+| Heapsort | Generate, heap-sort, and compute an order-sensitive checksum of 16,384 integers | JavaScript numeric sort and the same checksum |
+| Floyd–Warshall | Initialize a directed 96-vertex weighted graph, perform 884,736 relaxation attempts, and sum all shortest-path distances | Repeated dense Dijkstra, not a second Floyd–Warshall implementation |
+
+These complement the original four kernels, not replace them. Every invocation
+resets its own arrays. Four runtime seeds cycle through every measured batch;
+batch sizes are multiples of four, including quick runs. All N-Queens versions
+use short-circuit occupancy checks. Boundary tests cover empty/single-element
+problems and maximum supported capacities, including
+12-Queens outside the timed 11-Queens cases. Arithmetic remains within signed
+32-bit range. Each invocation checks one result and exactly two inputs/one
+output. Sort/graph correctness is checked through a checksum, not an exhaustive
+comparison of every output element; these checks are not a formal proof.
+
+The kernels are heavier, reproducible algorithmic benchmarks, **not SPEC,
+an official standardized suite, or a substitute for application profiling**.
+They still omit floating-point/SIMD-specific code, strings, allocation-heavy
+applications, async I/O, and browser startup.
+
+### Native timing and fairness
+
+- One native process stays alive for correctness checks, warmup, calibration,
+  and all nine measured batches. `std::chrono::steady_clock` measures the loop
+  **inside** that process. Process launch and command/response pipe traffic are
+  excluded; input dispatch, output verification, and loop overhead are included.
+- The Wasm configurations retain the existing synchronous JS host and
+  `performance.now()` batch timer. Native input/output are C++ function calls,
+  **not** JS/Wasm boundary crossings. This is an end-to-end configuration
+  comparison, not an isolated measurement of the Wasm execution penalty.
+- Full runs warm each configuration for at least 200 ms and calibrate batches
+  to at least 50 ms. Compiler order rotates between batches; all builds finish
+  before timing. Raw samples, median/p95/min/max, build times, input cases,
+  exact commands, source/harness hashes, and artifact hashes are saved. Here
+  too, p95 describes batch averages, not individual-invocation tail latency.
+- Native uses ordinary `/O2` optimization, which permits automatic
+  vectorization. The Wasm configurations do not enable SIMD. No undocumented
+  optimizer-disabling flag is used to make native slower. See Microsoft's
+  [optimization options](https://learn.microsoft.com/en-us/cpp/build/reference/o1-o2-minimize-size-maximize-speed?view=msvc-170)
+  and [auto-vectorization documentation](https://learn.microsoft.com/en-us/cpp/parallel/auto-parallelization-and-auto-vectorization?view=msvc-170).
+- Native and Emscripten kernels have unchecked C/C++ array access; the checked
+  languages keep their normal safety behavior. MSVC also has its own native
+  stack/runtime, not Pseudo2Wasm's logical stack budget or 30-page Wasm memory.
+  Differences cannot be attributed exclusively to bounds checks or to Wasm.
+- Native kernel and host are separate translation units without `/GL` or
+  link-time optimization. Runtime inputs and verified outputs prevent the
+  timed work from being folded into a constant or hoisted out of the host loop.
+  Ordinary inlining and optimization *inside* the kernel are allowed.
+- PE executable bytes include native host/CRT/PE overhead and are recorded as
+  `executableBytes`, not `wasmBytes`. Do not rank them directly against Wasm
+  module sizes. PE timestamps can also change executable hashes across builds.
+
+### Five-way measured results
+
+Three full sequential runs on 2026-09-26 UTC, on the same Ryzen 9 9955HX3D /
+Windows 10.0.26200 host, used Node 22.23.1 / V8 12.4.254.21-node.56,
+Binaryen 132.0.0, AssemblyScript 0.28.20, Emscripten 6.0.10, and the MSVC version
+above. Compiler source hash:
+`8424c0927e28557cfb8bd7a19936ed9dec70940a1a1dd8abf693a6d27fab40a1`.
+This remains working source under package version 1.2.0, not a new npm release.
+No compiler optimization was changed for this benchmark expansion.
+
+**Microseconds per invocation, lower is better; median of three run medians.**
+Every run contributes nine batch averages per cell.
+
+| Workload | Pseudo2Wasm default | Pseudo2Wasm O2 | AssemblyScript O3 | Emscripten O3 | Native MSVC O2 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Integer recurrence | 553.98 | 552.57 | 551.79 | 551.91 | 590.11 |
+| Prime sieve | 4.44 | 4.29 | 20.12 | 2.25 | 1.57 |
+| Matrix multiplication | 11.82 | 11.81 | 42.22 | 6.67 | 5.72 |
+| Recursive Fibonacci | 105.11 | 103.81 | 119.02 | 52.28 | 74.61 |
+| 11-Queens | 8599.59 | 8391.80 | 10997.41 | 7639.03 | 7644.28 |
+| Heapsort, 16,384 values | 1165.69 | 649.03 | 3048.91 | 508.50 | 539.31 |
+| Floyd–Warshall, 96 vertices | 1377.23 | 1388.95 | 3152.19 | 387.70 | 480.21 |
+
+Interpretation:
+
+- Pseudo2Wasm O2 takes about **1.10× native time on N-Queens**, **1.20× on
+  heapsort**, and **2.89× on Floyd–Warshall**. The graph kernel exposes a much
+  larger gap than the search kernel; there is no single Wasm/native multiplier.
+- Native MSVC leads sieve and matrix multiplication. Emscripten/Wasm takes
+  less time than MSVC on Fibonacci, heapsort, and Floyd–Warshall; N-Queens is
+  effectively tied between those two. Native is not automatically the winner:
+  compiler optimization and generated machine code matter as well as target.
+  This does not mean Wasm is inherently faster than native C++.
+- The four Wasm recurrence results are effectively tied and slightly faster
+  than this MSVC build. Do not read their sub-percent differences as a ranking.
+- O2 cuts the heapsort execution time by about **44%** versus Pseudo2Wasm
+  default here. It does not materially improve Floyd–Warshall. Smaller Wasm
+  and higher optimization settings still do not guarantee faster execution.
+- Pseudo2Wasm beats this checked AssemblyScript configuration on the six
+  non-recurrence workloads, but that is not a claim about all AssemblyScript
+  programs, array APIs, runtime modes, or machines.
+
+The heavier-workload **ranges of the three run medians**, also in microseconds:
+
+| Workload | Pseudo2Wasm O2 | AssemblyScript O3 | Emscripten O3 | Native MSVC O2 |
+| --- | ---: | ---: | ---: | ---: |
+| 11-Queens | 8383.30–8451.71 | 10962.51–11015.63 | 7623.36–7654.81 | 7640.51–7674.44 |
+| Heapsort | 643.96–652.41 | 3025.86–3089.17 | 506.98–510.56 | 537.10–540.70 |
+| Floyd–Warshall | 1377.68–1389.29 | 3140.33–3243.59 | 385.16–388.69 | 479.84–483.68 |
+
+These are observations, not confidence intervals or regression thresholds.
+Reports: [run 1](benchmarks/comparison/results-native-run1.json),
+[run 2](benchmarks/comparison/results-native-run2.json), and
+[run 3](benchmarks/comparison/results-native-run3.json). All **105 result rows**
+passed their reference and timed-output checks. Inputs, tool versions/flags,
+source/harness hashes, and Wasm hashes match across runs. Native executable
+hashes are recorded individually rather than assumed identical.
+
+Across seven workloads, median fresh-process build times ranged from 265–322 ms
+(Pseudo2Wasm default), 359–404 ms (O2), 550–641 ms (AssemblyScript), 874–895 ms
+(Emscripten), and 632–648 ms (MSVC, including the native host and linking).
+These are small-program build wall times, not a large-project compiler-throughput
+ranking. Further optimization work should profile nested-loop/index-address
+generation and scalar storage in the graph kernel; these timings alone cannot
+isolate the costs of checks, branches, memory accesses, or frame management.
+
+### Reproducing the five-way comparison
+
+Keep the existing AssemblyScript/Emscripten setup described above. For native
+C++, install Visual Studio's **Desktop development with C++** workload (MSVC
+x64 tools and a Windows SDK). The harness discovers it with `vswhere`, activates
+`vcvars64.bat` in a child process, and leaves your current shell unchanged.
+No Visual Studio window is opened and no additional toolchain is downloaded.
+
+```sh
+npm run bench:compare -- --require-all --output=benchmarks/comparison/results-native-run1.json
+node scripts/compare-compilers.mjs --require-all --output=benchmarks/comparison/results-native-run2.json
+node scripts/compare-compilers.mjs --require-all --output=benchmarks/comparison/results-native-run3.json
+```
+
+Use `--quick` only for a smoke test, not a published timing claim. Run on an
+otherwise idle machine, sequentially, not in parallel. `--require-all` now
+requires all five configurations; without it missing tools are explicitly
+reported as skipped. Native discovery currently supports Windows/MSVC only.
+Executables and objects stay in the ignored `benchmarks/comparison/build/`
+directory. `npm test` exercises the new pseudocode/reference cases and native
+process-protocol failures/timeouts without requiring optional compiler SDKs;
+the five-tool command checks the actual native and external Wasm binaries.

@@ -1,0 +1,10 @@
+root = true
+
+[*.{ts,js,mjs,cjs,json}]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+
+[*.md]
+insert_final_newline = true

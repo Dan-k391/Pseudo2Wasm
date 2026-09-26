@@ -1,12 +1,12 @@
 /**
  * I have abandoned the version 1 scanner. Although it did not have any problems, I believe
  * that changing it would be a good idea. (maybe I will switch to a better one in the future)
- * 
+ *
  * This new scanner is highly overlapping with "https://craftinginterpreters.com/scanning.html",
- * I personally do not like doing this. However, I decided to make this whole project more normalised 
+ * I personally do not like doing this. However, I decided to make this whole project more normalised
  * so that more people can understand how it is done. My own code often makes it harder to understand
  * so I decided to do it all based on the book with a better top down structure than my own.
- * 
+ *
  * Furthermore, I strongly recommend the book above (It really helped on my first hand-writen parser).
  */
 
@@ -141,7 +141,7 @@ export class Scanner {
             case '\r': break;
             case '\t': break;
             case '\n': this.addToken(tokenType.NEWLINE); break;
-            default: 
+            default:
                 if (this.isDigit(c)) {
                     this.number();
                 }
@@ -259,7 +259,7 @@ export class Scanner {
         const value: number = parseFloat(this.source.substring(this.start, this.current));
         this.addToken(isReal ? tokenType.REAL_CONST : tokenType.INT_CONST, value);
     }
-    
+
     private identifier(): void {
         while (this.isAlphaNumeric(this.peek())) this.advance();
 

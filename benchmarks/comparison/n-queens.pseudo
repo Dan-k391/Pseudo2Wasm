@@ -1,0 +1,42 @@
+DECLARE columns: ARRAY[0:11] OF INTEGER
+DECLARE rising: ARRAY[0:22] OF INTEGER
+DECLARE falling: ARRAY[0:22] OF INTEGER
+FUNCTION search(row: INTEGER, n: INTEGER, shift: INTEGER) RETURNS INTEGER
+    DECLARE choice: INTEGER
+    DECLARE col: INTEGER
+    DECLARE up: INTEGER
+    DECLARE down: INTEGER
+    DECLARE total: INTEGER
+    IF row = n THEN
+        RETURN 1
+    ENDIF
+    total <- 0
+    FOR choice <- 0 TO n - 1
+        col <- (choice + shift) MOD n
+        up <- row + col
+        down <- row - col + n - 1
+        IF columns[col] = 0 AND rising[up] = 0 AND falling[down] = 0 THEN
+            columns[col] <- 1
+            rising[up] <- 1
+            falling[down] <- 1
+            total <- total + search(row + 1, n, shift)
+            columns[col] <- 0
+            rising[up] <- 0
+            falling[down] <- 0
+        ENDIF
+    NEXT choice
+    RETURN total
+ENDFUNCTION
+DECLARE n: INTEGER
+DECLARE seed: INTEGER
+DECLARE i: INTEGER
+INPUT n
+INPUT seed
+FOR i <- 0 TO 11
+    columns[i] <- 0
+NEXT i
+FOR i <- 0 TO 22
+    rising[i] <- 0
+    falling[i] <- 0
+NEXT i
+OUTPUT search(0, n, seed)

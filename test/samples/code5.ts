@@ -11,4 +11,3 @@ OUTPUT i < j
     expected: ["TRUE"],
     error: [],
 };
-

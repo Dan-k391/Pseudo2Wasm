@@ -1,0 +1,3527 @@
+{
+  "schemaVersion": 2,
+  "recordedAt": "2026-09-26T05:12:19.430Z",
+  "environment": {
+    "node": "v22.23.1",
+    "v8": "12.4.254.21-node.56",
+    "platform": "win32",
+    "os": "10.0.26200",
+    "cpu": "AMD Ryzen 9 9955HX3D 16-Core Processor         ",
+    "binaryen": "132.0.0",
+    "compilerSourceSha256": "8424c0927e28557cfb8bd7a19936ed9dec70940a1a1dd8abf693a6d27fab40a1",
+    "execArgv": []
+  },
+  "harnessSha256": {
+    "scripts/compare-compilers.mjs": "6265b3e5b20bbcc624a1f0cea055a5d8c9bc676219c1eb4dec2d2a0dc31b9ec1",
+    "scripts/native-comparison.mjs": "b90f8953a3f60c8bd8d298e2e7ddcbf42bf163929b76f549ce0be23bc6c962ec",
+    "benchmarks/comparison/workloads.mjs": "12da9b5994e0f96a54f0ffa132910e8137db85683a90dd1d9708285daeeddd43",
+    "benchmarks/comparison/native-host.cpp": "d5902060b4573b8e3907f1ac131f8fd5af426976cf34b38dc82585567d304c78",
+    "benchmarks/comparison/host.h": "d933733fc7a1af6130f3c067ea83e0fbbcb7a078024b3d51185d937b3fe39d84",
+    "benchmarks/comparison/host.ts": "3fe28facb9bf12fb113d753c20c1a5083cbe40b78e49bf91078e0cd855665e95"
+  },
+  "methodology": {
+    "quick": false,
+    "samples": 9,
+    "buildSamples": 3,
+    "targetBatchMs": 50,
+    "warmupMs": 200,
+    "timed": "Warmed instance, synchronous I/O and result verification included; rotated batches; no JSPI",
+    "build": "Fresh compiler process wall time after an untimed cache-priming build; not frontend-only time",
+    "safety": "Pseudo2Wasm and AssemblyScript retain bounds checks; Emscripten C and native C++ have no array bounds checks",
+    "native": "Persistent MSVC x64 process, steady_clock inside batch; startup/pipe traffic excluded; result and I/O checks included; /O2 permits auto-vectorization; no /GL",
+    "memoryPages": 30,
+    "wasmSimd": false,
+    "nativeAutoVectorization": true
+  },
+  "tools": [
+    {
+      "id": "pseudo-none",
+      "status": "available",
+      "version": "1.2.0",
+      "flags": [
+        "none"
+      ]
+    },
+    {
+      "id": "pseudo-o2",
+      "status": "available",
+      "version": "1.2.0",
+      "flags": [
+        "binaryen-o2"
+      ]
+    },
+    {
+      "id": "assemblyscript-o3",
+      "status": "available",
+      "version": "Version 0.28.20",
+      "flags": [
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30"
+      ]
+    },
+    {
+      "id": "emscripten-o3",
+      "status": "available",
+      "version": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)",
+      "flags": [
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0"
+      ]
+    },
+    {
+      "id": "msvc-o2",
+      "status": "available",
+      "version": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36244 for x64",
+      "flags": [
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX"
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "workload": "integer-recurrence",
+      "tool": "pseudo-none",
+      "native": false,
+      "wasmBytes": 264,
+      "wasmSha256": "a715e4a14734a1e2a717dbddf93acee35cabb09bdef6208955ad368296c8bdda",
+      "sourceSha256": "ff97c741adfc8fad3912db6eb8590e1e28990717090c939b59256fd9435be38d",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\integer-recurrence.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\integer-recurrence.pseudo-none.wasm",
+        "none"
+      ],
+      "buildWallMs": {
+        "median": 267.00620000000026,
+        "p95": 268.6029000000003,
+        "min": 263.2419,
+        "max": 268.6029000000003,
+        "samples": [
+          268.6029000000003,
+          267.00620000000026,
+          263.2419
+        ]
+      },
+      "firstStartupMs": 0.3331000000034692,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 1,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 100,
+          "seed": 123,
+          "expected": 9184
+        },
+        {
+          "n": 200000,
+          "seed": 1,
+          "expected": 10052
+        },
+        {
+          "n": 200000,
+          "seed": 17,
+          "expected": 23963
+        },
+        {
+          "n": 200000,
+          "seed": 123,
+          "expected": 26032
+        },
+        {
+          "n": 200000,
+          "seed": 9,
+          "expected": 49768
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.5544375000000628,
+        0.5519289062499411,
+        0.5530351562499618,
+        0.5521812499999896,
+        0.5527015625000331,
+        0.5516289062500164,
+        0.5552257812499874,
+        0.5570929687499984,
+        0.5559812500000589
+      ],
+      "runtimeMs": {
+        "median": 0.5530351562499618,
+        "p95": 0.5570929687499984,
+        "min": 0.5516289062500164,
+        "max": 0.5570929687499984
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "integer-recurrence",
+      "tool": "pseudo-o2",
+      "native": false,
+      "wasmBytes": 237,
+      "wasmSha256": "162f97e37d7160bf878db7de424e22f4a5f817f75300e3f6a958d99de11d5c2d",
+      "sourceSha256": "ff97c741adfc8fad3912db6eb8590e1e28990717090c939b59256fd9435be38d",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\integer-recurrence.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\integer-recurrence.pseudo-o2.wasm",
+        "binaryen-o2"
+      ],
+      "buildWallMs": {
+        "median": 356.7361999999998,
+        "p95": 360.10360000000037,
+        "min": 354.3600999999999,
+        "max": 360.10360000000037,
+        "samples": [
+          356.7361999999998,
+          360.10360000000037,
+          354.3600999999999
+        ]
+      },
+      "firstStartupMs": 0.24169999999867287,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 1,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 100,
+          "seed": 123,
+          "expected": 9184
+        },
+        {
+          "n": 200000,
+          "seed": 1,
+          "expected": 10052
+        },
+        {
+          "n": 200000,
+          "seed": 17,
+          "expected": 23963
+        },
+        {
+          "n": 200000,
+          "seed": 123,
+          "expected": 26032
+        },
+        {
+          "n": 200000,
+          "seed": 9,
+          "expected": 49768
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.5511890625000433,
+        0.5524054687500666,
+        0.5527953124999385,
+        0.5516664062499785,
+        0.5521835937499873,
+        0.5519492187499964,
+        0.55129296875009,
+        0.5517460937500118,
+        0.5517851562500482
+      ],
+      "runtimeMs": {
+        "median": 0.5517851562500482,
+        "p95": 0.5527953124999385,
+        "min": 0.5511890625000433,
+        "max": 0.5527953124999385
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "integer-recurrence",
+      "tool": "assemblyscript-o3",
+      "native": false,
+      "wasmBytes": 144,
+      "wasmSha256": "3e9b44588f102daab7dd047eb6bfc4c6fb836a91881bb542808d927b84b6637d",
+      "sourceSha256": "7bd627e853c487df83b8a8a97592e13d56350c058bee42257b2d5637f7577cc9",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/benchmarks\\toolchains\\node_modules\\assemblyscript\\bin\\asc.js",
+        "<repo>/benchmarks\\comparison\\integer-recurrence.ts",
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\integer-recurrence.assemblyscript-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 551.3606,
+        "p95": 551.5784000000003,
+        "min": 551.3260999999993,
+        "max": 551.5784000000003,
+        "samples": [
+          551.5784000000003,
+          551.3606,
+          551.3260999999993
+        ]
+      },
+      "firstStartupMs": 0.22450000001117587,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 1,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 100,
+          "seed": 123,
+          "expected": 9184
+        },
+        {
+          "n": 200000,
+          "seed": 1,
+          "expected": 10052
+        },
+        {
+          "n": 200000,
+          "seed": 17,
+          "expected": 23963
+        },
+        {
+          "n": 200000,
+          "seed": 123,
+          "expected": 26032
+        },
+        {
+          "n": 200000,
+          "seed": 9,
+          "expected": 49768
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.5515031250000675,
+        0.5514343749999853,
+        0.5536148437499833,
+        0.5514281250000295,
+        0.5514398437500176,
+        0.5536007812499975,
+        0.5514898437500051,
+        0.5516179687499516,
+        0.5514914062500793
+      ],
+      "runtimeMs": {
+        "median": 0.5514914062500793,
+        "p95": 0.5536148437499833,
+        "min": 0.5514281250000295,
+        "max": 0.5536148437499833
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "integer-recurrence",
+      "tool": "emscripten-o3",
+      "native": false,
+      "wasmBytes": 446,
+      "wasmSha256": "8e2af6465f66c5e220d954ba0fb7b0ef44cb1a22f539fa1e09450b5793dd4fdd",
+      "sourceSha256": "7850e6881414e449aa303e2d8783108b95029bd2ea5bf46df14567e0ae72fe67",
+      "command": [
+        "<repo>/benchmarks\\.toolchains\\emsdk\\python\\3.13.3_64bit\\python.exe",
+        "<repo>/benchmarks\\.toolchains\\emsdk\\upstream\\emscripten\\emcc.py",
+        "<repo>/benchmarks\\comparison\\integer-recurrence.c",
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\integer-recurrence.emscripten-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 883.3741000000009,
+        "p95": 889.8512000000001,
+        "min": 871.0051000000003,
+        "max": 889.8512000000001,
+        "samples": [
+          889.8512000000001,
+          883.3741000000009,
+          871.0051000000003
+        ]
+      },
+      "firstStartupMs": 0.29699999999138527,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 1,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 100,
+          "seed": 123,
+          "expected": 9184
+        },
+        {
+          "n": 200000,
+          "seed": 1,
+          "expected": 10052
+        },
+        {
+          "n": 200000,
+          "seed": 17,
+          "expected": 23963
+        },
+        {
+          "n": 200000,
+          "seed": 123,
+          "expected": 26032
+        },
+        {
+          "n": 200000,
+          "seed": 9,
+          "expected": 49768
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.5518453125000633,
+        0.5518398437499172,
+        0.5524742187500351,
+        0.5513890624999931,
+        0.5516265625000187,
+        0.5513929687500649,
+        0.5516546874999904,
+        0.5519906250000304,
+        0.5519070312500389
+      ],
+      "runtimeMs": {
+        "median": 0.5518398437499172,
+        "p95": 0.5524742187500351,
+        "min": 0.5513890624999931,
+        "max": 0.5524742187500351
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "integer-recurrence",
+      "tool": "msvc-o2",
+      "native": true,
+      "executableBytes": 308736,
+      "executableSha256": "8fa723d20e6646c275e2addc1b32b5605713aabe6ed16e59923f37af273cc80b",
+      "sourceSha256": "7850e6881414e449aa303e2d8783108b95029bd2ea5bf46df14567e0ae72fe67",
+      "command": [
+        "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+        "<repo>/benchmarks\\comparison\\integer-recurrence.c",
+        "<repo>/benchmarks\\comparison\\native-host.cpp",
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX",
+        "/Fo<repo>/benchmarks\\comparison\\build\\",
+        "/Fe<repo>/benchmarks\\comparison\\build\\integer-recurrence.msvc-o2.exe",
+        "/link",
+        "/INCREMENTAL:NO"
+      ],
+      "buildWallMs": {
+        "median": 632.5385999999999,
+        "p95": 636.8143,
+        "min": 623.1151000000009,
+        "max": 636.8143,
+        "samples": [
+          632.5385999999999,
+          623.1151000000009,
+          636.8143
+        ]
+      },
+      "firstStartupMs": 68.5688999999984,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 1,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 100,
+          "seed": 123,
+          "expected": 9184
+        },
+        {
+          "n": 200000,
+          "seed": 1,
+          "expected": 10052
+        },
+        {
+          "n": 200000,
+          "seed": 17,
+          "expected": 23963
+        },
+        {
+          "n": 200000,
+          "seed": 123,
+          "expected": 26032
+        },
+        {
+          "n": 200000,
+          "seed": 9,
+          "expected": 49768
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.5906375,
+        0.59397890625,
+        0.5892875,
+        0.59192890625,
+        0.5903140625,
+        0.59105234375,
+        0.59021171875,
+        0.5917015625,
+        0.592296875
+      ],
+      "runtimeMs": {
+        "median": 0.59105234375,
+        "p95": 0.59397890625,
+        "min": 0.5892875,
+        "max": 0.59397890625
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "prime-sieve",
+      "tool": "pseudo-none",
+      "native": false,
+      "wasmBytes": 565,
+      "wasmSha256": "ca56387a372b5a288f27da56172112ce5c6b76fe6f11e189cb9dcb6462293f70",
+      "sourceSha256": "9dacdba65e5ed4a6835f34a945e91660bd3bf6a6e0d48d3b4d5067b35b6a3e9b",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\prime-sieve.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\prime-sieve.pseudo-none.wasm",
+        "none"
+      ],
+      "buildWallMs": {
+        "median": 309.15010000000075,
+        "p95": 309.3744000000006,
+        "min": 308.7641000000003,
+        "max": 309.3744000000006,
+        "samples": [
+          309.3744000000006,
+          309.15010000000075,
+          308.7641000000003
+        ]
+      },
+      "firstStartupMs": 0.25559999998949934,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 8191,
+          "seed": 0,
+          "expected": 1028
+        },
+        {
+          "n": 4000,
+          "seed": 1,
+          "expected": 551
+        },
+        {
+          "n": 4000,
+          "seed": 17,
+          "expected": 554
+        },
+        {
+          "n": 4000,
+          "seed": 123,
+          "expected": 557
+        },
+        {
+          "n": 4000,
+          "seed": 9,
+          "expected": 553
+        }
+      ],
+      "batchIterations": 16384,
+      "runtimeSamplesMs": [
+        0.004446386718750084,
+        0.004361785888672642,
+        0.004346697998046878,
+        0.004420776367187962,
+        0.00444159545898426,
+        0.004542633056639822,
+        0.004405468749999919,
+        0.0045080566406250355,
+        0.004475799560546889
+      ],
+      "runtimeMs": {
+        "median": 0.00444159545898426,
+        "p95": 0.004542633056639822,
+        "min": 0.004346697998046878,
+        "max": 0.004542633056639822
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "prime-sieve",
+      "tool": "pseudo-o2",
+      "native": false,
+      "wasmBytes": 498,
+      "wasmSha256": "8b207fb9922073503d6e489c5307d68007db2cf078d5e5eeb5604b2e62aee655",
+      "sourceSha256": "9dacdba65e5ed4a6835f34a945e91660bd3bf6a6e0d48d3b4d5067b35b6a3e9b",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\prime-sieve.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\prime-sieve.pseudo-o2.wasm",
+        "binaryen-o2"
+      ],
+      "buildWallMs": {
+        "median": 400.10039999999935,
+        "p95": 401.8045999999995,
+        "min": 393.28979999999865,
+        "max": 401.8045999999995,
+        "samples": [
+          401.8045999999995,
+          393.28979999999865,
+          400.10039999999935
+        ]
+      },
+      "firstStartupMs": 0.27830000000540167,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 8191,
+          "seed": 0,
+          "expected": 1028
+        },
+        {
+          "n": 4000,
+          "seed": 1,
+          "expected": 551
+        },
+        {
+          "n": 4000,
+          "seed": 17,
+          "expected": 554
+        },
+        {
+          "n": 4000,
+          "seed": 123,
+          "expected": 557
+        },
+        {
+          "n": 4000,
+          "seed": 9,
+          "expected": 553
+        }
+      ],
+      "batchIterations": 16384,
+      "runtimeSamplesMs": [
+        0.004291058349609855,
+        0.004308258056640923,
+        0.004307781982421766,
+        0.004260662841796936,
+        0.004210668945312079,
+        0.0043889099121097175,
+        0.004244891357422453,
+        0.004305609130859089,
+        0.004284075927734499
+      ],
+      "runtimeMs": {
+        "median": 0.004291058349609855,
+        "p95": 0.0043889099121097175,
+        "min": 0.004210668945312079,
+        "max": 0.0043889099121097175
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "prime-sieve",
+      "tool": "assemblyscript-o3",
+      "native": false,
+      "wasmBytes": 798,
+      "wasmSha256": "aaf469be0cce21e6013d4fc67f43bce56d78daeec5ada2b78dee5c0d9fcf67ca",
+      "sourceSha256": "8952f4307bf95bf0c335a94e3c9601f92b76b21e5a52c5afdd69bacc768f1a90",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/benchmarks\\toolchains\\node_modules\\assemblyscript\\bin\\asc.js",
+        "<repo>/benchmarks\\comparison\\prime-sieve.ts",
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\prime-sieve.assemblyscript-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 616.9639999999999,
+        "p95": 617.2630000000026,
+        "min": 607.7373999999982,
+        "max": 617.2630000000026,
+        "samples": [
+          616.9639999999999,
+          607.7373999999982,
+          617.2630000000026
+        ]
+      },
+      "firstStartupMs": 0.36890000000130385,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 8191,
+          "seed": 0,
+          "expected": 1028
+        },
+        {
+          "n": 4000,
+          "seed": 1,
+          "expected": 551
+        },
+        {
+          "n": 4000,
+          "seed": 17,
+          "expected": 554
+        },
+        {
+          "n": 4000,
+          "seed": 123,
+          "expected": 557
+        },
+        {
+          "n": 4000,
+          "seed": 9,
+          "expected": 553
+        }
+      ],
+      "batchIterations": 4096,
+      "runtimeSamplesMs": [
+        0.02012314453125086,
+        0.019895190429686238,
+        0.021053710937497527,
+        0.019924780273434806,
+        0.019358911132812295,
+        0.021022827148435397,
+        0.020197778320312665,
+        0.01966169433593734,
+        0.0208341308593738
+      ],
+      "runtimeMs": {
+        "median": 0.02012314453125086,
+        "p95": 0.021053710937497527,
+        "min": 0.019358911132812295,
+        "max": 0.021053710937497527
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "prime-sieve",
+      "tool": "emscripten-o3",
+      "native": false,
+      "wasmBytes": 577,
+      "wasmSha256": "b0e54c58a660c580204952892ecd978e10971c9d833663c42a5d771c6aa8ebe0",
+      "sourceSha256": "34e0315a1094a5d30122009b801216f5e8f13af4843b6cc0abe76b486d9b612e",
+      "command": [
+        "<repo>/benchmarks\\.toolchains\\emsdk\\python\\3.13.3_64bit\\python.exe",
+        "<repo>/benchmarks\\.toolchains\\emsdk\\upstream\\emscripten\\emcc.py",
+        "<repo>/benchmarks\\comparison\\prime-sieve.c",
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\prime-sieve.emscripten-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 887.6463000000003,
+        "p95": 911.5357999999978,
+        "min": 871.534599999999,
+        "max": 911.5357999999978,
+        "samples": [
+          887.6463000000003,
+          911.5357999999978,
+          871.534599999999
+        ]
+      },
+      "firstStartupMs": 0.3252000000065891,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 8191,
+          "seed": 0,
+          "expected": 1028
+        },
+        {
+          "n": 4000,
+          "seed": 1,
+          "expected": 551
+        },
+        {
+          "n": 4000,
+          "seed": 17,
+          "expected": 554
+        },
+        {
+          "n": 4000,
+          "seed": 123,
+          "expected": 557
+        },
+        {
+          "n": 4000,
+          "seed": 9,
+          "expected": 553
+        }
+      ],
+      "batchIterations": 32768,
+      "runtimeSamplesMs": [
+        0.0022538757324217507,
+        0.002247030639648262,
+        0.0022444122314451143,
+        0.0022430603027343565,
+        0.0022486541748043543,
+        0.0022431549072265966,
+        0.002250070190429998,
+        0.0022490081787109872,
+        0.0022472717285157984
+      ],
+      "runtimeMs": {
+        "median": 0.0022472717285157984,
+        "p95": 0.0022538757324217507,
+        "min": 0.0022430603027343565,
+        "max": 0.0022538757324217507
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "prime-sieve",
+      "tool": "msvc-o2",
+      "native": true,
+      "executableBytes": 308736,
+      "executableSha256": "22b08071ef66db2ca3417458459057d68f79ba634d819ac81a085b0e90185a85",
+      "sourceSha256": "34e0315a1094a5d30122009b801216f5e8f13af4843b6cc0abe76b486d9b612e",
+      "command": [
+        "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+        "<repo>/benchmarks\\comparison\\prime-sieve.c",
+        "<repo>/benchmarks\\comparison\\native-host.cpp",
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX",
+        "/Fo<repo>/benchmarks\\comparison\\build\\",
+        "/Fe<repo>/benchmarks\\comparison\\build\\prime-sieve.msvc-o2.exe",
+        "/link",
+        "/INCREMENTAL:NO"
+      ],
+      "buildWallMs": {
+        "median": 637.2705999999998,
+        "p95": 666.4124999999985,
+        "min": 636.2263000000021,
+        "max": 666.4124999999985,
+        "samples": [
+          636.2263000000021,
+          666.4124999999985,
+          637.2705999999998
+        ]
+      },
+      "firstStartupMs": 68.12450000000536,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 8191,
+          "seed": 0,
+          "expected": 1028
+        },
+        {
+          "n": 4000,
+          "seed": 1,
+          "expected": 551
+        },
+        {
+          "n": 4000,
+          "seed": 17,
+          "expected": 554
+        },
+        {
+          "n": 4000,
+          "seed": 123,
+          "expected": 557
+        },
+        {
+          "n": 4000,
+          "seed": 9,
+          "expected": 553
+        }
+      ],
+      "batchIterations": 32768,
+      "runtimeSamplesMs": [
+        0.00156827392578125,
+        0.0015579620361328124,
+        0.0015618377685546875,
+        0.001564532470703125,
+        0.001568609619140625,
+        0.0015926513671875,
+        0.0015788177490234374,
+        0.0015768402099609375,
+        0.00156236572265625
+      ],
+      "runtimeMs": {
+        "median": 0.00156827392578125,
+        "p95": 0.0015926513671875,
+        "min": 0.0015579620361328124,
+        "max": 0.0015926513671875
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "matrix-multiply",
+      "tool": "pseudo-none",
+      "native": false,
+      "wasmBytes": 719,
+      "wasmSha256": "586cb93391c7ab168b2d8cd9c15648f720bb224fba9ff29865ae4775e994960b",
+      "sourceSha256": "24ca0443c022d9c3a81f117bd5068b06be0480d6250bc0a1e56da1f3da97d30e",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\matrix-multiply.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\matrix-multiply.pseudo-none.wasm",
+        "none"
+      ],
+      "buildWallMs": {
+        "median": 308.7455000000009,
+        "p95": 315.0112999999983,
+        "min": 308.3189999999995,
+        "max": 315.0112999999983,
+        "samples": [
+          308.3189999999995,
+          308.7455000000009,
+          315.0112999999983
+        ]
+      },
+      "firstStartupMs": 0.2554999999993015,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 289
+        },
+        {
+          "n": 32,
+          "seed": 123,
+          "expected": 69911361
+        },
+        {
+          "n": 24,
+          "seed": 1,
+          "expected": 28618845
+        },
+        {
+          "n": 24,
+          "seed": 17,
+          "expected": 29223471
+        },
+        {
+          "n": 24,
+          "seed": 123,
+          "expected": 29529981
+        },
+        {
+          "n": 24,
+          "seed": 9,
+          "expected": 29252926
+        }
+      ],
+      "batchIterations": 8192,
+      "runtimeSamplesMs": [
+        0.01164713134765627,
+        0.011713867187500782,
+        0.011851354980469964,
+        0.011678735351562608,
+        0.011617443847656617,
+        0.011664697265624469,
+        0.011630676269529516,
+        0.011702795410156952,
+        0.011884204101562545
+      ],
+      "runtimeMs": {
+        "median": 0.011678735351562608,
+        "p95": 0.011884204101562545,
+        "min": 0.011617443847656617,
+        "max": 0.011884204101562545
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "matrix-multiply",
+      "tool": "pseudo-o2",
+      "native": false,
+      "wasmBytes": 643,
+      "wasmSha256": "f2d8c36d67a96fd6d650e3016c87d79c0ce56e5f1e31527cb0c9259becdc51b0",
+      "sourceSha256": "24ca0443c022d9c3a81f117bd5068b06be0480d6250bc0a1e56da1f3da97d30e",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\matrix-multiply.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\matrix-multiply.pseudo-o2.wasm",
+        "binaryen-o2"
+      ],
+      "buildWallMs": {
+        "median": 403.8365999999987,
+        "p95": 404.91159999999945,
+        "min": 398.89440000000104,
+        "max": 404.91159999999945,
+        "samples": [
+          403.8365999999987,
+          404.91159999999945,
+          398.89440000000104
+        ]
+      },
+      "firstStartupMs": 0.274199999999837,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 289
+        },
+        {
+          "n": 32,
+          "seed": 123,
+          "expected": 69911361
+        },
+        {
+          "n": 24,
+          "seed": 1,
+          "expected": 28618845
+        },
+        {
+          "n": 24,
+          "seed": 17,
+          "expected": 29223471
+        },
+        {
+          "n": 24,
+          "seed": 123,
+          "expected": 29529981
+        },
+        {
+          "n": 24,
+          "seed": 9,
+          "expected": 29252926
+        }
+      ],
+      "batchIterations": 8192,
+      "runtimeSamplesMs": [
+        0.011638684082031503,
+        0.0116293701171859,
+        0.011879650878906745,
+        0.011665563964843528,
+        0.01165354003906316,
+        0.011711901855468554,
+        0.011701843261718636,
+        0.011634301757812437,
+        0.011665417480468676
+      ],
+      "runtimeMs": {
+        "median": 0.011665417480468676,
+        "p95": 0.011879650878906745,
+        "min": 0.0116293701171859,
+        "max": 0.011879650878906745
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "matrix-multiply",
+      "tool": "assemblyscript-o3",
+      "native": false,
+      "wasmBytes": 917,
+      "wasmSha256": "3f5a402c3beed0b4321a2fd416e0d1d8a3bb3363d29912f653bcff4d21b1ac8b",
+      "sourceSha256": "7e540fdf75a0f1c720d5a8b6bb318d7580bb0d793a8a3c168f58db4d63456ce4",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/benchmarks\\toolchains\\node_modules\\assemblyscript\\bin\\asc.js",
+        "<repo>/benchmarks\\comparison\\matrix-multiply.ts",
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\matrix-multiply.assemblyscript-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 646.231200000002,
+        "p95": 654.6478999999999,
+        "min": 643.5105000000003,
+        "max": 654.6478999999999,
+        "samples": [
+          646.231200000002,
+          643.5105000000003,
+          654.6478999999999
+        ]
+      },
+      "firstStartupMs": 0.348599999997532,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 289
+        },
+        {
+          "n": 32,
+          "seed": 123,
+          "expected": 69911361
+        },
+        {
+          "n": 24,
+          "seed": 1,
+          "expected": 28618845
+        },
+        {
+          "n": 24,
+          "seed": 17,
+          "expected": 29223471
+        },
+        {
+          "n": 24,
+          "seed": 123,
+          "expected": 29529981
+        },
+        {
+          "n": 24,
+          "seed": 9,
+          "expected": 29252926
+        }
+      ],
+      "batchIterations": 2048,
+      "runtimeSamplesMs": [
+        0.04009287109375492,
+        0.038644140625002876,
+        0.040193994140622635,
+        0.042377539062499636,
+        0.043162695312503274,
+        0.040688623046875705,
+        0.0417290039062479,
+        0.04079223632812301,
+        0.04081025390625115
+      ],
+      "runtimeMs": {
+        "median": 0.04079223632812301,
+        "p95": 0.043162695312503274,
+        "min": 0.038644140625002876,
+        "max": 0.043162695312503274
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "matrix-multiply",
+      "tool": "emscripten-o3",
+      "native": false,
+      "wasmBytes": 781,
+      "wasmSha256": "1daa40162c720fc230b683021cda58e379a7503d521fd1c388daa0348e6f255a",
+      "sourceSha256": "1e59c3d37d9c03dbe45082161f3c9dad6350c2738db4eae51be6c4f0a7e09f6c",
+      "command": [
+        "<repo>/benchmarks\\.toolchains\\emsdk\\python\\3.13.3_64bit\\python.exe",
+        "<repo>/benchmarks\\.toolchains\\emsdk\\upstream\\emscripten\\emcc.py",
+        "<repo>/benchmarks\\comparison\\matrix-multiply.c",
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\matrix-multiply.emscripten-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 896.1364999999969,
+        "p95": 905.7479999999996,
+        "min": 884.5171000000046,
+        "max": 905.7479999999996,
+        "samples": [
+          905.7479999999996,
+          896.1364999999969,
+          884.5171000000046
+        ]
+      },
+      "firstStartupMs": 0.32460000000719447,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 289
+        },
+        {
+          "n": 32,
+          "seed": 123,
+          "expected": 69911361
+        },
+        {
+          "n": 24,
+          "seed": 1,
+          "expected": 28618845
+        },
+        {
+          "n": 24,
+          "seed": 17,
+          "expected": 29223471
+        },
+        {
+          "n": 24,
+          "seed": 123,
+          "expected": 29529981
+        },
+        {
+          "n": 24,
+          "seed": 9,
+          "expected": 29252926
+        }
+      ],
+      "batchIterations": 8192,
+      "runtimeSamplesMs": [
+        0.006649121093749599,
+        0.0066507934570321225,
+        0.006653820800782029,
+        0.006767968750001074,
+        0.006646032714844097,
+        0.006652575683594009,
+        0.006650915527343315,
+        0.0066704833984374545,
+        0.006627038574219313
+      ],
+      "runtimeMs": {
+        "median": 0.006650915527343315,
+        "p95": 0.006767968750001074,
+        "min": 0.006627038574219313,
+        "max": 0.006767968750001074
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "matrix-multiply",
+      "tool": "msvc-o2",
+      "native": true,
+      "executableBytes": 309760,
+      "executableSha256": "7c5f2ac1b2249edd1d4c82de32c91c018d5e048353425255441f1f1c8b448fdd",
+      "sourceSha256": "1e59c3d37d9c03dbe45082161f3c9dad6350c2738db4eae51be6c4f0a7e09f6c",
+      "command": [
+        "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+        "<repo>/benchmarks\\comparison\\matrix-multiply.c",
+        "<repo>/benchmarks\\comparison\\native-host.cpp",
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX",
+        "/Fo<repo>/benchmarks\\comparison\\build\\",
+        "/Fe<repo>/benchmarks\\comparison\\build\\matrix-multiply.msvc-o2.exe",
+        "/link",
+        "/INCREMENTAL:NO"
+      ],
+      "buildWallMs": {
+        "median": 645.722099999999,
+        "p95": 650.4199000000008,
+        "min": 644.9699000000037,
+        "max": 650.4199000000008,
+        "samples": [
+          645.722099999999,
+          650.4199000000008,
+          644.9699000000037
+        ]
+      },
+      "firstStartupMs": 67.08610000000044,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 289
+        },
+        {
+          "n": 32,
+          "seed": 123,
+          "expected": 69911361
+        },
+        {
+          "n": 24,
+          "seed": 1,
+          "expected": 28618845
+        },
+        {
+          "n": 24,
+          "seed": 17,
+          "expected": 29223471
+        },
+        {
+          "n": 24,
+          "seed": 123,
+          "expected": 29529981
+        },
+        {
+          "n": 24,
+          "seed": 9,
+          "expected": 29252926
+        }
+      ],
+      "batchIterations": 16384,
+      "runtimeSamplesMs": [
+        0.00570318603515625,
+        0.005716265869140625,
+        0.005740972900390625,
+        0.005836749267578125,
+        0.005713311767578125,
+        0.005721966552734375,
+        0.00574288330078125,
+        0.00569669189453125,
+        0.005780902099609375
+      ],
+      "runtimeMs": {
+        "median": 0.005721966552734375,
+        "p95": 0.005836749267578125,
+        "min": 0.00569669189453125,
+        "max": 0.005836749267578125
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "recursive-fibonacci",
+      "tool": "pseudo-none",
+      "native": false,
+      "wasmBytes": 248,
+      "wasmSha256": "8a61d3df51d790318f7854ad48922beaeab20e21653f92471328c969dc12114d",
+      "sourceSha256": "f2b7d20b78febe6e0b79ddb047a1cb5ca41e398f158d3eb4dc03ae4313028bad",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\recursive-fibonacci.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\recursive-fibonacci.pseudo-none.wasm",
+        "none"
+      ],
+      "buildWallMs": {
+        "median": 265.9830000000002,
+        "p95": 266.6189000000013,
+        "min": 265.1912999999986,
+        "max": 266.6189000000013,
+        "samples": [
+          265.1912999999986,
+          265.9830000000002,
+          266.6189000000013
+        ]
+      },
+      "firstStartupMs": 0.2676999999966938,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 10,
+          "seed": 2,
+          "expected": 144
+        },
+        {
+          "n": 22,
+          "seed": 1,
+          "expected": 28657
+        },
+        {
+          "n": 22,
+          "seed": 17,
+          "expected": 46368
+        },
+        {
+          "n": 22,
+          "seed": 123,
+          "expected": 17711
+        },
+        {
+          "n": 22,
+          "seed": 9,
+          "expected": 17711
+        }
+      ],
+      "batchIterations": 512,
+      "runtimeSamplesMs": [
+        0.10425898437497949,
+        0.10562851562499986,
+        0.10397011718748672,
+        0.1041951171875155,
+        0.10416953124999395,
+        0.10421796874999245,
+        0.10392480468752296,
+        0.10472441406250255,
+        0.10524238281249154
+      ],
+      "runtimeMs": {
+        "median": 0.10421796874999245,
+        "p95": 0.10562851562499986,
+        "min": 0.10392480468752296,
+        "max": 0.10562851562499986
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "recursive-fibonacci",
+      "tool": "pseudo-o2",
+      "native": false,
+      "wasmBytes": 234,
+      "wasmSha256": "b6d2a0444ed7d91ae909d56aa003c82d1b37a3b8d4ee3ecd0bb5598ca73af9fc",
+      "sourceSha256": "f2b7d20b78febe6e0b79ddb047a1cb5ca41e398f158d3eb4dc03ae4313028bad",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\recursive-fibonacci.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\recursive-fibonacci.pseudo-o2.wasm",
+        "binaryen-o2"
+      ],
+      "buildWallMs": {
+        "median": 366.9487999999983,
+        "p95": 378.4444000000003,
+        "min": 360.6599999999962,
+        "max": 378.4444000000003,
+        "samples": [
+          360.6599999999962,
+          366.9487999999983,
+          378.4444000000003
+        ]
+      },
+      "firstStartupMs": 0.3040000000037253,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 10,
+          "seed": 2,
+          "expected": 144
+        },
+        {
+          "n": 22,
+          "seed": 1,
+          "expected": 28657
+        },
+        {
+          "n": 22,
+          "seed": 17,
+          "expected": 46368
+        },
+        {
+          "n": 22,
+          "seed": 123,
+          "expected": 17711
+        },
+        {
+          "n": 22,
+          "seed": 9,
+          "expected": 17711
+        }
+      ],
+      "batchIterations": 512,
+      "runtimeSamplesMs": [
+        0.10300878906249977,
+        0.10237851562501987,
+        0.10310703125000487,
+        0.10294511718748822,
+        0.1030808593749839,
+        0.10240371093749445,
+        0.10296152343750009,
+        0.10322089843748472,
+        0.10292675781249727
+      ],
+      "runtimeMs": {
+        "median": 0.10296152343750009,
+        "p95": 0.10322089843748472,
+        "min": 0.10237851562501987,
+        "max": 0.10322089843748472
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "recursive-fibonacci",
+      "tool": "assemblyscript-o3",
+      "native": false,
+      "wasmBytes": 142,
+      "wasmSha256": "1521f3efc64474d7bdcff0c6f2ed913715bf37df2bd4cc3f6ddb66d0de20f715",
+      "sourceSha256": "30794a53fb4da226066c6d7b91bf04b25a5f527e54144dd58ca2438bc580aa17",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/benchmarks\\toolchains\\node_modules\\assemblyscript\\bin\\asc.js",
+        "<repo>/benchmarks\\comparison\\recursive-fibonacci.ts",
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\recursive-fibonacci.assemblyscript-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 554.6792999999961,
+        "p95": 556.7238999999972,
+        "min": 553.0987000000023,
+        "max": 556.7238999999972,
+        "samples": [
+          556.7238999999972,
+          553.0987000000023,
+          554.6792999999961
+        ]
+      },
+      "firstStartupMs": 0.2734000000054948,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 10,
+          "seed": 2,
+          "expected": 144
+        },
+        {
+          "n": 22,
+          "seed": 1,
+          "expected": 28657
+        },
+        {
+          "n": 22,
+          "seed": 17,
+          "expected": 46368
+        },
+        {
+          "n": 22,
+          "seed": 123,
+          "expected": 17711
+        },
+        {
+          "n": 22,
+          "seed": 9,
+          "expected": 17711
+        }
+      ],
+      "batchIterations": 512,
+      "runtimeSamplesMs": [
+        0.11382109375000482,
+        0.1146374999999864,
+        0.11902382812499468,
+        0.11545800781249227,
+        0.11544394531250646,
+        0.12525800781250496,
+        0.12112304687499886,
+        0.12565019531251664,
+        0.12312207031251887
+      ],
+      "runtimeMs": {
+        "median": 0.11902382812499468,
+        "p95": 0.12565019531251664,
+        "min": 0.11382109375000482,
+        "max": 0.12565019531251664
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "recursive-fibonacci",
+      "tool": "emscripten-o3",
+      "native": false,
+      "wasmBytes": 355,
+      "wasmSha256": "f83ff856aa3e94e16e3039f4db3609a4b33a14338f55f514e30eb6e6be4e1c75",
+      "sourceSha256": "813fca469486bb5bbab105298fcaa4a9add108b8870572955695031e87ea474a",
+      "command": [
+        "<repo>/benchmarks\\.toolchains\\emsdk\\python\\3.13.3_64bit\\python.exe",
+        "<repo>/benchmarks\\.toolchains\\emsdk\\upstream\\emscripten\\emcc.py",
+        "<repo>/benchmarks\\comparison\\recursive-fibonacci.c",
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\recursive-fibonacci.emscripten-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 874.2088999999978,
+        "p95": 885.2667999999976,
+        "min": 856.0993999999992,
+        "max": 885.2667999999976,
+        "samples": [
+          874.2088999999978,
+          856.0993999999992,
+          885.2667999999976
+        ]
+      },
+      "firstStartupMs": 0.33900000000721775,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 10,
+          "seed": 2,
+          "expected": 144
+        },
+        {
+          "n": 22,
+          "seed": 1,
+          "expected": 28657
+        },
+        {
+          "n": 22,
+          "seed": 17,
+          "expected": 46368
+        },
+        {
+          "n": 22,
+          "seed": 123,
+          "expected": 17711
+        },
+        {
+          "n": 22,
+          "seed": 9,
+          "expected": 17711
+        }
+      ],
+      "batchIterations": 1024,
+      "runtimeSamplesMs": [
+        0.05082011718749868,
+        0.05202578124999491,
+        0.05147646484375912,
+        0.05124677734374927,
+        0.05168007812500264,
+        0.05138046874999702,
+        0.052740429687503365,
+        0.051266601562502956,
+        0.05218564453124941
+      ],
+      "runtimeMs": {
+        "median": 0.05147646484375912,
+        "p95": 0.052740429687503365,
+        "min": 0.05082011718749868,
+        "max": 0.052740429687503365
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "recursive-fibonacci",
+      "tool": "msvc-o2",
+      "native": true,
+      "executableBytes": 308736,
+      "executableSha256": "d572ddd5324168da7014e6738b5b5dca74469df03abaa7e329b5285dbacccba0",
+      "sourceSha256": "813fca469486bb5bbab105298fcaa4a9add108b8870572955695031e87ea474a",
+      "command": [
+        "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+        "<repo>/benchmarks\\comparison\\recursive-fibonacci.c",
+        "<repo>/benchmarks\\comparison\\native-host.cpp",
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX",
+        "/Fo<repo>/benchmarks\\comparison\\build\\",
+        "/Fe<repo>/benchmarks\\comparison\\build\\recursive-fibonacci.msvc-o2.exe",
+        "/link",
+        "/INCREMENTAL:NO"
+      ],
+      "buildWallMs": {
+        "median": 643.7877000000008,
+        "p95": 720.0952999999936,
+        "min": 637.2380000000048,
+        "max": 720.0952999999936,
+        "samples": [
+          637.2380000000048,
+          643.7877000000008,
+          720.0952999999936
+        ]
+      },
+      "firstStartupMs": 67.82480000000214,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 10,
+          "seed": 2,
+          "expected": 144
+        },
+        {
+          "n": 22,
+          "seed": 1,
+          "expected": 28657
+        },
+        {
+          "n": 22,
+          "seed": 17,
+          "expected": 46368
+        },
+        {
+          "n": 22,
+          "seed": 123,
+          "expected": 17711
+        },
+        {
+          "n": 22,
+          "seed": 9,
+          "expected": 17711
+        }
+      ],
+      "batchIterations": 1024,
+      "runtimeSamplesMs": [
+        0.0741728515625,
+        0.07437412109375,
+        0.07452333984375,
+        0.07523251953125,
+        0.074543359375,
+        0.07406708984375,
+        0.07409423828125,
+        0.07486806640625,
+        0.0741681640625
+      ],
+      "runtimeMs": {
+        "median": 0.07437412109375,
+        "p95": 0.07523251953125,
+        "min": 0.07406708984375,
+        "max": 0.07523251953125
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "n-queens",
+      "tool": "pseudo-none",
+      "native": false,
+      "wasmBytes": 910,
+      "wasmSha256": "f04c72c56ba549ec686dd059999d7d6044a002eb4ece16026b2638e90a85f79a",
+      "sourceSha256": "797fbd615feb7eedd63deab735e601595dc7758baaacd822204f626043eeff52",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\n-queens.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\n-queens.pseudo-none.wasm",
+        "none"
+      ],
+      "buildWallMs": {
+        "median": 317.287599999996,
+        "p95": 317.56359999999404,
+        "min": 316.1631000000052,
+        "max": 317.56359999999404,
+        "samples": [
+          317.287599999996,
+          316.1631000000052,
+          317.56359999999404
+        ]
+      },
+      "firstStartupMs": 0.24259999999776483,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 4,
+          "seed": 0,
+          "expected": 2
+        },
+        {
+          "n": 5,
+          "seed": 17,
+          "expected": 10
+        },
+        {
+          "n": 8,
+          "seed": 9,
+          "expected": 92
+        },
+        {
+          "n": 12,
+          "seed": 123,
+          "expected": 14200
+        },
+        {
+          "n": 11,
+          "seed": 1,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 17,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 123,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 9,
+          "expected": 2680
+        }
+      ],
+      "batchIterations": 8,
+      "runtimeSamplesMs": [
+        8.592987500000163,
+        8.575999999999112,
+        8.610662500001126,
+        8.647937499999898,
+        8.584399999999732,
+        8.58705000000009,
+        8.66773749999993,
+        8.57852499999899,
+        8.600862499999494
+      ],
+      "runtimeMs": {
+        "median": 8.592987500000163,
+        "p95": 8.66773749999993,
+        "min": 8.575999999999112,
+        "max": 8.66773749999993
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "n-queens",
+      "tool": "pseudo-o2",
+      "native": false,
+      "wasmBytes": 764,
+      "wasmSha256": "3b7f7f51d3b50fa09781bffc4257e93a9ffeab8b56a37805db7d8f38880a2290",
+      "sourceSha256": "797fbd615feb7eedd63deab735e601595dc7758baaacd822204f626043eeff52",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\n-queens.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\n-queens.pseudo-o2.wasm",
+        "binaryen-o2"
+      ],
+      "buildWallMs": {
+        "median": 395.40430000000197,
+        "p95": 397.3859999999986,
+        "min": 394.07050000000163,
+        "max": 397.3859999999986,
+        "samples": [
+          395.40430000000197,
+          394.07050000000163,
+          397.3859999999986
+        ]
+      },
+      "firstStartupMs": 0.2863000000070315,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 4,
+          "seed": 0,
+          "expected": 2
+        },
+        {
+          "n": 5,
+          "seed": 17,
+          "expected": 10
+        },
+        {
+          "n": 8,
+          "seed": 9,
+          "expected": 92
+        },
+        {
+          "n": 12,
+          "seed": 123,
+          "expected": 14200
+        },
+        {
+          "n": 11,
+          "seed": 1,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 17,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 123,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 9,
+          "expected": 2680
+        }
+      ],
+      "batchIterations": 8,
+      "runtimeSamplesMs": [
+        8.398425000001225,
+        8.376425000000381,
+        8.383299999999508,
+        8.388537500000893,
+        8.388699999999517,
+        8.373312499999884,
+        8.425000000001091,
+        8.37586249999913,
+        8.37525000000096
+      ],
+      "runtimeMs": {
+        "median": 8.383299999999508,
+        "p95": 8.425000000001091,
+        "min": 8.373312499999884,
+        "max": 8.425000000001091
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "n-queens",
+      "tool": "assemblyscript-o3",
+      "native": false,
+      "wasmBytes": 1057,
+      "wasmSha256": "35496f46e453e5095e4b87792e38258ca6324c518dd36b9abb79b7787d463f0d",
+      "sourceSha256": "728d7fab71a39ef0d88d0f9499a1e76a8a92022b5a8eb55c21f943d30269d2a5",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/benchmarks\\toolchains\\node_modules\\assemblyscript\\bin\\asc.js",
+        "<repo>/benchmarks\\comparison\\n-queens.ts",
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\n-queens.assemblyscript-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 637.5984000000026,
+        "p95": 651.0592000000033,
+        "min": 631.1284999999989,
+        "max": 651.0592000000033,
+        "samples": [
+          631.1284999999989,
+          637.5984000000026,
+          651.0592000000033
+        ]
+      },
+      "firstStartupMs": 0.3981999999959953,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 4,
+          "seed": 0,
+          "expected": 2
+        },
+        {
+          "n": 5,
+          "seed": 17,
+          "expected": 10
+        },
+        {
+          "n": 8,
+          "seed": 9,
+          "expected": 92
+        },
+        {
+          "n": 12,
+          "seed": 123,
+          "expected": 14200
+        },
+        {
+          "n": 11,
+          "seed": 1,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 17,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 123,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 9,
+          "expected": 2680
+        }
+      ],
+      "batchIterations": 8,
+      "runtimeSamplesMs": [
+        10.942250000000058,
+        11.083687500000451,
+        10.889087499999732,
+        10.937887500000215,
+        11.006874999999127,
+        10.962512499998411,
+        11.014100000000326,
+        10.944087500000023,
+        11.004424999999173
+      ],
+      "runtimeMs": {
+        "median": 10.962512499998411,
+        "p95": 11.083687500000451,
+        "min": 10.889087499999732,
+        "max": 11.083687500000451
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "n-queens",
+      "tool": "emscripten-o3",
+      "native": false,
+      "wasmBytes": 582,
+      "wasmSha256": "00fe38448107a76b7bd2685ce22deac1187c9c559e61c580f4a6e2d1ec073725",
+      "sourceSha256": "de9eb9dec0cd3c4e266ba69dea6548a8381940787c7474c25f2da0c0c5d37257",
+      "command": [
+        "<repo>/benchmarks\\.toolchains\\emsdk\\python\\3.13.3_64bit\\python.exe",
+        "<repo>/benchmarks\\.toolchains\\emsdk\\upstream\\emscripten\\emcc.py",
+        "<repo>/benchmarks\\comparison\\n-queens.c",
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\n-queens.emscripten-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 880.6430999999939,
+        "p95": 894.495799999997,
+        "min": 877.2618000000002,
+        "max": 894.495799999997,
+        "samples": [
+          880.6430999999939,
+          877.2618000000002,
+          894.495799999997
+        ]
+      },
+      "firstStartupMs": 0.3114999999961583,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 4,
+          "seed": 0,
+          "expected": 2
+        },
+        {
+          "n": 5,
+          "seed": 17,
+          "expected": 10
+        },
+        {
+          "n": 8,
+          "seed": 9,
+          "expected": 92
+        },
+        {
+          "n": 12,
+          "seed": 123,
+          "expected": 14200
+        },
+        {
+          "n": 11,
+          "seed": 1,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 17,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 123,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 9,
+          "expected": 2680
+        }
+      ],
+      "batchIterations": 8,
+      "runtimeSamplesMs": [
+        7.6723000000001775,
+        7.565662499999235,
+        7.631337499999063,
+        7.54845000000023,
+        7.643550000000687,
+        7.646300000000338,
+        7.6819999999988795,
+        7.639025000000402,
+        7.582599999999729
+      ],
+      "runtimeMs": {
+        "median": 7.639025000000402,
+        "p95": 7.6819999999988795,
+        "min": 7.54845000000023,
+        "max": 7.6819999999988795
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "n-queens",
+      "tool": "msvc-o2",
+      "native": true,
+      "executableBytes": 309248,
+      "executableSha256": "5b60ce7285d65c1d2ab9ea70c253fa1ccfcaf1c097e4efddc4d53ba468b9b1f0",
+      "sourceSha256": "de9eb9dec0cd3c4e266ba69dea6548a8381940787c7474c25f2da0c0c5d37257",
+      "command": [
+        "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+        "<repo>/benchmarks\\comparison\\n-queens.c",
+        "<repo>/benchmarks\\comparison\\native-host.cpp",
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX",
+        "/Fo<repo>/benchmarks\\comparison\\build\\",
+        "/Fe<repo>/benchmarks\\comparison\\build\\n-queens.msvc-o2.exe",
+        "/link",
+        "/INCREMENTAL:NO"
+      ],
+      "buildWallMs": {
+        "median": 629.1995999999999,
+        "p95": 640.2811999999976,
+        "min": 624.8409000000029,
+        "max": 640.2811999999976,
+        "samples": [
+          624.8409000000029,
+          629.1995999999999,
+          640.2811999999976
+        ]
+      },
+      "firstStartupMs": 66.07190000000992,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 1,
+          "seed": 0,
+          "expected": 1
+        },
+        {
+          "n": 4,
+          "seed": 0,
+          "expected": 2
+        },
+        {
+          "n": 5,
+          "seed": 17,
+          "expected": 10
+        },
+        {
+          "n": 8,
+          "seed": 9,
+          "expected": 92
+        },
+        {
+          "n": 12,
+          "seed": 123,
+          "expected": 14200
+        },
+        {
+          "n": 11,
+          "seed": 1,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 17,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 123,
+          "expected": 2680
+        },
+        {
+          "n": 11,
+          "seed": 9,
+          "expected": 2680
+        }
+      ],
+      "batchIterations": 8,
+      "runtimeSamplesMs": [
+        7.688675,
+        7.6547625,
+        7.6405125,
+        7.710425,
+        7.6789375,
+        7.5785625,
+        7.6377875,
+        7.629375,
+        7.55535
+      ],
+      "runtimeMs": {
+        "median": 7.6405125,
+        "p95": 7.710425,
+        "min": 7.55535,
+        "max": 7.710425
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "heap-sort",
+      "tool": "pseudo-none",
+      "native": false,
+      "wasmBytes": 1238,
+      "wasmSha256": "592a5251ce119e9559efcdce54c8baa15fe6361cf8095e5204d4064e799c0b43",
+      "sourceSha256": "c024bbf5f5d27ca14ce13412509042a3fd955d7edac06df9d2846c5c766d1123",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\heap-sort.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\heap-sort.pseudo-none.wasm",
+        "none"
+      ],
+      "buildWallMs": {
+        "median": 323.1178,
+        "p95": 325.01640000000043,
+        "min": 317.6131000000023,
+        "max": 325.01640000000043,
+        "samples": [
+          323.1178,
+          317.6131000000023,
+          325.01640000000043
+        ]
+      },
+      "firstStartupMs": 0.21050000000104774,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 2,
+          "seed": 123,
+          "expected": 6378
+        },
+        {
+          "n": 127,
+          "seed": 9,
+          "expected": 20315
+        },
+        {
+          "n": 16384,
+          "seed": 0,
+          "expected": 38309
+        },
+        {
+          "n": 16384,
+          "seed": 1,
+          "expected": 49814
+        },
+        {
+          "n": 16384,
+          "seed": 17,
+          "expected": 49249
+        },
+        {
+          "n": 16384,
+          "seed": 123,
+          "expected": 41723
+        },
+        {
+          "n": 16384,
+          "seed": 9,
+          "expected": 23376
+        }
+      ],
+      "batchIterations": 64,
+      "runtimeSamplesMs": [
+        1.158759375000045,
+        1.1548453124999014,
+        1.172751562500025,
+        1.1667703124999207,
+        1.1608562500000517,
+        1.1539140625000073,
+        1.1617734375001874,
+        1.155984374999889,
+        1.16728124999986
+      ],
+      "runtimeMs": {
+        "median": 1.1608562500000517,
+        "p95": 1.172751562500025,
+        "min": 1.1539140625000073,
+        "max": 1.172751562500025
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "heap-sort",
+      "tool": "pseudo-o2",
+      "native": false,
+      "wasmBytes": 1085,
+      "wasmSha256": "1f03c27d50c5ff1cd13ddc891e37322a38da20cc1887b303cc6762b178c21fe7",
+      "sourceSha256": "c024bbf5f5d27ca14ce13412509042a3fd955d7edac06df9d2846c5c766d1123",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\heap-sort.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\heap-sort.pseudo-o2.wasm",
+        "binaryen-o2"
+      ],
+      "buildWallMs": {
+        "median": 396.43360000000393,
+        "p95": 396.4403999999995,
+        "min": 392.6696000000011,
+        "max": 396.4403999999995,
+        "samples": [
+          392.6696000000011,
+          396.43360000000393,
+          396.4403999999995
+        ]
+      },
+      "firstStartupMs": 0.29589999999734573,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 2,
+          "seed": 123,
+          "expected": 6378
+        },
+        {
+          "n": 127,
+          "seed": 9,
+          "expected": 20315
+        },
+        {
+          "n": 16384,
+          "seed": 0,
+          "expected": 38309
+        },
+        {
+          "n": 16384,
+          "seed": 1,
+          "expected": 49814
+        },
+        {
+          "n": 16384,
+          "seed": 17,
+          "expected": 49249
+        },
+        {
+          "n": 16384,
+          "seed": 123,
+          "expected": 41723
+        },
+        {
+          "n": 16384,
+          "seed": 9,
+          "expected": 23376
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.6439601562500457,
+        0.6405554687499944,
+        0.6467835937500013,
+        0.6457585937499744,
+        0.640103124999996,
+        0.6495382812499884,
+        0.6395796875000315,
+        0.6458781249999674,
+        0.642327343749912
+      ],
+      "runtimeMs": {
+        "median": 0.6439601562500457,
+        "p95": 0.6495382812499884,
+        "min": 0.6395796875000315,
+        "max": 0.6495382812499884
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "heap-sort",
+      "tool": "assemblyscript-o3",
+      "native": false,
+      "wasmBytes": 955,
+      "wasmSha256": "d72fa44263b6c94c3d6d3f0eaed6d39374621e271ce84549b7c450ca8bd8e897",
+      "sourceSha256": "6dbbaa5142b8581416757b3cedbaae436edf48239e9704a18a1512c34eb5d195",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/benchmarks\\toolchains\\node_modules\\assemblyscript\\bin\\asc.js",
+        "<repo>/benchmarks\\comparison\\heap-sort.ts",
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\heap-sort.assemblyscript-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 639.2489999999962,
+        "p95": 647.1066000000064,
+        "min": 633.598800000007,
+        "max": 647.1066000000064,
+        "samples": [
+          633.598800000007,
+          639.2489999999962,
+          647.1066000000064
+        ]
+      },
+      "firstStartupMs": 0.3246999999973923,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 2,
+          "seed": 123,
+          "expected": 6378
+        },
+        {
+          "n": 127,
+          "seed": 9,
+          "expected": 20315
+        },
+        {
+          "n": 16384,
+          "seed": 0,
+          "expected": 38309
+        },
+        {
+          "n": 16384,
+          "seed": 1,
+          "expected": 49814
+        },
+        {
+          "n": 16384,
+          "seed": 17,
+          "expected": 49249
+        },
+        {
+          "n": 16384,
+          "seed": 123,
+          "expected": 41723
+        },
+        {
+          "n": 16384,
+          "seed": 9,
+          "expected": 23376
+        }
+      ],
+      "batchIterations": 32,
+      "runtimeSamplesMs": [
+        3.0258562499998334,
+        3.0306562499999927,
+        3.036265624999942,
+        2.995896874999744,
+        3.016540624999834,
+        3.0332812500000728,
+        3.032165624999834,
+        3.0087687499999447,
+        3.0121125000000575
+      ],
+      "runtimeMs": {
+        "median": 3.0258562499998334,
+        "p95": 3.036265624999942,
+        "min": 2.995896874999744,
+        "max": 3.036265624999942
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "heap-sort",
+      "tool": "emscripten-o3",
+      "native": false,
+      "wasmBytes": 1005,
+      "wasmSha256": "e60e0a856f2c08ecc33009d37a80be741290352fb2c17782fb5a60728f21674b",
+      "sourceSha256": "73fa7fe85f55c4ac59fdb5b8cfefd641260a5a423f80913c53f64d138a63d5a3",
+      "command": [
+        "<repo>/benchmarks\\.toolchains\\emsdk\\python\\3.13.3_64bit\\python.exe",
+        "<repo>/benchmarks\\.toolchains\\emsdk\\upstream\\emscripten\\emcc.py",
+        "<repo>/benchmarks\\comparison\\heap-sort.c",
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\heap-sort.emscripten-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 894.0103000000017,
+        "p95": 898.872199999998,
+        "min": 883.3689000000013,
+        "max": 898.872199999998,
+        "samples": [
+          894.0103000000017,
+          898.872199999998,
+          883.3689000000013
+        ]
+      },
+      "firstStartupMs": 0.30740000000514556,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 2,
+          "seed": 123,
+          "expected": 6378
+        },
+        {
+          "n": 127,
+          "seed": 9,
+          "expected": 20315
+        },
+        {
+          "n": 16384,
+          "seed": 0,
+          "expected": 38309
+        },
+        {
+          "n": 16384,
+          "seed": 1,
+          "expected": 49814
+        },
+        {
+          "n": 16384,
+          "seed": 17,
+          "expected": 49249
+        },
+        {
+          "n": 16384,
+          "seed": 123,
+          "expected": 41723
+        },
+        {
+          "n": 16384,
+          "seed": 9,
+          "expected": 23376
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.5063867187500364,
+        0.5069812499999671,
+        0.5079023437499472,
+        0.5057734375000109,
+        0.5059906249999813,
+        0.5064273437500333,
+        0.5088749999999891,
+        0.5075226562499893,
+        0.512452343749942
+      ],
+      "runtimeMs": {
+        "median": 0.5069812499999671,
+        "p95": 0.512452343749942,
+        "min": 0.5057734375000109,
+        "max": 0.512452343749942
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "heap-sort",
+      "tool": "msvc-o2",
+      "native": true,
+      "executableBytes": 309248,
+      "executableSha256": "9c576b517ca224ba15717f2f6daa0159300e22227363569bfa357d03e5159a98",
+      "sourceSha256": "73fa7fe85f55c4ac59fdb5b8cfefd641260a5a423f80913c53f64d138a63d5a3",
+      "command": [
+        "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+        "<repo>/benchmarks\\comparison\\heap-sort.c",
+        "<repo>/benchmarks\\comparison\\native-host.cpp",
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX",
+        "/Fo<repo>/benchmarks\\comparison\\build\\",
+        "/Fe<repo>/benchmarks\\comparison\\build\\heap-sort.msvc-o2.exe",
+        "/link",
+        "/INCREMENTAL:NO"
+      ],
+      "buildWallMs": {
+        "median": 651.7139999999927,
+        "p95": 663.0549000000028,
+        "min": 643.1445999999996,
+        "max": 663.0549000000028,
+        "samples": [
+          663.0549000000028,
+          643.1445999999996,
+          651.7139999999927
+        ]
+      },
+      "firstStartupMs": 66.17999999999302,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 312
+        },
+        {
+          "n": 2,
+          "seed": 123,
+          "expected": 6378
+        },
+        {
+          "n": 127,
+          "seed": 9,
+          "expected": 20315
+        },
+        {
+          "n": 16384,
+          "seed": 0,
+          "expected": 38309
+        },
+        {
+          "n": 16384,
+          "seed": 1,
+          "expected": 49814
+        },
+        {
+          "n": 16384,
+          "seed": 17,
+          "expected": 49249
+        },
+        {
+          "n": 16384,
+          "seed": 123,
+          "expected": 41723
+        },
+        {
+          "n": 16384,
+          "seed": 9,
+          "expected": 23376
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.53709921875,
+        0.54226171875,
+        0.536578125,
+        0.539878125,
+        0.5424140625,
+        0.53602890625,
+        0.53635234375,
+        0.536796875,
+        0.5421359375
+      ],
+      "runtimeMs": {
+        "median": 0.53709921875,
+        "p95": 0.5424140625,
+        "min": 0.53602890625,
+        "max": 0.5424140625
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "floyd-warshall",
+      "tool": "pseudo-none",
+      "native": false,
+      "wasmBytes": 1024,
+      "wasmSha256": "133573f64c1a15a00b81d1ab613e436efb37107a8646c55fd37e272e4f0a7b9f",
+      "sourceSha256": "376b4a52943dda71ce6b2fd19724d9a7a87389ebf7fbe62a6263a800653c4ac5",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\floyd-warshall.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\floyd-warshall.pseudo-none.wasm",
+        "none"
+      ],
+      "buildWallMs": {
+        "median": 311.19520000000193,
+        "p95": 314.0996000000014,
+        "min": 310.0524999999907,
+        "max": 314.0996000000014,
+        "samples": [
+          311.19520000000193,
+          310.0524999999907,
+          314.0996000000014
+        ]
+      },
+      "firstStartupMs": 0.22030000000086147,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 50
+        },
+        {
+          "n": 16,
+          "seed": 123,
+          "expected": 116160
+        },
+        {
+          "n": 96,
+          "seed": 0,
+          "expected": 434862
+        },
+        {
+          "n": 96,
+          "seed": 1,
+          "expected": 438266
+        },
+        {
+          "n": 96,
+          "seed": 17,
+          "expected": 437866
+        },
+        {
+          "n": 96,
+          "seed": 123,
+          "expected": 430808
+        },
+        {
+          "n": 96,
+          "seed": 9,
+          "expected": 428174
+        }
+      ],
+      "batchIterations": 32,
+      "runtimeSamplesMs": [
+        1.364715624999917,
+        1.363696875000187,
+        1.367437500000051,
+        1.3842750000003434,
+        1.3857749999997395,
+        1.3694625000002816,
+        1.3691781249999622,
+        1.3650656249997155,
+        1.3717875000002095
+      ],
+      "runtimeMs": {
+        "median": 1.3691781249999622,
+        "p95": 1.3857749999997395,
+        "min": 1.363696875000187,
+        "max": 1.3857749999997395
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "floyd-warshall",
+      "tool": "pseudo-o2",
+      "native": false,
+      "wasmBytes": 968,
+      "wasmSha256": "78db2306370d57097986e059d7711674c404fe4fb293949f036b4a122b1241b4",
+      "sourceSha256": "376b4a52943dda71ce6b2fd19724d9a7a87389ebf7fbe62a6263a800653c4ac5",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/scripts\\compile-comparison.mjs",
+        "<repo>/benchmarks\\comparison\\floyd-warshall.pseudo",
+        "<repo>/benchmarks\\comparison\\build\\floyd-warshall.pseudo-o2.wasm",
+        "binaryen-o2"
+      ],
+      "buildWallMs": {
+        "median": 390.83890000000247,
+        "p95": 394.55799999999,
+        "min": 390.5786999999982,
+        "max": 394.55799999999,
+        "samples": [
+          390.5786999999982,
+          394.55799999999,
+          390.83890000000247
+        ]
+      },
+      "firstStartupMs": 0.2577000000019325,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 50
+        },
+        {
+          "n": 16,
+          "seed": 123,
+          "expected": 116160
+        },
+        {
+          "n": 96,
+          "seed": 0,
+          "expected": 434862
+        },
+        {
+          "n": 96,
+          "seed": 1,
+          "expected": 438266
+        },
+        {
+          "n": 96,
+          "seed": 17,
+          "expected": 437866
+        },
+        {
+          "n": 96,
+          "seed": 123,
+          "expected": 430808
+        },
+        {
+          "n": 96,
+          "seed": 9,
+          "expected": 428174
+        }
+      ],
+      "batchIterations": 32,
+      "runtimeSamplesMs": [
+        1.3776843750001717,
+        1.3720187499998246,
+        1.3825531249999585,
+        1.381512500000099,
+        1.38220312500016,
+        1.3752937499998552,
+        1.3672562500000822,
+        1.3771843750000698,
+        1.3834500000002663
+      ],
+      "runtimeMs": {
+        "median": 1.3776843750001717,
+        "p95": 1.3834500000002663,
+        "min": 1.3672562500000822,
+        "max": 1.3834500000002663
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "floyd-warshall",
+      "tool": "assemblyscript-o3",
+      "native": false,
+      "wasmBytes": 905,
+      "wasmSha256": "78ecf7c4b0c7b45a6a45fad76594f2d36335a77a8b7874ba63e553d1282375a6",
+      "sourceSha256": "edcd35f56e28a768bc96e0a112164a466024048ebc005c5931f0b5d9059198f3",
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "<repo>/benchmarks\\toolchains\\node_modules\\assemblyscript\\bin\\asc.js",
+        "<repo>/benchmarks\\comparison\\floyd-warshall.ts",
+        "--optimizeLevel",
+        "3",
+        "--shrinkLevel",
+        "0",
+        "--runtime",
+        "stub",
+        "--initialMemory",
+        "30",
+        "--maximumMemory",
+        "30",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\floyd-warshall.assemblyscript-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 634.0380000000005,
+        "p95": 636.8677000000025,
+        "min": 628.0054000000091,
+        "max": 636.8677000000025,
+        "samples": [
+          628.0054000000091,
+          636.8677000000025,
+          634.0380000000005
+        ]
+      },
+      "firstStartupMs": 0.32210000000486616,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 50
+        },
+        {
+          "n": 16,
+          "seed": 123,
+          "expected": 116160
+        },
+        {
+          "n": 96,
+          "seed": 0,
+          "expected": 434862
+        },
+        {
+          "n": 96,
+          "seed": 1,
+          "expected": 438266
+        },
+        {
+          "n": 96,
+          "seed": 17,
+          "expected": 437866
+        },
+        {
+          "n": 96,
+          "seed": 123,
+          "expected": 430808
+        },
+        {
+          "n": 96,
+          "seed": 9,
+          "expected": 428174
+        }
+      ],
+      "batchIterations": 16,
+      "runtimeSamplesMs": [
+        3.1403250000003027,
+        3.108624999999847,
+        3.1464062499999272,
+        3.1823624999997264,
+        3.1320999999998094,
+        3.1439437500002896,
+        3.154656249999789,
+        3.1199125000002823,
+        3.128162500000144
+      ],
+      "runtimeMs": {
+        "median": 3.1403250000003027,
+        "p95": 3.1823624999997264,
+        "min": 3.108624999999847,
+        "max": 3.1823624999997264
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "floyd-warshall",
+      "tool": "emscripten-o3",
+      "native": false,
+      "wasmBytes": 982,
+      "wasmSha256": "b9370cb3ca3e1fc87fe3ff2ec89eaf143e6a95369e5bb30d56c307bd08ed9550",
+      "sourceSha256": "04f778dffad88b75635b1acd976f5354fda52956811654fcc350f41917e914c5",
+      "command": [
+        "<repo>/benchmarks\\.toolchains\\emsdk\\python\\3.13.3_64bit\\python.exe",
+        "<repo>/benchmarks\\.toolchains\\emsdk\\upstream\\emscripten\\emcc.py",
+        "<repo>/benchmarks\\comparison\\floyd-warshall.c",
+        "-O3",
+        "-fno-vectorize",
+        "-fno-slp-vectorize",
+        "--no-entry",
+        "-Wl,--export=run",
+        "-sINITIAL_MEMORY=1966080",
+        "-sMAXIMUM_MEMORY=1966080",
+        "-sALLOW_MEMORY_GROWTH=0",
+        "-sSTACK_SIZE=524288",
+        "-sFILESYSTEM=0",
+        "-o",
+        "<repo>/benchmarks\\comparison\\build\\floyd-warshall.emscripten-o3.wasm"
+      ],
+      "buildWallMs": {
+        "median": 892.2848999999987,
+        "p95": 894.7352000000101,
+        "min": 891.9299000000028,
+        "max": 894.7352000000101,
+        "samples": [
+          894.7352000000101,
+          891.9299000000028,
+          892.2848999999987
+        ]
+      },
+      "firstStartupMs": 0.33159999999043066,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 50
+        },
+        {
+          "n": 16,
+          "seed": 123,
+          "expected": 116160
+        },
+        {
+          "n": 96,
+          "seed": 0,
+          "expected": 434862
+        },
+        {
+          "n": 96,
+          "seed": 1,
+          "expected": 438266
+        },
+        {
+          "n": 96,
+          "seed": 17,
+          "expected": 437866
+        },
+        {
+          "n": 96,
+          "seed": 123,
+          "expected": 430808
+        },
+        {
+          "n": 96,
+          "seed": 9,
+          "expected": 428174
+        }
+      ],
+      "batchIterations": 256,
+      "runtimeSamplesMs": [
+        0.3840726562499981,
+        0.38440234375002547,
+        0.3858207031249776,
+        0.38515937500000064,
+        0.38402890624996644,
+        0.3848812499999781,
+        0.38681093750000173,
+        0.38584960937498636,
+        0.38530156250004666
+      ],
+      "runtimeMs": {
+        "median": 0.38515937500000064,
+        "p95": 0.38681093750000173,
+        "min": 0.38402890624996644,
+        "max": 0.38681093750000173
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    },
+    {
+      "workload": "floyd-warshall",
+      "tool": "msvc-o2",
+      "native": true,
+      "executableBytes": 309248,
+      "executableSha256": "80953a13a9bbc9dd1726466289d3f8fbac9b118cf8f3424904432bdf955550ed",
+      "sourceSha256": "04f778dffad88b75635b1acd976f5354fda52956811654fcc350f41917e914c5",
+      "command": [
+        "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+        "<repo>/benchmarks\\comparison\\floyd-warshall.c",
+        "<repo>/benchmarks\\comparison\\native-host.cpp",
+        "/nologo",
+        "/O2",
+        "/EHsc",
+        "/std:c++17",
+        "/TP",
+        "/W4",
+        "/WX",
+        "/Fo<repo>/benchmarks\\comparison\\build\\",
+        "/Fe<repo>/benchmarks\\comparison\\build\\floyd-warshall.msvc-o2.exe",
+        "/link",
+        "/INCREMENTAL:NO"
+      ],
+      "buildWallMs": {
+        "median": 640.6570999999967,
+        "p95": 645.6582000000053,
+        "min": 634.6640000000043,
+        "max": 645.6582000000053,
+        "samples": [
+          634.6640000000043,
+          645.6582000000053,
+          640.6570999999967
+        ]
+      },
+      "firstStartupMs": 67.21790000000328,
+      "correctnessCases": [
+        {
+          "n": 0,
+          "seed": 0,
+          "expected": 0
+        },
+        {
+          "n": 1,
+          "seed": 17,
+          "expected": 0
+        },
+        {
+          "n": 2,
+          "seed": 0,
+          "expected": 50
+        },
+        {
+          "n": 16,
+          "seed": 123,
+          "expected": 116160
+        },
+        {
+          "n": 96,
+          "seed": 0,
+          "expected": 434862
+        },
+        {
+          "n": 96,
+          "seed": 1,
+          "expected": 438266
+        },
+        {
+          "n": 96,
+          "seed": 17,
+          "expected": 437866
+        },
+        {
+          "n": 96,
+          "seed": 123,
+          "expected": 430808
+        },
+        {
+          "n": 96,
+          "seed": 9,
+          "expected": 428174
+        }
+      ],
+      "batchIterations": 128,
+      "runtimeSamplesMs": [
+        0.4821625,
+        0.47699296875,
+        0.4810171875,
+        0.47886796875,
+        0.4802140625,
+        0.4764875,
+        0.48300859375,
+        0.48085546875,
+        0.47696171875
+      ],
+      "runtimeMs": {
+        "median": 0.4802140625,
+        "p95": 0.48300859375,
+        "min": 0.4764875,
+        "max": 0.48300859375
+      },
+      "hostCallsPerInvocation": {
+        "input": 2,
+        "output": 1,
+        "failures": 0
+      }
+    }
+  ]
+}

@@ -28,7 +28,6 @@ export class BasicType extends BaseType {
     }
 
     public size(): number {
-        // keep this switch, maybe change it later
         switch (this.type) {
             case basicKind.INTEGER:
                 return 4;
@@ -46,7 +45,6 @@ export class BasicType extends BaseType {
     }
 
     public wasmType(): number {
-        // keep this switch, maybe change it later
         switch (this.type) {
             case basicKind.INTEGER:
                 return binaryen.i32;
@@ -63,4 +61,3 @@ export class BasicType extends BaseType {
         }
     }
 }
-

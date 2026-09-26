@@ -22,10 +22,13 @@
     "LANGUAGE_SUPPORT.md",
     "MEMORY_MODEL.md",
     "COMPILER_ARCHITECTURE.md",
+    "CODE_STYLE.md",
     "BENCHMARKS.md"
   ],
   "scripts": {
-    "test": "npm run build && npm run build:test && node test/node.test.mjs && node --test test/benchmark.test.mjs test/codegen.test.mjs && node scripts/differential.mjs && node scripts/benchmark.mjs --quick --check && node scripts/run-browser-tests.mjs && node scripts/test-package.mjs",
+    "test": "npm run format:check && npm run build && npm run build:test && node test/node.test.mjs && node --test test/benchmark.test.mjs test/codegen.test.mjs test/format.test.mjs && node scripts/differential.mjs && node scripts/benchmark.mjs --quick --check && node scripts/run-browser-tests.mjs && node scripts/test-package.mjs",
+    "format": "node scripts/format-source.mjs",
+    "format:check": "node scripts/format-source.mjs --check",
     "bench": "npm run build:node && node scripts/benchmark.mjs",
     "bench:compare": "npm run build:node && node scripts/compare-compilers.mjs",
     "test:browser": "webpack serve --config webpack.config.js --open",

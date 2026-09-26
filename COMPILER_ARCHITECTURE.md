@@ -1,9 +1,11 @@
-# Compiler architecture: values before storage
+# Compiler architecture and source organization
 
-The direction is inspired by AssemblyScript's statically typed, direct-to-Wasm
-approach ([introduction](https://www.assemblyscript.org/introduction.html)), not
-an attempt to copy its implementation or introduce its source syntax. CAIE
-pseudocode and the published API remain the contracts of this project.
+AssemblyScript is a reference for **source formatting and organization**, not a
+constraint on variable, function, or stack design. Runtime choices are based on
+this project's semantics and evidence; techniques from LLVM/Clang, Emscripten,
+Binaryen, and other compilers are welcome. CAIE pseudocode and the published API
+remain the contracts. See [CODE_STYLE.md](CODE_STYLE.md) for conventions and
+module ownership.
 
 ## Current stage boundaries
 
@@ -35,7 +37,7 @@ Generator saves/restores context, scope, and offset in `finally`. Functions and
 procedures share prologue/body/epilogue lowering. Scalar assignment, INPUT, FOR,
 CASE, and ordinary expressions all use the same storage abstraction.
 
-The obsolete parameter-read-only pass was replaced by `value-analysis.ts`.
+The obsolete parameter-read-only pass was replaced by `analysis/value-analysis.ts`.
 `Symbol.pointer`, `Scope.setPointer`, and `Scope.returnIndex` remain deprecated
 compatibility members, but normal code generation neither reads nor populates
 them. Low-level consumers must use Generator's address methods instead of
@@ -45,7 +47,7 @@ same checked AST with independent generators is covered by a regression test.
 
 ## Control flow and definite assignment
 
-`definite-assignment.ts` is a structured forward must-analysis on checked syntax:
+`analysis/definite-assignment.ts` is a structured forward must-analysis on checked syntax:
 assignment and INPUT establish values, IF/CASE joins intersect live predecessors,
 RETURN removes a predecessor, WHILE/FOR may run zero times, REPEAT runs at least
 once, and FOR initializes its induction variable even on a zero-trip loop.
@@ -63,7 +65,7 @@ definite-assignment diagnostics or field/element initialization analysis.
 
 ## Address and call effects
 
-`value-analysis.ts` records symbol-specific BYREF/address exposure and a call
+`analysis/value-analysis.ts` records symbol-specific BYREF/address exposure and a call
 graph. A monotone fixed point propagates raw-memory effects through transitive
 and recursive calls. Ordinary BYREF pins its actual target, not unrelated scalar
 locals. An unrelated BYREF routine no longer disables every function's local
@@ -101,7 +103,7 @@ benchmarks evaluate the frame/value transformation, not a different algorithm.
 
 ## Proven loop checks
 
-`loop-ranges.ts` proves inclusive ranges for constant, monotone FOR loops with
+`analysis/loop-ranges.ts` proves inclusive ranges for constant, monotone FOR loops with
 nonzero steps, no i32 overflow on the final increment, and no induction writes
 in the body (including nested FOR and INPUT). Calls and pointer effects in the
 body, and BYREF parameters in the current callable, conservatively reject the
@@ -110,6 +112,32 @@ Each matching array dimension is unchecked only if its full proven range fits.
 Nested loops and non-unit/descending steps are covered. Dynamic bounds, affine
 index expressions, WHILE induction, pointer-view range checks, and all uncertain
 cases retain checks. No speculative guard or unsafe optimization mode is added.
+
+## Emission refinements independent of compiler inspiration
+
+`runtime-abi.ts` owns import names/signatures; `runtime-checks.ts` owns the Wasm
+failure paths. The generator chooses when a proof permits omitting a check but
+does not duplicate the check formulas. Failure imports still receive the original
+index/pointer and original source coordinates.
+
+For a non-wrapping signed i32 interval `[lower, upper]`, an index is invalid when
+`unsigned(index - lower) > unsigned(upper - lower)`. Underflow maps a below-bound
+index above the allowed unsigned extent. This replaces two comparisons plus OR
+with one unsigned comparison; a zero lower bound also needs no subtraction.
+Pointer checks use the same interval identity with the valid byte-address range.
+Inputs are evaluated once, invalid sizes still fail, and no safety condition is
+weakened. Extreme i32 values and exact memory endpoints have regression coverage.
+
+All function RETURN sites branch with a value to one typed return block. The
+return expression, including calls or async input, finishes while the frame is
+still active; one epilogue then releases/restores the frame. The unreachable
+fallthrough marker expresses the checker's all-paths-return invariant to Wasm.
+This is shared-exit lowering, not tail-call elimination.
+
+Only scratch locals actually requested by checks are allocated. CASE uses a
+per-function i32/f64 selector local instead of module globals. Simple output-only
+entry points therefore need no unused scratch locals at all. Frame byte charges,
+pointer semantics, and runtime error contracts remain unchanged.
 
 ## Naming and extension rules
 

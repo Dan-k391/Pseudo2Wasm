@@ -1,9 +1,9 @@
 /**
  * This parser is also highly overlapping with "https://craftinginterpreters.com/parsing-expressions.html"
  * (perhaps I would change it in the future)
- * 
+ *
  * I strongly recommend the book above (It really helped on my first hand-writen parser).
- * 
+ *
  */
 
 import {
@@ -58,7 +58,7 @@ export class Parser {
     private tokens: Array<Token>;
     private current: number;
     private errors?: Array<SyntaxError>;
-    
+
     constructor(tokens: Array<Token>) {
         this.tokens = tokens;
         this.current = 0;
@@ -211,12 +211,12 @@ export class Parser {
             return this.sourced(new AddrExprNode(leftValue), operator);
         }
 
-        // FIXME: A very hard problem here, this.call() should be this.pointer().
+        // Calls bind inside postfix dereference; prefix address-taking recurses above.
         let expr = this.call();
 
         while (this.match(tokenType.CARET)) expr = this.sourced(new DerefExprNode(expr), this.previous());
         return expr;
-    }           
+    }
 
     private call(): Expr {
         if (this.match(tokenType.CALL)) {
@@ -340,7 +340,7 @@ export class Parser {
         }
 
         return this.expressionStatement();
-    } 
+    }
 
     private outputStatement(): Stmt {
         const exprs = [this.expression()];
@@ -373,7 +373,7 @@ export class Parser {
                     this.consume("Expected colon", tokenType.COLON);
                     const upper: Token = this.consume("Expected INTEGER for ARRAY upper bound", tokenType.INT_CONST);
                     // use interfaces
-                    const dimension: Dimension = {lower: lower.literal, upper: upper.literal, source: lower};
+                    const dimension: Dimension = { lower: lower.literal, upper: upper.literal, source: lower };
                     dimensions.push(dimension);
                 }
                 while (this.match(tokenType.COMMA));
@@ -466,7 +466,7 @@ export class Parser {
         const start: Expr = this.expression();
         this.consume("Expected 'TO'", tokenType.TO);
         const end: Expr = this.expression();
-        
+
         // step expression, default is 1
         let step: Expr = new IntegerExprNode(1);
         if (this.match(tokenType.STEP)) {
@@ -551,7 +551,7 @@ export class Parser {
             }
             if (otherwise) otherwiseBody = body;
             else {
-                values.push({from: from!, to: to!});
+                values.push({ from: from!, to: to! });
                 bodies.push(body);
             }
         }

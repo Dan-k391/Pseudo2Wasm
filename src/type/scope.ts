@@ -1,125 +1,79 @@
-import binaryen from "binaryen";
+import type binaryen from "binaryen";
 import { RuntimeError } from "../error";
 import { FunctionType } from "./function";
 import { ProcedureType } from "./procedure";
-import { RecordType } from "./record";
 import { Symbol } from "./symbol";
 import { Type } from "./type";
 
-type ExpressionRef = binaryen.ExpressionRef;
-
-
+/** Semantic namespaces and lexical parent links; backend locations live elsewhere. */
 export class Scope {
-    // if is function, enable return statement
-    public isFunc: boolean;
-    public parent?: Scope;
-    public returnType?: Type;
-    // if is function, returnIndex is the local index of the return value
-    /** @deprecated Backend return locals are owned by FunctionContext. */
-    public returnIndex?: number;
-    public children: Array<Scope>;
-    public elems: Map<string, Symbol>;
-    public functions: Map<string, FunctionType>;
-    public procedures: Map<string, ProcedureType>;
-    // RECORDs, ENUMs, and POINTERs
-    public types: Map<string, Type>;
+    children: Scope[] = [];
+    elems = new Map<string, Symbol>();
+    functions = new Map<string, FunctionType>();
+    procedures = new Map<string, ProcedureType>();
+    types = new Map<string, Type>();
 
-    constructor(isFunc: boolean, parent?: Scope, returnType?: Type, returnIndex?: number) {
-        this.isFunc = isFunc;
-        if (parent) {
-            this.parent = parent;
-        }
-        if (returnType) {
-            this.returnType = returnType;
-        }
-        // Zero is a valid local index (for example, a function with no params).
-        if (returnIndex !== undefined) {
-            this.returnIndex = returnIndex;
-        }
-        this.children = new Array<Scope>();
-        this.elems = new Map<string, Symbol>();
-        this.functions = new Map<string, FunctionType>();
-        this.procedures = new Map<string, ProcedureType>();
-        this.types = new Map<string, RecordType>;
-    }
+    constructor(
+        public isFunc: boolean,
+        public parent?: Scope,
+        public returnType?: Type,
+        /** @deprecated Backend return locals are owned by FunctionContext. */
+        public returnIndex?: number,
+    ) { }
 
-    public size(): number {
-        let total: number = 0;
-        for (let symbol of this.elems.values()) {
-            total += symbol.type.size();
-        }
+    size(): number {
+        let total = 0;
+        for (const symbol of this.elems.values()) total += symbol.type.size();
         return total;
     }
 
-    public insert(name: string, symbol: Symbol) {
+    insert(name: string, symbol: Symbol): void {
         this.elems.set(name, symbol);
     }
 
-    public lookUp(name: string): Symbol {
-        if (!this.elems.has(name)) {
-            if (!this.parent) {
-                throw new RuntimeError("Unknown variable '" + name + "'");
-            }
-            return this.parent.lookUp(name);
-        }
-        return this.elems.get(name)!;
+    lookUp(name: string): Symbol {
+        return this.lookup(name, scope => scope.elems, "variable");
     }
 
     /** @deprecated Legacy metadata setter; Generator no longer reads this field. */
-    public setPointer(name: string, ptr: ExpressionRef): void {
-        if (!this.elems.has(name)) {
-            if (!this.parent) {
-                throw new RuntimeError("Unknown variable '" + name + "'");
-            }
-            this.parent.setPointer(name, ptr);
-            return;
-        }
-        this.elems.get(name)!.pointer = ptr;
+    setPointer(name: string, pointer: binaryen.ExpressionRef): void {
+        this.lookUp(name).pointer = pointer;
     }
 
-    public insertFunc(name: string, funcType: FunctionType): void {
-        this.functions.set(name, funcType);
+    insertFunc(name: string, type: FunctionType): void {
+        this.functions.set(name, type);
     }
 
-    public lookUpFunc(name: string): FunctionType {
-        if (!this.functions.has(name)) {
-            if (!this.parent) {
-                throw new RuntimeError("Unknown FUNCTION '" + name + "'");
-            }
-            return this.parent.lookUpFunc(name);
-        }
-        return this.functions.get(name)!;
+    lookUpFunc(name: string): FunctionType {
+        return this.lookup(name, scope => scope.functions, "FUNCTION");
     }
 
-    public insertProc(name: string, procType: ProcedureType): void {
-        this.procedures.set(name, procType);
+    insertProc(name: string, type: ProcedureType): void {
+        this.procedures.set(name, type);
     }
 
-    public lookUpProc(name: string): ProcedureType {
-        if (!this.procedures.has(name)) {
-            if (!this.parent) {
-                throw new RuntimeError("Unknown PROCEDURE '" + name + "'");
-            }
-            return this.parent.lookUpProc(name);
-        }
-        return this.procedures.get(name)!;
+    lookUpProc(name: string): ProcedureType {
+        return this.lookup(name, scope => scope.procedures, "PROCEDURE");
     }
 
-    public getReturnType(): Type {
+    getReturnType(): Type {
         return this.returnType!;
     }
 
-    public insertType(name: string, type: Type): void {
+    insertType(name: string, type: Type): void {
         this.types.set(name, type);
     }
 
-    public lookUpType(name: string): Type {
-        if (!this.types.has(name)) {
-            if (!this.parent) {
-                throw new RuntimeError("Unknown TYPE '" + name + "'");
-            }
-            return this.parent.lookUpType(name);
+    lookUpType(name: string): Type {
+        return this.lookup(name, scope => scope.types, "TYPE");
+    }
+
+    /** One lookup per lexical level, without recursive JS calls or namespace mixing. */
+    private lookup<T>(name: string, namespace: (scope: Scope) => ReadonlyMap<string, T>, kind: string): T {
+        for (let scope: Scope | undefined = this; scope; scope = scope.parent) {
+            const value = namespace(scope).get(name);
+            if (value !== undefined) return value;
         }
-        return this.types.get(name)!;
+        throw new RuntimeError(`Unknown ${kind} '${name}'`);
     }
 }

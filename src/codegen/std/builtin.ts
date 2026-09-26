@@ -3,9 +3,9 @@
  * For now, it doesn't use the stack and move the stackbase and stacktop pointers.
  * It uses the webassembly traditional params calling and perform operations to
  * the params directly.
- * 
+ *
  * (I would probably rewrite the builtin functions in pseudocode, but thats later stuff)
- * 
+ *
  * Also, the functions are totally static
  * it depends on none of the class properties
  * the properties in the class just act as an interface when this function is called
@@ -102,7 +102,7 @@ export class UCase extends BuiltinFunction {
          *  if (s >= 'a' && s <= 'z') return s - 32;
          *  return s;
          * }
-         * 
+         *
          */
         this.module.addFunction("UCASE", binaryen.createType([binaryen.i32]), binaryen.i32, [],
             this.module.block(null, [
@@ -148,7 +148,7 @@ export class LCase extends BuiltinFunction {
          *  if (s >= 'a' && s <= 'z') return s - 32;
          *  return s;
          * }
-         * 
+         *
          */
         this.module.addFunction("LCASE", binaryen.createType([binaryen.i32]), binaryen.i32, [],
             this.module.block(null, [
@@ -177,4 +177,3 @@ export class LCase extends BuiltinFunction {
         )
     }
 }
-

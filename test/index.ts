@@ -51,6 +51,7 @@ import { code46 } from "./samples/code46";
 import { code47 } from "./samples/code47";
 import { code48 } from "./samples/code48";
 import { code49 } from "./samples/code49";
+import { code50 } from "./samples/code50";
 
 interface CompilerTestCase {
     name: string;
@@ -111,10 +112,11 @@ const tests: Array<CompilerTestCase> = [
     code47,
     code48,
     code49,
+    code50,
 ];
 
 async function assertTest(test: CompilerTestCase, optimization: "none" | "binaryen-o2"): Promise<void> {
-    const compiler = new Compiler(test.code, {optimization});
+    const compiler = new Compiler(test.code, { optimization });
 
     if (test.error.length > 0) {
         let thrown: unknown;
@@ -147,7 +149,7 @@ async function assertPublishedApiCompatibility(): Promise<void> {
     expect(await currentCompiler.test([], [42]), "test(input, expected) API").to.equal(true);
 
     for (const optimization of ["none", "binaryen-o2"] as const) {
-        const compiler = new Compiler('OUTPUT "héllo", "", "😀"', {optimization});
+        const compiler = new Compiler('OUTPUT "héllo", "", "😀"', { optimization });
         const compile = compiler.compile.bind(compiler);
         let disposals = 0;
         compiler.compile = () => {
@@ -166,7 +168,7 @@ async function assertPublishedApiCompatibility(): Promise<void> {
 }
 
 async function runTests(): Promise<void> {
-    const failures: Array<{name: string, error: unknown}> = [];
+    const failures: Array<{ name: string, error: unknown }> = [];
     const filter = new URLSearchParams(window.location.search).get("only");
     const selectedTests = filter ? tests.filter(test => test.name.includes(filter)) : tests;
 
@@ -178,7 +180,7 @@ async function runTests(): Promise<void> {
                 console.log(`✓ ${name}`);
             }
             catch (error) {
-                failures.push({name, error});
+                failures.push({ name, error });
                 console.error(`✗ ${name}`, error);
             }
         }
@@ -190,7 +192,7 @@ async function runTests(): Promise<void> {
         console.log(`✓ ${compatibilityTestName}`);
     }
     catch (error) {
-        failures.push({name: compatibilityTestName, error});
+        failures.push({ name: compatibilityTestName, error });
         console.error(`✗ ${compatibilityTestName}`, error);
     }
 

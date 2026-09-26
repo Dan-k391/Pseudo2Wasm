@@ -1,4 +1,4 @@
-// TODO: this will be implemented after the first complete version is done
+/** Name resolution, type checking, and structured semantic diagnostics. */
 import { MAX_DIAGNOSTICS, RuntimeError } from "../error";
 import { Token, tokenType } from "../lex/token";
 import {
@@ -55,7 +55,7 @@ import { MEMORY_END } from "../memory-layout";
 import { passType } from "../syntax/param";
 
 /** A use of an already-invalid declaration is not an independent error. */
-class DependentDiagnostic extends Error {}
+class DependentDiagnostic extends Error { }
 
 export class Checker {
     public ast: ProgramNode;
@@ -156,7 +156,7 @@ export class Checker {
         if (leftType === rightType) {
             return true;
         }
-    
+
         switch (leftType.kind) {
             case typeKind.BASIC:
                 if (rightType.kind !== typeKind.BASIC) {
@@ -384,7 +384,7 @@ export class Checker {
         this.curScope.insertProc(procName, proc);
     }
 
-    // keep this function, maybe predeclarations are needed
+    // Resolve record fields without treating them as executable declarations.
     private declRecord(node: TypeDeclNode): void {
         const fields = new Map<string, Type>();
         for (const decl of node.body) {
@@ -402,7 +402,7 @@ export class Checker {
     private declPtr(node: PtrDeclNode): void {
         const elemType = this.resolveType(node.typeNode);
         // default POINTER has no dimensions
-        node.type = new PointerType(elemType, [{lower: 0, upper: 0}]);
+        node.type = new PointerType(elemType, [{ lower: 0, upper: 0 }]);
         this.insertType(
             node.ident,
             node.type
@@ -614,7 +614,7 @@ export class Checker {
         return node.type;
     }
 
-    private indexExpr(node: IndexExprNode): Type {   
+    private indexExpr(node: IndexExprNode): Type {
         const base = this.visitExpr(node.expr);
         if (base.kind === typeKind.ARRAY) {
             if (node.indexes.length !== base.dimensions.length) {
@@ -662,7 +662,7 @@ export class Checker {
                 throw new RuntimeError("Function '" + funcName + "' expects " + func.paramTypes.size + " arguments, but " + node.args.length + " are provided");
             }
             for (let i = 0, paramNames = Array.from(func.paramTypes.keys()); i < node.args.length; i++) {
-                const arg = node.args[i]; 
+                const arg = node.args[i];
                 const argType = this.visitExpr(arg);
                 const paramType = func.getParamType(paramNames[i]);
                 if (!Checker.compatable(argType, paramType)) {
@@ -687,7 +687,7 @@ export class Checker {
                 throw new RuntimeError("Procedure '" + procName + "' expects " + proc.paramTypes.size + " arguments, but " + node.args.length + " are provided");
             }
             for (let i = 0, paramNames = Array.from(proc.paramTypes.keys()); i < node.args.length; i++) {
-                const arg = node.args[i]; 
+                const arg = node.args[i];
                 const argType = this.visitExpr(arg);
                 const paramType = proc.getParamType(paramNames[i]);
                 if (proc.paramModes.get(paramNames[i]) === passType.BYREF) {
@@ -815,7 +815,7 @@ export class Checker {
         // }
         node.type = this.visitExpr(node.lVal);
         // default POINTER has no dimensions
-        node.type = new PointerType(node.type, [{lower: 0, upper: 0}]);
+        node.type = new PointerType(node.type, [{ lower: 0, upper: 0 }]);
         return node.type;
     }
 
@@ -1022,7 +1022,7 @@ export class Checker {
         const startType = this.visitExpr(node.start);
         const endType = this.visitExpr(node.end);
         const stepType = this.visitExpr(node.step);
-        
+
         if (varType.kind !== typeKind.BASIC || varType.type !== basicKind.INTEGER) {
             throw new RuntimeError("FOR loop variable must be INTEGER");
         }
@@ -1074,7 +1074,7 @@ export class Checker {
         }
         node.type = type;
         for (let i = 0; i < node.values.length; i++) {
-            const {from, to} = node.values[i];
+            const { from, to } = node.values[i];
             if (this.caseLiteralType(from) !== type.type || this.caseLiteralType(to) !== type.type) {
                 throw new RuntimeError(`CASE label must be ${type.type}`).at(from);
             }

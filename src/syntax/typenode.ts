@@ -36,4 +36,3 @@ export class ArrTypeNode extends BaseNode {
         return "ArrTypeNode";
     }
 }
-

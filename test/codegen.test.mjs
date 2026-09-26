@@ -12,7 +12,7 @@ function inspect(source, action) {
 }
 
 function callable(text, name) {
-    const start = text.indexOf(` (func $${name} `);
+    const start = text.search(new RegExp(` \\(func \\$${name}(?:\\s|\\))`));
     assert.ok(start >= 0, `Missing function ${name}`);
     const end = text.indexOf("\n (func ", start + 1);
     return text.slice(start, end < 0 ? undefined : end);
@@ -433,4 +433,187 @@ OUTPUT deep(128)`;
             assert.equal(runner.calls.failures, 1);
         } finally { module.dispose(); }
     }
+});
+
+test("simple entry points allocate no unused scratch locals", () => {
+    inspect("OUTPUT 42", text => assert.doesNotMatch(callable(text, "__main"), /\(local /));
+});
+
+test("all early returns converge on one epilogue after evaluating their values", () => {
+    const source = `DECLARE calls: INTEGER
+FUNCTION side(n: INTEGER) RETURNS INTEGER
+calls <- calls + 1
+RETURN n * 10
+ENDFUNCTION
+FUNCTION choose(n: INTEGER) RETURNS INTEGER
+IF n < 0 THEN
+RETURN side(1)
+ENDIF
+IF n = 0 THEN
+RETURN side(2)
+ENDIF
+RETURN side(3)
+ENDFUNCTION
+OUTPUT choose(-1), choose(0), choose(1), calls`;
+    inspect(source, text => {
+        const body = callable(text, "choose");
+        assert.equal((body.match(/global.set \$__stackTop/g) ?? []).length, 2);
+        assert.equal((body.match(/br \$__return/g) ?? []).length, 3);
+    });
+    execute(source, [10, 20, 30, 3]);
+});
+
+test("recursive REAL CASE selectors are local and independent across calls", () => {
+    const source = `FUNCTION choose(n: REAL) RETURNS REAL
+CASE OF n
+0.0: RETURN 0.5
+1.0: RETURN 1.5
+OTHERWISE: RETURN choose(n - 1.0) + 1.0
+ENDCASE
+ENDFUNCTION
+OUTPUT choose(3.0), choose(0.0), choose(2.0)`;
+    inspect(source, text => {
+        assert.doesNotMatch(text, /__caseI32|__caseF64/);
+        assert.match(callable(text, "choose"), /local.set/);
+    });
+    execute(source, [3.5, 0.5, 2.5]);
+});
+
+test("unsigned index checks match inclusive bounds across extreme i32 values", () => {
+    for (const [lower, upper] of [[0, 2], [7, 9], [2147483646, 2147483647]]) {
+        const source = `DECLARE a: ARRAY[${lower}:${upper}] OF INTEGER
+DECLARE i: INTEGER
+a[${lower}] <- 11
+a[${upper}] <- 22
+INPUT i
+OUTPUT a[i]`;
+        inspect(source, text => {
+            assert.equal((text.match(/i32.gt_u/g) ?? []).length, 1);
+            assert.doesNotMatch(text, /i32.lt_s|i32.gt_s|i32.or/);
+        });
+        for (const optimization of ["none", "binaryen-o2"]) {
+            const module = new Compiler(source, {optimization}).compile();
+            try {
+                const memory = new WebAssembly.Memory({initial: 30, maximum: 30});
+                let index = 0;
+                const outputs = [];
+                const instance = new WebAssembly.Instance(new WebAssembly.Module(module.emitBinary()), {env: {
+                    buffer: memory, inputInteger: () => index, logInteger: value => outputs.push(value),
+                    failIndex: (...args) => { throw new Error(JSON.stringify(args)); },
+                }});
+                let random = 12345;
+                const values = [lower, upper, lower - 1, (upper + 1) | 0, 0, -1, -2147483648, 2147483647];
+                for (let sample = 0; sample < 64; sample++) {
+                    random = (Math.imul(random, 1664525) + 1013904223) | 0;
+                    values.push(random);
+                }
+                for (index of values) {
+                    outputs.length = 0;
+                    if (index >= lower && index <= upper) {
+                        instance.exports.main();
+                        assert.deepEqual(outputs, [index === lower ? 11 : index === upper ? 22 : 0]);
+                    } else {
+                        assert.throws(() => instance.exports.main(), error => {
+                            assert.deepEqual(JSON.parse(error.message), [index, lower, upper, 6, 9]);
+                            return true;
+                        });
+                        assert.deepEqual(outputs, []);
+                    }
+                }
+            } finally { module.dispose(); }
+        }
+    }
+});
+
+test("unsigned pointer checks keep null, signed patterns, and exact endpoints correct", () => {
+    for (const [type, size] of [["INTEGER", 4], ["REAL", 8]]) {
+        const source = `TYPE pointer = ^${type}
+DECLARE p: pointer
+OUTPUT p^`;
+        for (const optimization of ["none", "binaryen-o2"]) {
+            const module = new Compiler(source, {optimization}).compile();
+            try {
+                const memory = new WebAssembly.Memory({initial: 30, maximum: 30});
+                const bytes = new DataView(memory.buffer);
+                const outputs = [];
+                const instance = new WebAssembly.Instance(new WebAssembly.Module(module.emitBinary()), {env: {
+                    buffer: memory, logInteger: value => outputs.push(value), logReal: value => outputs.push(value),
+                    failPointer: (...args) => { throw new Error(JSON.stringify(args)); },
+                }});
+                const end = memory.buffer.byteLength;
+                for (const pointer of [0, 1, 3, 8, end - size, end - size + 1, end, -1, -2147483648, 2147483647]) {
+                    outputs.length = 0;
+                    bytes.setInt32(4, pointer, true);
+                    if (pointer >= 4 && pointer <= end - size) {
+                        if (size === 4) bytes.setInt32(pointer, 37, true);
+                        else bytes.setFloat64(pointer, 37, true);
+                        instance.exports.main();
+                        assert.deepEqual(outputs, [37]);
+                    } else {
+                        assert.throws(() => instance.exports.main(), error => {
+                            assert.deepEqual(JSON.parse(error.message).slice(0, 3), [pointer, size, 3]);
+                            return true;
+                        });
+                    }
+                }
+            } finally { module.dispose(); }
+        }
+    }
+});
+
+test("checked side-effecting indexes are evaluated exactly once", () => {
+    execute(`DECLARE calls: INTEGER
+DECLARE a: ARRAY[1:2] OF INTEGER
+FUNCTION index() RETURNS INTEGER
+calls <- calls + 1
+RETURN 2
+ENDFUNCTION
+a[index()] <- 42
+OUTPUT a[2], calls`, [42, 1]);
+});
+
+test("pointer-view destinations count their base pointer as a read during analysis", () => {
+    const ast = new Parser(new Scanner(`TYPE ip = ^INTEGER
+PROCEDURE store()
+DECLARE p: ip
+p[0] <- 1
+ENDPROCEDURE
+CALL store()`).scan()).parse();
+    new Checker(ast).check();
+    const procedure = ast.body.find(node => node.ident?.lexeme === "store");
+    const generator = new Generator(ast);
+    const module = generator.generate();
+    try {
+        // Inspect this internal analysis contract without making it a package API.
+        assert.ok(generator.valuePlans.get(procedure).uninitialized.has(procedure.local.lookUp("p")));
+        assert.equal(module.validate(), 1);
+    } finally { module.dispose(); }
+});
+
+test("scope lookup keeps namespaces, lexical shadowing, and legacy metadata distinct", () => {
+    const ast = new Parser(new Scanner(`DECLARE x: INTEGER
+FUNCTION f() RETURNS INTEGER
+RETURN x
+ENDFUNCTION`).scan()).parse();
+    new Checker(ast).check();
+    const Scope = ast.global.constructor;
+    const rootSymbol = ast.global.lookUp("x");
+    const siblingAst = new Parser(new Scanner("DECLARE x: REAL").scan()).parse();
+    new Checker(siblingAst).check();
+    const innerSymbol = siblingAst.global.lookUp("x");
+    const child = new Scope(true, ast.global, rootSymbol.type, 0);
+    child.insert("x", innerSymbol);
+    assert.equal(child.lookUp("x"), innerSymbol);
+    assert.equal(ast.global.lookUp("x"), rootSymbol);
+    assert.equal(child.lookUpFunc("f"), ast.global.lookUpFunc("f"));
+    assert.equal(child.returnIndex, 0);
+    child.setPointer("x", 123);
+    assert.equal(innerSymbol.pointer, 123);
+    assert.equal(rootSymbol.pointer, undefined);
+    assert.throws(() => child.lookUpProc("f"), /Unknown PROCEDURE 'f'/);
+    assert.throws(() => child.lookUpType("x"), /Unknown TYPE 'x'/);
+    let deep = child;
+    for (let i = 0; i < 12000; i++) deep = new Scope(false, deep);
+    assert.equal(deep.lookUp("x"), innerSymbol);
+    assert.throws(() => deep.lookUp("absent"), /Unknown variable 'absent'/);
 });
