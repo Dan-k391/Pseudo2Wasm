@@ -58,7 +58,8 @@ multiline pseudocode strings contain meaningful diagnostic source positions.
 | `src/codegen/` | Storage locations, function contexts, Wasm emission |
 | `src/codegen/runtime-abi.ts` | Imported host names and Wasm signatures |
 | `src/codegen/runtime-checks.ts` | Located stack/index/pointer checks |
-| `src/compiler.ts` | Public compilation pipeline and JS execution host |
+| `src/compiler.ts` | Public compilation pipeline and execution entry points |
+| `src/runtime/` | Per-execution JS host, JSPI adaptation, typed input validation |
 
 Analysis modules do not create Binaryen IR or write backend state into semantic
 symbols. Storage and temporary locals belong to a particular generator/function.

@@ -31,7 +31,12 @@ same CHAR/BOOLEAN type; string equality is not implemented.
 Strings are stored as UTF-8 bytes in linear memory and exposed to the host as
 JavaScript strings. String indexing, concatenation, comparison, RIGHT and MID
 are not yet supported. The current fixed memory layout and incomplete pointer
-provenance checks are documented in the README and targeted for Milestone 5.
+provenance checks are documented in [MEMORY_MODEL.md](MEMORY_MODEL.md).
+INPUT now validates values strictly: INTEGER/REAL reject partial parses and
+out-of-range/non-finite values, BOOLEAN accepts only explicit Boolean values or
+uppercase spellings, CHAR requires one non-surrogate UTF-16 code unit, and
+STRING rejects malformed Unicode/NUL instead of silent encoding changes.
+See [RUNTIME_API.md](RUNTIME_API.md) for exact host input and execution contracts.
 
 `RETURN` terminates a function path; the checker requires a return on every
 statically visible path, including all CASE branches when OTHERWISE exists.

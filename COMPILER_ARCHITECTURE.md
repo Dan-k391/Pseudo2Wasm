@@ -14,6 +14,15 @@ module ownership.
 3. Read-only backend analyses inspect checked syntax.
 4. Generator lowers the checked program using explicit per-callable state.
 5. Binaryen reachability cleanup always runs; broader O2 remains optional.
+6. `compileBinary()` emits owned bytes and disposes its temporary module.
+   `runtime/execution.ts` owns fresh memory, host imports, callback/JSPI handling,
+   and timing for each execution; `runtime/input.ts` validates typed host values.
+   `Compiler` coordinates these stages without embedding host I/O implementation.
+
+All scalar INPUT imports now carry source line/column, including synchronous
+input. The runtime can reject invalid values before Wasm coercion and preserve
+the source location across suspension. See [RUNTIME_API.md](RUNTIME_API.md) for
+ownership, compatibility, capability detection, and execution failure contracts.
 
 `src/syntax/walk.ts` visits executable expressions/statements exhaustively.
 It does not recurse through scope parents, resolved types, or symbol tables.

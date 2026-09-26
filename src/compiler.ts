@@ -8,7 +8,8 @@ import { Checker } from "./type/checker";
 import { CompilationError, Diagnostic, RuntimeError, SyntaxError, toDiagnostic } from "./error";
 import { ProgramNode } from "./syntax/ast";
 import { Token } from "./lex/token";
-import { GLOBAL_DATA_START, HEAP_START, MEMORY_END, MEMORY_PAGES, STACK_START } from "./memory-layout";
+import { Execution, ExecutionResult, InputProvider, OutputConsumer } from "./runtime/execution";
+export type { ExecutionResult, InputProvider, OutputConsumer, OutputValue } from "./runtime/execution";
 
 export interface CompilerOptions {
     /** Default is "none"; O2 trades compile time for smaller Wasm. */
@@ -86,190 +87,41 @@ export class Compiler {
         return optimized;
     }
 
-    async runtime(
-        output: (value: number | string) => void = console.log,
-        input?: () => unknown | Promise<unknown>
-    ): Promise<number> {
-        const result = await this.execute([], output, input);
-        return result.executionTimeMs;
-    }
-
-    async execute(
-        input: ReadonlyArray<unknown>,
-        output?: (value: number | string) => void,
-        inputProvider?: () => unknown | Promise<unknown>
-    ): Promise<ExecutionResult> {
-        let inputIndex = 0;
-        const outputs: Array<unknown> = [];
-
+    /** Validate and emit an owned byte array; no Binaryen module escapes. */
+    compileBinary(): Uint8Array<ArrayBuffer> {
         const module = this.compile(false);
-
-        let wasm: Uint8Array<ArrayBuffer>;
         try {
             if (!module.validate()) {
                 throw new Error("Internal compiler error: generated WebAssembly failed validation; please report this pseudocode as a bug");
             }
-            wasm = new Uint8Array(module.emitBinary());
+            return new Uint8Array(module.emitBinary());
         } finally {
-            // execute owns this temporary IR; compile callers own theirs.
             module.dispose();
         }
+    }
 
-        // Fixed, disjoint global/stack/input-string regions; see MEMORY_MODEL.md.
-        const memory = new WebAssembly.Memory({ initial: MEMORY_PAGES, maximum: MEMORY_PAGES });
-        let heapOffSet = HEAP_START;
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder("utf8");
+    /** Compatibility timing helper; includes awaited I/O, excludes compilation. */
+    async runtime(output: OutputConsumer = console.log, input?: InputProvider): Promise<number> {
+        const result = await this.execute([], output, input);
+        return result.executionTimeMs;
+    }
 
-        const runtimeFailure = (message: string, line = 0, column = 0): never => {
-            const error = new RuntimeError(message);
-            error.source = this.input;
-            if (line > 0) {
-                error.line = line;
-                error.startColumn = Math.max(0, column - 1);
-                error.endColumn = error.startColumn + 1;
-            }
-            throw error;
-        };
+    /** Always returns a Promise; asynchronous callbacks require JSPI. */
+    async execute(
+        input: ReadonlyArray<unknown> = [],
+        output?: OutputConsumer,
+        inputProvider?: InputProvider
+    ): Promise<ExecutionResult> {
+        return new Execution(this.compileBinary(), this.input, input, output, inputProvider).run();
+    }
 
-        const checkPointer = (ptr: number, size: number, line: number, column: number): number => {
-            if (ptr === 0) runtimeFailure("Null pointer dereference", line, column);
-            if (ptr < GLOBAL_DATA_START || size < 1 || ptr + size > MEMORY_END) {
-                runtimeFailure(`Pointer access outside linear memory at address ${ptr}`, line, column);
-            }
-            return ptr;
-        };
-
-        const nextInput = (): unknown | Promise<unknown> => {
-            if (inputProvider) {
-                inputIndex++;
-                return inputProvider();
-            }
-            if (inputIndex >= input.length) {
-                throw new Error(`Program requested input ${inputIndex + 1}, but only ${input.length} value(s) were provided`);
-            }
-            return input[inputIndex++];
-        };
-
-        const inputInteger = async () => parseInt(String(await nextInput()), 10);
-        const inputReal = async () => parseFloat(String(await nextInput()));
-        const inputChar = async () => {
-            const str = String(await nextInput());
-            // utf-8 encoding
-            const bytes = encoder.encode(str);
-            return bytes[0];
-        };
-        const inputString = async (line: number, column: number) => {
-            const str = String(await nextInput());
-            const bytes = encoder.encode(str);
-            if (heapOffSet + bytes.length + 1 > MEMORY_END) {
-                runtimeFailure("Input string exceeds heap memory limit", line, column);
-            }
-            const ptr = heapOffSet;
-            heapOffSet += bytes.length + 1;
-            const view = new Uint8Array(memory.buffer, ptr, bytes.length + 1);
-            view.set(bytes);
-            view[bytes.length] = 0;
-            return ptr;
-        };
-        const inputBoolean = async () => {
-            const value = await nextInput();
-            return value === true || value === "TRUE" ? 1 : 0;
-        };
-
-        const emit = (value: number | string): void => {
-            outputs.push(value);
-            output?.(value);
-        };
-
-        // @ts-ignore
-        const suspendingInputInteger = new WebAssembly.Suspending(
-            inputInteger
-        );
-        // @ts-ignore
-        const suspendingInputReal = new WebAssembly.Suspending(
-            inputReal
-        );
-        // @ts-ignore
-        const suspendingInputChar = new WebAssembly.Suspending(
-            inputChar
-        );
-        // @ts-ignore
-        const suspendingInputString = new WebAssembly.Suspending(
-            inputString
-        );
-        // @ts-ignore
-        const suspendingInputBoolean = new WebAssembly.Suspending(
-            inputBoolean
-        );
-
-        // TODO: currently import many log functions, change to only logString later
-        const importObect = {
-            env: {
-                buffer: memory,
-                logInteger: (output: number) => {
-                    emit(output);
-                },
-                logReal: (output: number) => {
-                    emit(output);
-                },
-                logChar: (output: number) => {
-                    // TODO: utf-8 encoding
-                    emit(String.fromCharCode(output));
-                },
-                logString: (output: number) => {
-                    checkPointer(output, 1, 0, 0);
-                    const bytes = new Uint8Array(memory.buffer, output, MEMORY_END - output);
-                    const terminator = bytes.indexOf(0);
-                    emit(decoder.decode(terminator < 0 ? bytes : bytes.subarray(0, terminator)));
-                },
-                logBoolean: (output: number) => {
-                    emit(output === 0 ? "FALSE" : "TRUE");
-                },
-                inputInteger: suspendingInputInteger,
-                inputReal: suspendingInputReal,
-                inputChar: suspendingInputChar,
-                inputString: suspendingInputString,
-                inputBoolean: suspendingInputBoolean,
-                failIndex: (index: number, lower: number, upper: number, line: number, column: number) =>
-                    runtimeFailure(`Array index ${index} outside [${lower}:${upper}]`, line, column),
-                failPointer: (ptr: number, size: number, line: number, column: number) => {
-                    checkPointer(ptr, size, line, column);
-                    runtimeFailure(`Invalid pointer access at address ${ptr}`, line, column);
-                },
-                failStack: (_next: number, line: number, column: number) =>
-                    runtimeFailure("Stack memory limit exceeded", line, column),
-                randomInteger: (range: number) => {
-                    // includes 0 and range
-                    return Math.floor(Math.random() * (range + 1));
-                },
-                startTime: () => {
-                    console.time("Execution time");
-                },
-                endTime: () => {
-                    console.timeEnd("Execution time");
-                },
-            },
-        }
-
-        const { instance } = await WebAssembly.instantiate(wasm, importObect);
-
-        // @ts-ignore
-        const main = WebAssembly.promising(
-            instance.exports.main
-        );
-
-        // for debug
-        // debugger;
-        const start = new Date().getTime();
-        await main();
-        const end = new Date().getTime();
-
-        return {
-            outputs,
-            inputsConsumed: inputIndex,
-            executionTimeMs: end - start,
-        };
+    /** Runs to completion without JSPI; Promise-returning callbacks are rejected. */
+    executeSync(
+        input: ReadonlyArray<unknown> = [],
+        output?: OutputConsumer,
+        inputProvider?: InputProvider
+    ): ExecutionResult {
+        return new Execution(this.compileBinary(), this.input, input, output, inputProvider).runSync();
     }
 
     /**
@@ -294,10 +146,4 @@ export class Compiler {
         return result.outputs.length === expectedOutputs.length &&
             result.outputs.every((output, index) => Object.is(output, expectedOutputs[index]));
     }
-}
-
-export interface ExecutionResult {
-    outputs: Array<unknown>;
-    inputsConsumed: number;
-    executionTimeMs: number;
 }

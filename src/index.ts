@@ -1,10 +1,11 @@
 import { Compiler } from "./compiler";
+import type { InputProvider, OutputConsumer } from "./runtime/execution";
 
 /** Compile and run pseudocode with host input and output callbacks. */
 export async function runCode(
     code: string,
-    output: (value: number | string) => void,
-    input: () => unknown | Promise<unknown> = () => {
+    output: OutputConsumer,
+    input: InputProvider = () => {
         throw new Error("The program requested input, but no input callback was provided");
     }
 ): Promise<number> {
@@ -24,7 +25,8 @@ export const keyWords = [
 ];
 
 export { Compiler } from "./compiler";
-export type { CompilerOptions, ExecutionResult } from "./compiler";
+export type { CompilerOptions, ExecutionResult, InputProvider, OutputConsumer, OutputValue } from "./compiler";
+export { getRuntimeCapabilities } from "./runtime/execution";
 export { SyntaxError, RuntimeError, CompilationError, formatDiagnostic, MAX_DIAGNOSTICS } from "./error";
 export type { Diagnostic, DiagnosticPhase, SourceSpan } from "./error";
 export { Scanner } from "./lex/scanner";

@@ -902,21 +902,20 @@ export class Generator {
         const ptr = node.expr.kind === nodeKind.VarExprNode ? undefined : this.generateAddr(node.expr);
         const storeInput = (value: ExpressionRef) => node.expr.kind === nodeKind.VarExprNode
             ? this.writeVariable(node.expr.ident.lexeme, type, value) : this.store(type, ptr!, value);
+        const location = () => [this.module.i32.const(node.source?.line || 0),
+        this.module.i32.const((node.source?.startColumn ?? -1) + 1)];
 
         switch (basicType) {
             case basicKind.INTEGER:
-                return storeInput(this.module.call("inputInteger", [], binaryen.i32));
+                return storeInput(this.module.call("inputInteger", location(), binaryen.i32));
             case basicKind.REAL:
-                return storeInput(this.module.call("inputReal", [], binaryen.f64));
+                return storeInput(this.module.call("inputReal", location(), binaryen.f64));
             case basicKind.CHAR:
-                return storeInput(this.module.call("inputChar", [], binaryen.i32));
+                return storeInput(this.module.call("inputChar", location(), binaryen.i32));
             case basicKind.STRING:
-                return storeInput(this.module.call("inputString", [
-                    this.module.i32.const(node.source?.line || 0),
-                    this.module.i32.const((node.source?.startColumn ?? -1) + 1)
-                ], binaryen.i32));
+                return storeInput(this.module.call("inputString", location(), binaryen.i32));
             case basicKind.BOOLEAN:
-                return storeInput(this.module.call("inputBoolean", [], binaryen.i32));
+                return storeInput(this.module.call("inputBoolean", location(), binaryen.i32));
         }
 
         throw new Error("Internal compiler error: unsupported INPUT type reached Wasm lowering");

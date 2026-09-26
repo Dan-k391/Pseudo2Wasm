@@ -436,6 +436,12 @@ the installed Visual Studio 2026 Community toolchain, MSVC 19.51.36244.
 The same `.c` kernel used by Emscripten is compiled as C++ with `/TP` for MSVC;
 there is no different native algorithm or hard-coded answer.
 
+Milestone 8 subsequently adds source-location arguments to scalar INPUT imports
+and separates execution hosting. The measurements below remain historical
+snapshots, not remeasured Milestone 8 timings; current size/host-call budgets are
+checked independently. `execute()` timing includes awaited host I/O, unlike the
+synchronous benchmark harness; do not compare those numbers interchangeably.
+
 ### Added workloads
 
 | Workload | Timed work per invocation | Independent correctness reference |

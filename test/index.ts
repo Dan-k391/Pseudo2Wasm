@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { Compiler } from "../src/compiler";
+import { assertRuntimeContract } from "./runtime-browser";
 
 import { code0 } from "./samples/code0";
 import { code1 } from "./samples/code1";
@@ -196,7 +197,14 @@ async function runTests(): Promise<void> {
         console.error(`✗ ${compatibilityTestName}`, error);
     }
 
-    const total = selectedTests.length * 2 + 1;
+    try {
+        await assertRuntimeContract();
+        console.log("✓ runtime_contract");
+    } catch (error) {
+        failures.push({ name: "runtime_contract", error });
+        console.error("✗ runtime_contract", error);
+    }
+    const total = selectedTests.length * 2 + 2;
     console.log(`${total - failures.length}/${total} tests passed`);
     expect(failures, failures.map(failure => `${failure.name}: ${String(failure.error)}`).join(" | ")).to.be.empty;
 }

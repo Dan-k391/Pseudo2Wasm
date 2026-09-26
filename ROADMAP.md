@@ -193,17 +193,28 @@ preserve the documented exhaustion contract.
 
 ## Milestone 8: Predictable runtime and package API
 
-- [ ] Detect missing JSPI APIs and explain supported compile-only and execution
+- [x] Detect missing JSPI APIs and explain supported compile-only and execution
       options without a cryptic platform exception.
-- [ ] Test sync/async `INPUT`, output ordering, thrown/rejected callbacks, and
+- [x] Test sync/async `INPUT`, output ordering, thrown/rejected callbacks, and
       runtime-error propagation in supported browser and Node environments.
-- [ ] Define the public compile/execute/diagnostics API and a compatibility or
+- [x] Define the public compile/execute/diagnostics API and a compatibility or
       deprecation policy for `Compiler.test()` and other existing exports.
-- [ ] Test Node and browser entry points from the packed npm artifact, including
+- [x] Test Node and browser entry points from the packed npm artifact, including
       TypeScript declarations and documented examples.
 
 Done when consumers can tell which APIs require JSPI and every supported entry
 point behaves consistently; unsupported environments fail clearly.
+
+Implemented: isolated per-execution runtime state, `executeSync()`, owned
+`compileBinary()` output, and runtime capability detection. Queued input and
+synchronous callbacks work without JSPI; Promise-returning callbacks require it
+and are never replayed. Typed input validation reports the `INPUT` source
+location, and asynchronous output is awaited in program order. Existing public
+helpers remain supported. See [RUNTIME_API.md](RUNTIME_API.md) for ownership,
+compatibility, supported environments, and intentional input-validation changes.
+Verified with Node runtime tests, actual Edge JSPI execution, disabled-JSPI
+execution, and packed ESM/CommonJS/browser consumers plus strict TypeScript
+NodeNext and bundler-resolution consumers.
 
 ## Milestone 9: Release and contributor experience
 

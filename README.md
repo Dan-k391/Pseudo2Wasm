@@ -5,6 +5,8 @@ See [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md) for the supported CAIE subset and
 precise language semantics.
 See [MEMORY_MODEL.md](MEMORY_MODEL.md) for the fixed Wasm layout and pointer-safety
 boundary.
+See [RUNTIME_API.md](RUNTIME_API.md) for synchronous/asynchronous execution,
+strict input formats, callback errors, JSPI detection, and API compatibility.
 See [BENCHMARKS.md](BENCHMARKS.md) for reproducible performance measurements and
 the optional Binaryen O2 mode.
 See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) for the value/storage
@@ -38,7 +40,8 @@ the `exports` field in `package.json` does that for consumers.
 `PSEUDO2WASM_BROWSER` to the browser executable path if it is not in a standard
 location. The tests run without opening a visible browser or DevTools.
 `npm run test:browser` remains available for interactive debugging. Programs
-using `INPUT` also need an input callback.
+using `INPUT` need queued values or an input callback. JSPI is required by the
+async browser tests, not by ordinary synchronous execution.
 
 ## npm package
 
@@ -55,11 +58,25 @@ await runCode("OUTPUT 1 + 2", value => console.log(value));
 CommonJS consumers can use `const compiler = await require("pseudo2wasm")`.
 The CommonJS entry is awaitable because Binaryen initializes asynchronously.
 
-Programs that use `INPUT` need a third callback. The runtime uses WebAssembly
-JSPI (`WebAssembly.Suspending` and `WebAssembly.promising`), so execution requires
-a browser with those APIs enabled. Compiling alone does not require JSPI.
+With `runCode`, programs that use `INPUT` need a third callback. Alternatively,
+use `Compiler` with preloaded values in Node or a browser, without JSPI:
 
-`Compiler.execute()` releases its temporary Binaryen module automatically. If
+```ts
+import { Compiler } from "pseudo2wasm";
+
+const compiler = new Compiler("DECLARE x: INTEGER\nINPUT x\nOUTPUT x + 1");
+console.log(compiler.executeSync([41]).outputs); // [42]
+console.log((await compiler.execute([41])).outputs); // [42]
+```
+
+Synchronous callbacks also work without JSPI. Promise-returning input/output
+callbacks require both `WebAssembly.Suspending` and `WebAssembly.promising`;
+check `getRuntimeCapabilities().jspi`. Missing support produces an explicit
+runtime error, not silent input coercion. See [RUNTIME_API.md](RUNTIME_API.md).
+
+`Compiler.execute()`, `executeSync()`, and `compileBinary()` release their
+temporary Binaryen modules automatically. `compileBinary()` returns owned Wasm
+bytes and needs no JSPI. If
 you use `Compiler.compile()` directly, you own the returned module: call
 `module.dispose()` in a `finally` block after emitting its bytes or text.
 Default compilation removes unreachable functions and imports; broader

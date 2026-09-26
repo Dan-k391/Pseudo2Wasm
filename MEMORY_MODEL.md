@@ -64,7 +64,10 @@ demonstrates the limitation: a pointer view starting at one global INTEGER can
 read the next global INTEGER because both addresses are inside linear memory.
 
 The runtime host should be treated as trusted: failure imports throw, and the
-memory import is supplied by `Compiler.execute()`. Execution uses browser/Node
-WebAssembly JSPI for asynchronous input. The first invalid array index or
+memory import is supplied by the execution host. Synchronous execution needs
+no JSPI; Promise-returning input/output callbacks use browser/Node WebAssembly
+JSPI when available. Every run has fresh memory and allocation state. Strict
+input validation and callback failure behavior are specified in [RUNTIME_API.md](RUNTIME_API.md).
+The first invalid array index or
 pointer access reports its source line and column; a plain Wasm memory trap
 from an unchecked internal operation may not have that precision yet.

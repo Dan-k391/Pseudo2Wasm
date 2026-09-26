@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { copyFile, mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runBrowserPage } from "./run-browser-tests.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const require = createRequire(import.meta.url);
 const temp = await mkdtemp(path.join(root, "dist-test", "pack-check-"));
 
 function run(command, args) {
@@ -30,7 +28,7 @@ try {
     const [packed] = JSON.parse(output);
     const files = new Set(packed.files.map(file => file.path));
     for (const file of [
-        "package.json", "README.md", "BENCHMARKS.md", "MEMORY_MODEL.md", "COMPILER_ARCHITECTURE.md", "CODE_STYLE.md", "node-entry.cjs", "dist/pseudo2wasm.js",
+        "package.json", "README.md", "BENCHMARKS.md", "MEMORY_MODEL.md", "RUNTIME_API.md", "COMPILER_ARCHITECTURE.md", "CODE_STYLE.md", "node-entry.cjs", "dist/pseudo2wasm.js",
         "dist/pseudo2wasm.node.mjs", "dist/types/index.d.ts",
     ]) {
         assert.ok(files.has(file), `npm package is missing ${file}; packed: ${[...files].join(", ")}`);
@@ -39,23 +37,44 @@ try {
     const archive = path.join(temp, packed.filename);
     assert.ok(existsSync(archive), "npm pack did not create an archive");
     run("tar", ["-xzf", archive, "-C", temp]);
-    const packageRoot = path.join(temp, "package");
-    const nodeApi = await require(path.join(packageRoot, "node-entry.cjs"));
-    assert.equal(typeof nodeApi.Compiler, "function");
-    assert.equal(new nodeApi.Compiler("OUTPUT 42").compile().validate(), 1);
-    assert.equal(new nodeApi.Compiler("OUTPUT 42", {optimization: "binaryen-o2"}).compile().validate(), 1);
+    // Resolve actual package exports, not an absolute import that bypasses them.
+    await mkdir(path.join(temp, "node_modules"));
+    const packageRoot = path.join(temp, "node_modules", "pseudo2wasm");
+    await rename(path.join(temp, "package"), packageRoot);
+    const consumer = path.join(temp, "consumer.mts");
+    await copyFile(path.join(root, "test/package-consumer.mts"), consumer);
+    await copyFile(path.join(root, "test/package-consumer.cjs"), path.join(temp, "consumer.cjs"));
+    const tsc = path.join(root, "node_modules/typescript/bin/tsc");
+    // This browser-neutral API needs no ambient Node types. Isolate the consumer
+    // from Webpack's unrelated transitive @types packages, without skipLibCheck.
+    const typeRoots = path.join(temp, "empty-types");
+    await mkdir(typeRoots);
+    const typeFlags = [consumer, "--strict", "--target", "ES2022", "--lib", "ES2022,DOM", "--typeRoots", typeRoots];
+    // Run the emitted ESM example, and check bundler consumers independently.
+    run(process.execPath, [tsc, ...typeFlags, "--module", "NodeNext", "--moduleResolution", "NodeNext"]);
+    run(process.execPath, [tsc, ...typeFlags, "--module", "ESNext", "--moduleResolution", "bundler", "--noEmit"]);
+    run(process.execPath, [path.join(temp, "consumer.mjs")]);
+    run(process.execPath, [path.join(temp, "consumer.cjs")]);
 
     const browserPage = path.join(temp, "package-browser.html");
     await writeFile(browserPage, `<!doctype html><html><body>
-<script src="./package/dist/pseudo2wasm.js"></script>
+<script src="./node_modules/pseudo2wasm/dist/pseudo2wasm.js"></script>
 <script>
 (async () => {
   try {
     const api = await window.pseudo2wasm;
-    if (typeof api.Compiler !== "function" ||
-        !new api.Compiler("OUTPUT 42").compile().validate() ||
-        !new api.Compiler("OUTPUT 42", {optimization: "binaryen-o2"}).compile().validate()) {
-      throw new Error("Packed browser API could not compile a program");
+    for (const optimization of ["none", "binaryen-o2"]) {
+      const compiler = new api.Compiler("DECLARE x: INTEGER\\nINPUT x\\nOUTPUT x + 1", {optimization});
+      if (compiler.executeSync([41]).outputs[0] !== 42 ||
+          (await compiler.execute([], undefined, async () => 41)).outputs[0] !== 42) {
+        throw new Error("Packed browser execution failed");
+      }
+      const seen = [];
+      await compiler.execute([41], async value => { await Promise.resolve(); seen.push(value); });
+      if (seen[0] !== 42) throw new Error("Packed browser output was not awaited");
+      const module = compiler.compile();
+      try { if (!module.validate()) throw new Error("Packed compilation failed"); }
+      finally { module.dispose(); }
     }
     document.documentElement.setAttribute("data-pseudo2wasm-tests", "passed");
   } catch (error) {
