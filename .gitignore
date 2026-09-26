@@ -3,3 +3,5 @@ dist-test
 node_modules
 .VSCodeCounter
 archive
+benchmarks/.toolchains/
+benchmarks/comparison/build/

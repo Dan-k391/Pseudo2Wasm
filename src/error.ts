@@ -39,14 +39,15 @@ export class CompilationError extends Error {
     readonly source: string;
 
     constructor(diagnostics: ReadonlyArray<Diagnostic>, source: string) {
-        super(`${diagnostics.length} compilation errors`);
+        super(`${diagnostics.length} compilation errors\n\n` +
+            diagnostics.map(d => formatDiagnostic(d, source)).join("\n\n"));
         this.name = "CompilationError";
         this.diagnostics = diagnostics;
         this.source = source;
     }
 
     toString(): string {
-        return this.diagnostics.map(d => formatDiagnostic(d, this.source)).join("\n\n");
+        return this.message;
     }
 }
 

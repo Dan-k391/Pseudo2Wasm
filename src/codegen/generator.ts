@@ -1,9 +1,4 @@
-// TODO: improve the fking code in generator (statements, expressions, etc.)
-// One very important thing here is to probably pass the scopes in checker
-// to the generator. This way the code can be cleaned up
-
 import binaryen from "binaryen";
-import { Environment } from "../import";
 import { RuntimeError } from "../error";
 import { tokenType } from "../lex/token";
 import {
@@ -12,8 +7,6 @@ import {
     Expr,
     Stmt,
     ProgramNode,
-    FuncDefNode,
-    ProcDefNode,
     ReturnNode,
     DeclNode,
     PtrDeclNode,
@@ -43,25 +36,22 @@ import {
 } from "../syntax/ast";
 import { ParamNode, passType } from "../syntax/param";
 
-import { unreachable } from "../util";
 import { 
     Type,
     typeKind
 } from "../type/type";
 import { basicKind } from "../type/basic";
-import { PointerType } from "../type/pointer";
-import { RecordType } from "../type/record";
-import { ArrayType } from "../type/array";
-import { BasicType } from "../type/basic";
 import { String } from "./string";
 import { 
     Length,
     UCase,
     LCase,
 } from "./std/builtin";
-import { Symbol, symbolKind } from "../type/symbol";
+import { symbolKind } from "../type/symbol";
 import { Scope } from "../type/scope";
 import { GLOBAL_DATA_START, HEAP_START, MEMORY_END, MEMORY_PAGES, STACK_START } from "../memory-layout";
+import { FunctionContext } from "./function-context";
+import { analyzeParameterReads, CallableNode, ParameterReads } from "./parameter-reads";
 
 // TODO: maybe new a common file to contain these
 type Module = binaryen.Module;
@@ -84,12 +74,16 @@ export class Generator {
     // set to 0 when entering a new scope
     private localOffset: number;
     private label: number;
-    private checkValueLocal = 0;
-    private checkPointerLocal = 1;
+    private context = new FunctionContext();
+    private readonly parameterReads: ReadonlyMap<CallableNode, ParameterReads>;
     public strings: Array<String>;
+
+    private get checkValueLocal(): number { return this.context.checkValueLocal; }
+    private get checkPointerLocal(): number { return this.context.checkPointerLocal; }
 
     constructor(ast: ProgramNode) {
         this.ast = ast;
+        this.parameterReads = analyzeParameterReads(ast);
         this.module = new binaryen.Module();
 
         // all variables in the body are global variables
@@ -158,6 +152,9 @@ export class Generator {
         );
 
         this.module.addMemoryImport("0", "env", "buffer");
+        // Keep only helpers/imports reachable from exported entry points. This
+        // cheap reachability pass does not rewrite arithmetic or runtime checks.
+        this.module.runPasses(["remove-unused-module-elements"]);
         return this.module;
     }
 
@@ -309,6 +306,14 @@ export class Generator {
         return this.curScope.lookUp(name).pointer;
     }
 
+    private readVariable(name: string, type: Type): ExpressionRef {
+        const symbol = this.curScope.lookUp(name);
+        const parameterIndex = this.context.parameterReads.get(symbol);
+        return parameterIndex === undefined
+            ? this.load(type, symbol.pointer)
+            : this.module.local.get(parameterIndex, type.wasmType());
+    }
+
     public load(type: Type, ptr: ExpressionRef): ExpressionRef {
         // load ARRAYs by ptr
         if (type.kind === typeKind.ARRAY) {
@@ -356,27 +361,32 @@ export class Generator {
         const stmts = this.generateStatements(body);
         const block = this.module.block(null, stmts);
 
-        const mainFunciton = this.module.addFunction("__main", binaryen.none, binaryen.none,
-            [binaryen.i32, binaryen.i32], block);
+        const mainFunction = this.module.addFunction("__main", binaryen.none, binaryen.none,
+            this.context.localTypes, block);
         this.module.addFunctionExport("__main", "main");
-        return mainFunciton;
+        return mainFunction;
     }
 
-    protected callablePrologue(line = 0, column = 0): ExpressionRef {
+    protected callablePrologue(line = 0, column = 0, frameSize = 0): ExpressionRef {
         return this.module.block("__callablePrologue", [
+            // Check the saved-base slot and complete frame before either write.
+            // checkedStackTop leaves the reserved end in checkValueLocal.
             this.module.drop(this.checkedStackTop(this.module.i32.add(
                     this.module.global.get("__stackTop", binaryen.i32),
-                    this.generateConstant(binaryen.i32, 4)
+                    this.generateConstant(binaryen.i32, 4 + frameSize)
                 ), line, column)),
             this.module.i32.store(0, 1, 
                 this.module.global.get("__stackTop", binaryen.i32),
                 this.module.global.get("__stackBase", binaryen.i32),
                 "0"
             ),
-            this.incrementStackTop(4, line, column),
             this.module.global.set(
                 "__stackBase",
-                this.module.global.get("__stackTop", binaryen.i32)
+                this.module.i32.add(this.module.global.get("__stackTop", binaryen.i32),
+                    this.module.i32.const(4))
+            ),
+            this.module.global.set(
+                "__stackTop", this.module.local.get(this.checkValueLocal, binaryen.i32)
             )
         ]);
     }
@@ -388,7 +398,8 @@ export class Generator {
     // load b, rsp
     // At first subtract the stacktop and then load
     protected callableEpilogue(): ExpressionRef {
-        return this.module.block("__callableEpilogue", [
+        // Multiple RETURN paths emit this sequence; no branch targets its block.
+        return this.module.block(null, [
             this.module.global.set(
                 "__stackTop",
                 this.module.global.get("__stackBase", binaryen.i32)
@@ -416,6 +427,8 @@ export class Generator {
                 continue;
             }
             this.addVar(paramName, paramType);
+            // Keep the spill even when reads use the Wasm parameter: frame
+            // layout, exhaustion, and reused-memory contents remain compatible.
             const ptr = this.getPointer(paramName);
             const wasmType = paramType.wasmType();
             statements.push(this.store(
@@ -428,78 +441,29 @@ export class Generator {
         return this.module.block("__paramInit", statements);
     }
 
-    private generateFunctionDefinition(node: FuncDefNode): void {
+    private generateCallableDefinition(node: CallableNode): void {
+        const previousContext = this.context;
+        const previousScope = this.curScope;
+        const previousOffset = this.localOffset;
+        const resultType = node.kind === nodeKind.FuncDefNode ? node.type.wasmType() : binaryen.none;
         this.enterScope(node.local);
-        const previousCheckValueLocal = this.checkValueLocal;
-        const previousCheckPointerLocal = this.checkPointerLocal;
-        this.checkValueLocal = node.params.length + 1; // after the return local
-        this.checkPointerLocal = node.params.length + 2;
-
-        const funcName = node.ident.lexeme;
-        const paramWasmTypes = new Array<WasmType>();
-
-        for (const value of node.params) {
-            paramWasmTypes.push(value.passType === passType.BYREF ? binaryen.i32 : value.type.wasmType());
+        this.context = new FunctionContext(node.params.length, resultType, this.parameterReads.get(node));
+        try {
+            const parameterTypes = node.params.map(param =>
+                param.passType === passType.BYREF ? binaryen.i32 : param.type.wasmType());
+            const body = [
+                this.callablePrologue(node.ident.line, node.ident.startColumn + 1, node.local.size()),
+                this.initParams(node.params),
+                ...this.generateStatements(node.body),
+                this.callableEpilogue(),
+            ];
+            this.module.addFunction(node.ident.lexeme, binaryen.createType(parameterTypes),
+                resultType, this.context.localTypes, this.module.block(null, body));
+        } finally {
+            this.context = previousContext;
+            this.curScope = previousScope;
+            this.localOffset = previousOffset;
         }
-
-        const paramType = binaryen.createType(paramWasmTypes);
-
-        const funcBody = [
-            this.callablePrologue(node.ident.line, node.ident.startColumn + 1),
-            this.incrementStackTop(node.local.size(), node.ident.line, node.ident.startColumn + 1),
-            this.initParams(node.params),
-            ...this.generateStatements(node.body),
-            this.callableEpilogue(),
-        ];
-
-        // FIXME: single returnType has problem here
-        // the only local variable: the return value variable
-        this.module.addFunction(
-            funcName,
-            paramType,
-            node.type.wasmType(),
-            [node.type.wasmType(), binaryen.i32, binaryen.i32],
-            this.module.block(null, funcBody)
-        );
-        this.leaveScope();
-        this.checkValueLocal = previousCheckValueLocal;
-        this.checkPointerLocal = previousCheckPointerLocal;
-    }
-
-    private generateProcedureDefinition(node: ProcDefNode): void {
-        this.enterScope(node.local);
-        const previousCheckValueLocal = this.checkValueLocal;
-        const previousCheckPointerLocal = this.checkPointerLocal;
-        this.checkValueLocal = node.params.length;
-        this.checkPointerLocal = node.params.length + 1;
-        const procName = node.ident.lexeme;
-        const paramWasmTypes = new Array<WasmType>();
-
-        for (const value of node.params) {
-            paramWasmTypes.push(value.passType === passType.BYREF ? binaryen.i32 : value.type.wasmType());
-        }
-
-        const paramType = binaryen.createType(paramWasmTypes);
-
-        const procBody = [
-            this.callablePrologue(node.ident.line, node.ident.startColumn + 1),
-            this.incrementStackTop(node.local.size(), node.ident.line, node.ident.startColumn + 1),
-            this.initParams(node.params),
-            ...this.generateStatements(node.body),
-            this.callableEpilogue(),
-        ];
-
-        // empty local variable array
-        this.module.addFunction(
-            procName,
-            paramType,
-            binaryen.none,
-            [binaryen.i32, binaryen.i32],
-            this.module.block(null, procBody)
-        );
-        this.leaveScope();
-        this.checkValueLocal = previousCheckValueLocal;
-        this.checkPointerLocal = previousCheckPointerLocal;
     }
 
     // Expressions
@@ -511,7 +475,7 @@ export class Generator {
             case nodeKind.AssignNode:
                 return this.assignExpression(expression);
             case nodeKind.VarExprNode:
-                return this.load(expression.type, this.varExpression(expression));
+                return this.readVariable(expression.ident.lexeme, expression.type);
             case nodeKind.IndexExprNode:
                 return this.load(expression.type, this.indexExpression(expression));
             case nodeKind.SelectExprNode:
@@ -876,11 +840,8 @@ export class Generator {
     public generateStatements(statements: Array<Stmt>): Array<ExpressionRef> {
         const stmts = new Array<ExpressionRef>();
         for (const statement of statements) {
-            if (statement.kind === nodeKind.FuncDefNode) {
-                this.generateFunctionDefinition(statement);
-            }
-            else if (statement.kind === nodeKind.ProcDefNode) {
-                this.generateProcedureDefinition(statement);
+            if (statement.kind === nodeKind.FuncDefNode || statement.kind === nodeKind.ProcDefNode) {
+                this.generateCallableDefinition(statement);
             }
             else {
                 stmts.push(this.generateStatement(statement));
@@ -922,27 +883,20 @@ export class Generator {
     }
 
     private returnStatement(node: ReturnNode): ExpressionRef {
+        const returnLocal = this.context.returnLocal;
+        if (returnLocal === undefined) {
+            throw new Error("Internal compiler error: RETURN outside a value-returning function");
+        }
         const returnVal = this.generateExpression(node.expr);
         return this.module.block(null, [
             this.module.local.set(
-                // definitely exists
-                this.curScope.returnIndex!,
+                returnLocal,
                 returnVal
             ),
-            this.module.global.set(
-                "__stackTop",
-                this.module.global.get("__stackBase", binaryen.i32)
-            ),
-            this.decrementStackTop(4),
-            this.module.global.set(
-                "__stackBase",
-                this.module.i32.load(0, 1, 
-                    this.module.global.get("__stackTop", binaryen.i32), "0"
-                )
-            ),
+            this.callableEpilogue(),
             this.module.return(
                 this.module.local.get(
-                    this.curScope.returnIndex!,
+                    returnLocal,
                     node.expr.type.wasmType()
                 )
             )
@@ -1147,7 +1101,7 @@ export class Generator {
         const real = node.type.kind === typeKind.BASIC && node.type.type === basicKind.REAL;
         const wasmType = real ? binaryen.f64 : binaryen.i32;
         const temp = real ? "__caseF64" : "__caseI32";
-        const selector = this.load(node.type, this.getPointer(node.ident.lexeme));
+        const selector = this.readVariable(node.ident.lexeme, node.type);
         const current = () => this.module.global.get(temp, wasmType);
         const literal = (value: number) => real ? this.module.f64.const(value) : this.module.i32.const(value);
         let branch: ExpressionRef = node.otherwiseBody

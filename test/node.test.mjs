@@ -317,3 +317,54 @@ DECLARE values: ARRAY[0:1] OF INTEGER
 CALL read(values)`).compile().emitText();
     assert.equal((pointerView.match(/\(call \$failPointer/g) || []).length, 1);
 });
+
+test("default lowering omits unreachable helpers without requiring O2", () => {
+    const module = new Compiler(`FUNCTION unused() RETURNS INTEGER
+RETURN 1
+ENDFUNCTION
+OUTPUT 42`).compile();
+    try {
+        const wasm = new WebAssembly.Module(module.emitBinary());
+        assert.deepEqual(WebAssembly.Module.imports(wasm).filter(x => x.kind === "function")
+            .map(x => x.name), ["logInteger"]);
+        assert.doesNotMatch(module.emitText(), /\(func \$(unused|LENGTH|UCASE|LCASE)\b/);
+    } finally {
+        module.dispose();
+    }
+});
+
+test("a callable reserves its entire frame with one capacity check", () => {
+    const module = new Compiler(`FUNCTION f(n: INTEGER) RETURNS INTEGER
+DECLARE x: INTEGER
+x <- n
+RETURN x
+ENDFUNCTION
+OUTPUT f(5)`).compile();
+    try {
+        assert.equal(module.validate(), 1);
+        assert.equal((module.emitText().match(/\(call \$failStack/g) || []).length, 1);
+    } finally {
+        module.dispose();
+    }
+});
+
+test("ordinary Error.message exposes every collected diagnostic", () => {
+    const compiler = new Compiler("OUTPUT missing\nOUTPUT absent");
+    assert.equal(compiler.diagnose().length, 2);
+    assert.throws(() => compiler.compile(), error => {
+        assert.ok(error instanceof CompilationError);
+        assert.match(error.message, /2 compilation errors/);
+        assert.match(error.message, /Unknown variable 'missing'.*line 1:8/);
+        assert.match(error.message, /Unknown variable 'absent'.*line 2:8/);
+        assert.equal(String(error), error.message);
+        return true;
+    });
+});
+
+test("execute releases its temporary IR even if validation fails", async () => {
+    const compiler = new Compiler("OUTPUT 1");
+    let disposals = 0;
+    compiler.compile = () => ({validate: () => false, dispose: () => disposals++});
+    await assert.rejects(compiler.execute([]), /failed validation/);
+    assert.equal(disposals, 1);
+});

@@ -30,7 +30,7 @@ try {
     const [packed] = JSON.parse(output);
     const files = new Set(packed.files.map(file => file.path));
     for (const file of [
-        "package.json", "README.md", "BENCHMARKS.md", "MEMORY_MODEL.md", "node-entry.cjs", "dist/pseudo2wasm.js",
+        "package.json", "README.md", "BENCHMARKS.md", "MEMORY_MODEL.md", "COMPILER_ARCHITECTURE.md", "node-entry.cjs", "dist/pseudo2wasm.js",
         "dist/pseudo2wasm.node.mjs", "dist/types/index.d.ts",
     ]) {
         assert.ok(files.has(file), `npm package is missing ${file}; packed: ${[...files].join(", ")}`);

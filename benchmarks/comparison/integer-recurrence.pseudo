@@ -1,0 +1,14 @@
+FUNCTION kernel(n: INTEGER, seed: INTEGER) RETURNS INTEGER
+    DECLARE i: INTEGER
+    DECLARE state: INTEGER
+    state <- seed
+    FOR i <- 1 TO n
+        state <- (state * 17 + 23) MOD 65521
+    NEXT i
+    RETURN state
+ENDFUNCTION
+DECLARE n: INTEGER
+DECLARE seed: INTEGER
+INPUT n
+INPUT seed
+OUTPUT kernel(n, seed)

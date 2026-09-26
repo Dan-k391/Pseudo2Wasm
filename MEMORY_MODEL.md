@@ -15,7 +15,8 @@ current stack and input-string heap.
 | 1,572,864–1,966,079 | Upward-growing input-string heap | `INPUT` fails with its source location if encoded bytes plus terminator do not fit. |
 
 Each call reserves a four-byte previous-frame pointer and the callable's full
-local frame. Frame space is reused on return; input strings are **not** freed
+local frame with one capacity check before either is written. An exactly
+fitting frame is allowed, including its saved pointer. Frame space is reused on return; input strings are **not** freed
 until execution ends. The final byte of each region may be used. Array and
 record data are in-place, not separately allocated. Every source basic value
 and pointer occupies four bytes except REAL, which occupies eight. Global

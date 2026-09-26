@@ -96,22 +96,27 @@ const p95 = values => {
 
 export function compile(code, mode) {
     let module = new Compiler(code).compile();
-    if (mode.startsWith("binaryen-o")) {
-        // Evaluate Binaryen as a post-lowering tool, independent of the
-        // compiler's mutable expression references.
-        const features = module.getFeatures();
-        module = binaryen.readBinary(module.emitBinary());
-        module.setFeatures(features);
-        const previous = binaryen.getOptimizeLevel();
-        try {
-            binaryen.setOptimizeLevel(Number(mode.slice("binaryen-o".length)));
-            module.optimize();
-        } finally {
-            binaryen.setOptimizeLevel(previous);
+    try {
+        if (mode.startsWith("binaryen-o")) {
+            // Keep optimizer-owned mutable IR separate from generator IR.
+            const features = module.getFeatures();
+            const canonical = binaryen.readBinary(module.emitBinary());
+            module.dispose();
+            module = canonical;
+            module.setFeatures(features);
+            const previous = binaryen.getOptimizeLevel();
+            try {
+                binaryen.setOptimizeLevel(Number(mode.slice("binaryen-o".length)));
+                module.optimize();
+            } finally {
+                binaryen.setOptimizeLevel(previous);
+            }
         }
+        if (!module.validate()) throw new Error("Invalid generated Wasm");
+        return new Uint8Array(module.emitBinary());
+    } finally {
+        module.dispose();
     }
-    if (!module.validate()) throw new Error("Invalid generated Wasm");
-    return new Uint8Array(module.emitBinary());
 }
 
 export function instantiate(bytes, suppliedInput = []) {

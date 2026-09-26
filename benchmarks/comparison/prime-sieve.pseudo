@@ -1,0 +1,34 @@
+DECLARE marked: ARRAY[0:8191] OF INTEGER
+FUNCTION kernel(n: INTEGER, seed: INTEGER) RETURNS INTEGER
+    DECLARE limit: INTEGER
+    DECLARE i: INTEGER
+    DECLARE j: INTEGER
+    DECLARE count: INTEGER
+    limit <- n + seed MOD 31
+    FOR i <- 0 TO limit
+        marked[i] <- 0
+    NEXT i
+    i <- 2
+    WHILE i * i <= limit
+        IF marked[i] = 0 THEN
+            j <- i * i
+            WHILE j <= limit
+                marked[j] <- 1
+                j <- j + i
+            ENDWHILE
+        ENDIF
+        i <- i + 1
+    ENDWHILE
+    count <- 0
+    FOR i <- 2 TO limit
+        IF marked[i] = 0 THEN
+            count <- count + 1
+        ENDIF
+    NEXT i
+    RETURN count
+ENDFUNCTION
+DECLARE n: INTEGER
+DECLARE seed: INTEGER
+INPUT n
+INPUT seed
+OUTPUT kernel(n, seed)

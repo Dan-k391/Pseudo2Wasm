@@ -38,11 +38,12 @@ export class Compiler {
         return {tokens, ast, failures: semanticErrors};
     }
 
-    /** Inspect all user-source errors without generating WebAssembly. */
+    /** Collect up to 20 errors from the earliest failing phase, without generating Wasm. */
     diagnose(): ReadonlyArray<Diagnostic> {
         return this.analyze().failures.map(toDiagnostic);
     }
 
+    /** The caller owns the returned Binaryen module and must dispose it after use. */
     compile(log: boolean = false): binaryen.Module {
         const {tokens, ast, failures} = this.analyze();
         if (failures.length === 1) {
@@ -63,13 +64,22 @@ export class Compiler {
         if (this.options.optimization !== "binaryen-o2") return module;
         // Binaryen 132's LocalCSE can assert on the live expression graph;
         // round-trip through Wasm to optimize a canonicalized module.
-        const optimized = binaryen.readBinary(module.emitBinary());
-        // BulkMemoryOpt is an optimizer feature flag, not encoded in Wasm.
-        optimized.setFeatures(module.getFeatures());
+        let optimized: binaryen.Module;
+        const features = module.getFeatures();
+        try {
+            optimized = binaryen.readBinary(module.emitBinary());
+        } finally {
+            module.dispose();
+        }
         const previousLevel = binaryen.getOptimizeLevel();
         try {
+            // BulkMemoryOpt is an optimizer feature flag, not encoded in Wasm.
+            optimized.setFeatures(features);
             binaryen.setOptimizeLevel(2);
             optimized.optimize();
+        } catch (error) {
+            optimized.dispose();
+            throw error;
         } finally {
             binaryen.setOptimizeLevel(previousLevel);
         }
@@ -94,22 +104,22 @@ export class Compiler {
 
         const module = this.compile(false);
 
-        // module.optimize();
-
-        if (!module.validate()) {
-            throw new Error("Internal compiler error: generated WebAssembly failed validation; please report this pseudocode as a bug");
+        let wasm: Uint8Array<ArrayBuffer>;
+        try {
+            if (!module.validate()) {
+                throw new Error("Internal compiler error: generated WebAssembly failed validation; please report this pseudocode as a bug");
+            }
+            wasm = new Uint8Array(module.emitBinary());
+        } finally {
+            // execute owns this temporary IR; compile callers own theirs.
+            module.dispose();
         }
-
-        // uncomment following two lines to see the text format
-        // const text = module.emitText();
-        // console.log(text);
-        // Give WebAssembly a fresh ArrayBuffer-backed view (TS 5.9 distinguishes it
-        // from a Uint8Array that could be backed by SharedArrayBuffer).
-        const wasm = new Uint8Array(module.emitBinary());
 
         // Fixed, disjoint global/stack/input-string regions; see MEMORY_MODEL.md.
         const memory = new WebAssembly.Memory({ initial: MEMORY_PAGES, maximum: MEMORY_PAGES });
         let heapOffSet = HEAP_START;
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder("utf8");
 
         const runtimeFailure = (message: string, line = 0, column = 0): never => {
             const error = new RuntimeError(message);
@@ -146,12 +156,12 @@ export class Compiler {
         const inputChar = async () => {
             const str = String(await nextInput());
             // utf-8 encoding
-            const bytes = new TextEncoder().encode(str);
+            const bytes = encoder.encode(str);
             return bytes[0];
         };
         const inputString = async (line: number, column: number) => {
             const str = String(await nextInput());
-            const bytes = new TextEncoder().encode(str);
+            const bytes = encoder.encode(str);
             if (heapOffSet + bytes.length + 1 > MEMORY_END) {
                 runtimeFailure("Input string exceeds heap memory limit", line, column);
             }
@@ -210,9 +220,8 @@ export class Compiler {
                 logString: (output: number) => {
                     checkPointer(output, 1, 0, 0);
                     const bytes = new Uint8Array(memory.buffer, output, MEMORY_END - output);
-                    let str = new TextDecoder("utf8").decode(bytes);
-                    str = str.split('\0')[0];
-                    emit(str);
+                    const terminator = bytes.indexOf(0);
+                    emit(decoder.decode(terminator < 0 ? bytes : bytes.subarray(0, terminator)));
                 },
                 logBoolean: (output: number) => {
                     emit(output === 0 ? "FALSE" : "TRUE");

@@ -1,0 +1,11 @@
+FUNCTION fib(n: INTEGER) RETURNS INTEGER
+    IF n < 2 THEN
+        RETURN n
+    ENDIF
+    RETURN fib(n - 1) + fib(n - 2)
+ENDFUNCTION
+DECLARE n: INTEGER
+DECLARE seed: INTEGER
+INPUT n
+INPUT seed
+OUTPUT fib(n + seed MOD 3)

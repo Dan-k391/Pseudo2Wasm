@@ -137,7 +137,42 @@ See [BENCHMARKS.md](BENCHMARKS.md), its recorded baseline and budgets, and
 [MILESTONE6_PROMPT.md](MILESTONE6_PROMPT.md). Timing budgets remain advisory
 until measurements are stable in a controlled environment.
 
-## Milestone 7: Predictable runtime and package API
+## Milestone 7: AssemblyScript-inspired compiler architecture and value lowering
+
+Status: **in progress**. Adopt explicit typed analysis, per-function backend
+state, and direct Wasm value operations. Keep CAIE syntax and the existing
+public API; this is not a new TypeScript-like source language or a port of the
+compiler itself to AssemblyScript. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md).
+
+- [x] Add an exhaustive, read-only executable-syntax traversal for analysis;
+      do not walk cyclic scope/type metadata or mix analysis with code emission.
+- [x] Centralize return/check temporaries in a per-callable context, share
+      function/procedure lowering, and restore the enclosing context reliably.
+- [x] Read immutable basic BYVAL parameters directly from Wasm parameters when
+      conservative alias analysis permits it. Preserve existing frame layout,
+      initialization stores, runtime checks, and diagnostics in this first slice.
+- [ ] Separate semantic symbols from backend storage: explicitly represent
+      Wasm locals, globals, frame slots, and indirect/BYREF locations rather
+      than storing Binaryen expression references on semantic symbols.
+- [ ] Add control-flow and definite-assignment analysis before promoting
+      general mutable locals; specify and test uninitialized-read behavior.
+- [ ] Replace the whole-program alias fallback with sound per-symbol/per-call
+      address and effect analysis, including pointers, BYREF, and array views.
+- [ ] Promote eligible scalars and omit unnecessary memory frames. Preserve
+      addressable values and specify stack-exhaustion diagnostics for frameless
+      recursion before changing the existing runtime contract.
+- [ ] Add proven loop-range/check elimination and evaluate loop/recursion
+      transformations using the cross-compiler suite. Never disable checks
+      merely to match unchecked C benchmark results.
+- [ ] Complete module/API naming and invariant documentation incrementally;
+      keep legacy exported names compatible instead of a broad cosmetic rename.
+
+Done when storage decisions and analyses have explicit contracts, eligible
+scalar-heavy code avoids unnecessary memory traffic, aliasing/diagnostic
+regressions are covered, and before/after measurements justify the changes.
+This first slice does **not** complete the milestone or remove memory frames.
+
+## Milestone 8: Predictable runtime and package API
 
 - [ ] Detect missing JSPI APIs and explain supported compile-only and execution
       options without a cryptic platform exception.
@@ -151,7 +186,7 @@ until measurements are stable in a controlled environment.
 Done when consumers can tell which APIs require JSPI and every supported entry
 point behaves consistently; unsupported environments fail clearly.
 
-## Milestone 8: Release and contributor experience
+## Milestone 9: Release and contributor experience
 
 - [ ] Provide short browser and Node quick starts, a supported-environments
       table, and troubleshooting guidance for JSPI and compiler diagnostics.

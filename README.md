@@ -7,6 +7,8 @@ See [MEMORY_MODEL.md](MEMORY_MODEL.md) for the fixed Wasm layout and pointer-saf
 boundary.
 See [BENCHMARKS.md](BENCHMARKS.md) for reproducible performance measurements and
 the optional Binaryen O2 mode.
+See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) for the value/storage
+design and the in-progress AssemblyScript-inspired architecture milestone.
 
 ## Development setup
 
@@ -20,6 +22,7 @@ Use Node.js 22 or newer and npm, then install the locked dependencies with `npm 
 | `npm test` | Build, run Node and headless-browser tests, then test the packed npm artifact; exits nonzero on failure. |
 | `npm run test:browser` | Serve the browser test page for interactive debugging. |
 | `npm run bench` | Build the Node package and benchmark unoptimized versus Binaryen O2 Wasm. |
+| `npm run bench:compare -- --require-all` | Compare portable workloads with Emscripten and AssemblyScript; optional tool setup is in `BENCHMARKS.md`. |
 
 `tsconfig.json` is the shared editor/type-checking configuration. It uses
 TypeScript's `bundler` module resolution because Webpack resolves the source's
@@ -53,6 +56,12 @@ The CommonJS entry is awaitable because Binaryen initializes asynchronously.
 Programs that use `INPUT` need a third callback. The runtime uses WebAssembly
 JSPI (`WebAssembly.Suspending` and `WebAssembly.promising`), so execution requires
 a browser with those APIs enabled. Compiling alone does not require JSPI.
+
+`Compiler.execute()` releases its temporary Binaryen module automatically. If
+you use `Compiler.compile()` directly, you own the returned module: call
+`module.dispose()` in a `finally` block after emitting its bytes or text.
+Default compilation removes unreachable functions and imports; broader
+optimization is available with `{ optimization: "binaryen-o2" }`.
 
 To prepare a package release, run `npm run build` and `npm pack --dry-run`.
 The build creates browser and Node entry points plus TypeScript declarations in
@@ -148,12 +157,15 @@ It returns entries with `code`, `severity`, `phase`, `message`, and a source
 `span` (`line`/`endLine` are one-based; columns are zero-based). It collects up
 to 20 errors at safe statement/declaration boundaries. Compilation still throws
 the familiar `SyntaxError` or `RuntimeError` for a single problem; multiple
-problems throw `CompilationError` with a `diagnostics` array. Error text includes
-the source line and caret. The scanner, parser, and checker stop at the first
+problems throw `CompilationError` with a `diagnostics` array. Its `message`
+includes every collected diagnostic, source line, and caret, so logging
+`error.message` does not hide the individual errors. The scanner, parser, and checker stop at the first
 phase with errors rather than guessing later errors from malformed input, and
 no WebAssembly is generated when diagnostics exist. Runtime array, pointer,
 stack, and input-string heap failures also include a source location where one
 is available. A stack overflow points to the function/procedure declaration.
+Runtime execution stops at its first failure; multi-error recovery applies
+only to compilation, not to continuing a program after an invalid access.
 
 The type checker permits same-type assignment and INTEGER-to-REAL widening;
 it rejects cross-type CHAR/BOOLEAN/numeric operations. `/` produces REAL,

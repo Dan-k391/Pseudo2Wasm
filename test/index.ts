@@ -47,6 +47,9 @@ import { code42 } from "./samples/code42";
 import { code43 } from "./samples/code43";
 import { code44 } from "./samples/code44";
 import { code45 } from "./samples/code45";
+import { code46 } from "./samples/code46";
+import { code47 } from "./samples/code47";
+import { code48 } from "./samples/code48";
 
 interface CompilerTestCase {
     name: string;
@@ -103,6 +106,9 @@ const tests: Array<CompilerTestCase> = [
     code43,
     code44,
     code45,
+    code46,
+    code47,
+    code48,
 ];
 
 async function assertTest(test: CompilerTestCase, optimization: "none" | "binaryen-o2"): Promise<void> {
@@ -137,6 +143,24 @@ async function assertPublishedApiCompatibility(): Promise<void> {
 
     const currentCompiler = new Compiler("OUTPUT 42");
     expect(await currentCompiler.test([], [42]), "test(input, expected) API").to.equal(true);
+
+    for (const optimization of ["none", "binaryen-o2"] as const) {
+        const compiler = new Compiler('OUTPUT "héllo", "", "😀"', {optimization});
+        const compile = compiler.compile.bind(compiler);
+        let disposals = 0;
+        compiler.compile = () => {
+            const module = compile();
+            const dispose = module.dispose.bind(module);
+            module.dispose = () => { disposals++; dispose(); };
+            return module;
+        };
+        for (let run = 0; run < 2; run++) {
+            const result = await compiler.execute([]);
+            expect(result.outputs, "UTF-8 and empty strings across repeated executions")
+                .to.deep.equal(["héllo", "", "😀"]);
+        }
+        expect(disposals, "execute releases every returned IR module").to.equal(2);
+    }
 }
 
 async function runTests(): Promise<void> {

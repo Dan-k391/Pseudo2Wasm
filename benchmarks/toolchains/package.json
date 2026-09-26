@@ -1,0 +1,8 @@
+{
+  "name": "pseudo2wasm-benchmark-tools",
+  "private": true,
+  "description": "Optional, isolated tools for cross-compiler benchmarks",
+  "devDependencies": {
+    "assemblyscript": "0.28.20"
+  }
+}

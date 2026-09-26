@@ -1,0 +1,33 @@
+DECLARE a: ARRAY[0:1023] OF INTEGER
+DECLARE b: ARRAY[0:1023] OF INTEGER
+DECLARE c: ARRAY[0:1023] OF INTEGER
+FUNCTION kernel(n: INTEGER, seed: INTEGER) RETURNS INTEGER
+    DECLARE i: INTEGER
+    DECLARE j: INTEGER
+    DECLARE k: INTEGER
+    DECLARE cell: INTEGER
+    DECLARE total: INTEGER
+    FOR i <- 0 TO n * n - 1
+        a[i] <- (i + seed) MOD 97
+        b[i] <- (i * 3 + seed) MOD 89
+    NEXT i
+    FOR i <- 0 TO n - 1
+        FOR j <- 0 TO n - 1
+            cell <- 0
+            FOR k <- 0 TO n - 1
+                cell <- cell + a[i * n + k] * b[k * n + j]
+            NEXT k
+            c[i * n + j] <- cell
+        NEXT j
+    NEXT i
+    total <- 0
+    FOR i <- 0 TO n * n - 1
+        total <- total + c[i]
+    NEXT i
+    RETURN total
+ENDFUNCTION
+DECLARE n: INTEGER
+DECLARE seed: INTEGER
+INPUT n
+INPUT seed
+OUTPUT kernel(n, seed)
