@@ -1,0 +1,429 @@
+Pseudo2Wasm development and verification log
+Date: 2026-09-25 (America/New_York)
+Verified revision: b06e8af2f2550ffe6ea520ba37f9ced82c5972a0
+Commit: Improve compiler architecture, diagnostics, and benchmarks
+Package version: 1.2.0 (no release/publish performed)
+Node: v22.23.1
+
+Changes recorded
+- Default Wasm removes unreachable functions and imports.
+- Callable frames use one capacity check while retaining overflow diagnostics.
+- execute() releases temporary Binaryen modules and decodes only string bytes.
+- CompilationError.message includes all collected diagnostics and source carets.
+  Compilation collects up to 20 errors in the earliest failing phase; runtime
+  execution stops at its first failure.
+- Added portable Emscripten/AssemblyScript comparison workloads, result checks,
+  warmed/rotated timing batches, raw reports, and performance documentation.
+- Started Milestone 7: AssemblyScript-inspired architecture and value lowering.
+  Added read-only syntax traversal, parameter analysis, and FunctionContext;
+  unified callable emission and return cleanup.
+- Immutable basic BYVAL parameter reads can use Wasm parameters directly.
+  Pointer/BYREF programs conservatively opt out. Frame layout, initialization
+  stores, and checks remain. General mutable-local promotion and frameless
+  calls are not implemented.
+- Previous roadmap milestones 7 and 8 are now 8 and 9.
+
+Fresh verification
+Command: npm test
+- Type checking and browser/Node/declaration/test builds completed.
+- 25 existing Node tests passed.
+- 20 benchmark/codegen tests passed.
+- 48 default/O2 differential cases passed.
+- 12 Wasm-size and host-call budgets passed.
+- Headless Edge tests and packed npm Node/browser entry checks passed.
+- Build retains the known 14.4 MiB browser compiler bundle warnings.
+
+Performance evidence (previously measured; not rerun for this log update)
+See BENCHMARKS.md and benchmarks/comparison/results-*.json.
+The parameter-read follow-up reduced O2 matrix Wasm from 989 to 947 bytes and
+Fibonacci from 313 to 296 bytes. Follow-up timings came from one full run;
+they are preliminary, not a guaranteed speedup or a universal compiler ranking.
+
+Captured npm test output
+========================
+
+> pseudo2wasm@1.2.0 test
+> npm run build && npm run build:test && node test/node.test.mjs && node --test test/benchmark.test.mjs test/codegen.test.mjs && node scripts/differential.mjs && node scripts/benchmark.mjs --quick --check && node scripts/run-browser-tests.mjs && node scripts/test-package.mjs
+
+
+> pseudo2wasm@1.2.0 build
+> npm run typecheck && npm run build:browser && npm run build:node && npm run build:types
+
+
+> pseudo2wasm@1.2.0 typecheck
+> tsc --project tsconfig.json
+
+
+> pseudo2wasm@1.2.0 build:browser
+> webpack --config webpack.package.config.js --env target=browser
+
+asset pseudo2wasm.js 14.4 MiB [compared for emit] [big] (name: main)
+runtime modules 3.82 KiB 5 modules
+orphan modules 4.44 KiB [orphan] 3 modules
+modules by path ./src/ 168 KiB
+  modules by path ./src/type/*.ts 51.6 KiB 10 modules
+  modules by path ./src/*.ts 14.6 KiB 5 modules
+  modules by path ./src/codegen/ 53 KiB 4 modules
+  modules by path ./src/lex/*.ts 10.4 KiB
+    ./src/lex/scanner.ts 9.96 KiB [built] [code generated]
+    ./src/lex/token.ts 430 bytes [built] [code generated]
+  modules by path ./src/syntax/*.ts 38.1 KiB
+    ./src/syntax/parser.ts + 2 modules 28.7 KiB [built] [code generated]
+    ./src/syntax/ast.ts 9.39 KiB [built] [code generated]
+./node_modules/binaryen/index.js 14.2 MiB [built] [code generated]
+external "node:module" 42 bytes [built] [code generated]
+
+WARNING in asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  pseudo2wasm.js (14.4 MiB)
+
+WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+Entrypoints:
+  main (14.4 MiB)
+      pseudo2wasm.js
+
+WARNING in webpack performance recommendations: 
+You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+For more info visit https://webpack.js.org/guides/code-splitting/
+
+browser (webpack 5.88.2) compiled with 3 warnings in 1594 ms
+
+> pseudo2wasm@1.2.0 build:node
+> webpack --config webpack.package.config.js --env target=node
+
+asset pseudo2wasm.node.mjs 201 KiB [emitted] [javascript module] (name: main)
+runtime modules 396 bytes 2 modules
+cacheable modules 168 KiB
+  modules by path ./src/type/*.ts 51.6 KiB 10 modules
+  modules by path ./src/*.ts 14.6 KiB 5 modules
+  modules by path ./src/syntax/*.ts 41.5 KiB
+    ./src/syntax/parser.ts 27.7 KiB [built] [code generated]
+    + 4 modules
+  modules by path ./src/codegen/ 49.5 KiB
+    ./src/codegen/generator.ts 42.5 KiB [built] [code generated]
+    + 3 modules
+  modules by path ./src/lex/*.ts 10.4 KiB
+    ./src/lex/scanner.ts 9.96 KiB [built] [code generated]
+    ./src/lex/token.ts 430 bytes [built] [code generated]
+external "binaryen" 42 bytes [built] [code generated]
+node (webpack 5.88.2) compiled successfully in 1151 ms
+
+> pseudo2wasm@1.2.0 build:types
+> tsc --project tsconfig.build.json
+
+
+> pseudo2wasm@1.2.0 build:test
+> webpack --config webpack.config.js
+
+asset bundle.js 57.8 MiB [compared for emit] (name: main)
+asset index.html 247 bytes [compared for emit]
+runtime modules 3.82 KiB 5 modules
+modules by path ./ 14.7 MiB
+  modules by path ./test/ 19.3 KiB
+    ./test/index.ts 6.21 KiB [built] [code generated]
+    ./test/samples/code0.ts 221 bytes [built] [code generated]
+    ./test/samples/code1.ts 270 bytes [built] [code generated]
+    + 47 modules
+  modules by path ./node_modules/ 14.5 MiB
+    modules by path ./node_modules/chai/lib/ 282 KiB 31 modules
+    + 10 modules
+  modules by path ./src/ 166 KiB 25 modules
+external "node:module" 42 bytes [built] [code generated]
+util (ignored) 15 bytes [optional] [built] [code generated]
+webpack 5.88.2 compiled successfully in 2068 ms
+TAP version 13
+# Subtest: scanner preserves keyword, identifier, literal, and line positions
+ok 1 - scanner preserves keyword, identifier, literal, and line positions
+  ---
+  duration_ms: 1.188
+  type: 'test'
+  ...
+# Subtest: parser builds nested control flow and expressions
+ok 2 - parser builds nested control flow and expressions
+  ---
+  duration_ms: 0.6143
+  type: 'test'
+  ...
+# Subtest: checker accepts a scoped function and attaches its global scope
+ok 3 - checker accepts a scoped function and attaches its global scope
+  ---
+  duration_ms: 0.9018
+  type: 'test'
+  ...
+# Subtest: checker rejects an unknown variable
+ok 4 - checker rejects an unknown variable
+  ---
+  duration_ms: 0.417
+  type: 'test'
+  ...
+# Subtest: public compiler API emits a valid WebAssembly module without JSPI
+ok 5 - public compiler API emits a valid WebAssembly module without JSPI
+  ---
+  duration_ms: 15.9598
+  type: 'test'
+  ...
+# Subtest: scanner and parser failures carry source locations
+ok 6 - scanner and parser failures carry source locations
+  ---
+  duration_ms: 0.5553
+  type: 'test'
+  ...
+# Subtest: semantic failures identify the relevant nested token
+ok 7 - semantic failures identify the relevant nested token
+  ---
+  duration_ms: 3.3326
+  type: 'test'
+  ...
+# Subtest: invalid array declarations and index types fail before code generation
+ok 8 - invalid array declarations and index types fail before code generation
+  ---
+  duration_ms: 0.3371
+  type: 'test'
+  ...
+# Subtest: oversized static data and local frames are rejected explicitly
+ok 9 - oversized static data and local frames are rejected explicitly
+  ---
+  duration_ms: 1.4827
+  type: 'test'
+  ...
+# Subtest: scanner collects independent errors with exact structured spans
+ok 10 - scanner collects independent errors with exact structured spans
+  ---
+  duration_ms: 0.5648
+  type: 'test'
+  ...
+# Subtest: parser recovers at statement boundaries without compiling a partial program
+ok 11 - parser recovers at statement boundaries without compiling a partial program
+  ---
+  duration_ms: 2.3299
+  type: 'test'
+  ...
+# Subtest: checker collects independent errors and preserves single-error compatibility
+ok 12 - checker collects independent errors and preserves single-error compatibility
+  ---
+  duration_ms: 0.3777
+  type: 'test'
+  ...
+# Subtest: diagnostics are capped and failed declarations are not lowered
+ok 13 - diagnostics are capped and failed declarations are not lowered
+  ---
+  duration_ms: 0.631
+  type: 'test'
+  ...
+# Subtest: CASE parsing and checking follow the guide's line-oriented branches
+ok 14 - CASE parsing and checking follow the guide's line-oriented branches
+  ---
+  duration_ms: 2.1142
+  type: 'test'
+  ...
+# Subtest: CASE rejects mismatched and invalid labels before lowering
+ok 15 - CASE rejects mismatched and invalid labels before lowering
+  ---
+  duration_ms: 0.2167
+  type: 'test'
+  ...
+# Subtest: numeric and Boolean rules reject accidental cross-type operations
+ok 16 - numeric and Boolean rules reject accidental cross-type operations
+  ---
+  duration_ms: 0.8621
+  type: 'test'
+  ...
+# Subtest: whole-value array and record copies validate before execution
+ok 17 - whole-value array and record copies validate before execution
+  ---
+  duration_ms: 1.0251
+  type: 'test'
+  ...
+# Subtest: BYREF requires an assignable exact-type argument
+ok 18 - BYREF requires an assignable exact-type argument
+  ---
+  duration_ms: 0.4757
+  type: 'test'
+  ...
+# Subtest: FOR rejects unsupported dynamic and zero steps before lowering
+ok 19 - FOR rejects unsupported dynamic and zero steps before lowering
+  ---
+  duration_ms: 0.5192
+  type: 'test'
+  ...
+# Subtest: memory checks lower to conditional Wasm failure calls
+ok 20 - memory checks lower to conditional Wasm failure calls
+  ---
+  duration_ms: 4.7018
+  type: 'test'
+  ...
+# Subtest: proven static indexes and pointer views avoid redundant checks
+ok 21 - proven static indexes and pointer views avoid redundant checks
+  ---
+  duration_ms: 2.1106
+  type: 'test'
+  ...
+# Subtest: default lowering omits unreachable helpers without requiring O2
+ok 22 - default lowering omits unreachable helpers without requiring O2
+  ---
+  duration_ms: 1.0251
+  type: 'test'
+  ...
+# Subtest: a callable reserves its entire frame with one capacity check
+ok 23 - a callable reserves its entire frame with one capacity check
+  ---
+  duration_ms: 1.0711
+  type: 'test'
+  ...
+# Subtest: ordinary Error.message exposes every collected diagnostic
+ok 24 - ordinary Error.message exposes every collected diagnostic
+  ---
+  duration_ms: 0.2791
+  type: 'test'
+  ...
+# Subtest: execute releases its temporary IR even if validation fails
+ok 25 - execute releases its temporary IR even if validation fails
+  ---
+  duration_ms: 0.398
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 69.7715
+TAP version 13
+# Subtest: comparison references match hand-checkable results
+ok 1 - comparison references match hand-checkable results
+  ---
+  duration_ms: 0.7348
+  type: 'test'
+  ...
+# Subtest: benchmark rotates measurement order and summarizes raw samples
+ok 2 - benchmark rotates measurement order and summarizes raw samples
+  ---
+  duration_ms: 0.4728
+  type: 'test'
+  ...
+# Subtest: comparison harness rejects wrong outputs and missing host calls
+ok 3 - comparison harness rejects wrong outputs and missing host calls
+  ---
+  duration_ms: 16.2993
+  type: 'test'
+  ...
+# Subtest: integer-recurrence/none matches references on boundaries and repeated runs
+ok 4 - integer-recurrence/none matches references on boundaries and repeated runs
+  ---
+  duration_ms: 11.1361
+  type: 'test'
+  ...
+# Subtest: integer-recurrence/binaryen-o2 matches references on boundaries and repeated runs
+ok 5 - integer-recurrence/binaryen-o2 matches references on boundaries and repeated runs
+  ---
+  duration_ms: 61.1939
+  type: 'test'
+  ...
+# Subtest: prime-sieve/none matches references on boundaries and repeated runs
+ok 6 - prime-sieve/none matches references on boundaries and repeated runs
+  ---
+  duration_ms: 7.7592
+  type: 'test'
+  ...
+# Subtest: prime-sieve/binaryen-o2 matches references on boundaries and repeated runs
+ok 7 - prime-sieve/binaryen-o2 matches references on boundaries and repeated runs
+  ---
+  duration_ms: 19.7168
+  type: 'test'
+  ...
+# Subtest: matrix-multiply/none matches references on boundaries and repeated runs
+ok 8 - matrix-multiply/none matches references on boundaries and repeated runs
+  ---
+  duration_ms: 4.6072
+  type: 'test'
+  ...
+# Subtest: matrix-multiply/binaryen-o2 matches references on boundaries and repeated runs
+ok 9 - matrix-multiply/binaryen-o2 matches references on boundaries and repeated runs
+  ---
+  duration_ms: 15.5791
+  type: 'test'
+  ...
+# Subtest: recursive-fibonacci/none matches references on boundaries and repeated runs
+ok 10 - recursive-fibonacci/none matches references on boundaries and repeated runs
+  ---
+  duration_ms: 5.5807
+  type: 'test'
+  ...
+# Subtest: recursive-fibonacci/binaryen-o2 matches references on boundaries and repeated runs
+ok 11 - recursive-fibonacci/binaryen-o2 matches references on boundaries and repeated runs
+  ---
+  duration_ms: 7.0713
+  type: 'test'
+  ...
+# Subtest: immutable scalar parameters use Wasm values while preserving their frame store
+ok 12 - immutable scalar parameters use Wasm values while preserving their frame store
+  ---
+  duration_ms: 69.1698
+  type: 'test'
+  ...
+# Subtest: parameter mutation through nested control flow is never cached
+ok 13 - parameter mutation through nested control flow is never cached
+  ---
+  duration_ms: 14.3271
+  type: 'test'
+  ...
+# Subtest: INPUT and FOR induction parameters remain writable memory values
+ok 14 - INPUT and FOR induction parameters remain writable memory values
+  ---
+  duration_ms: 10.089
+  type: 'test'
+  ...
+# Subtest: CASE reads use the value abstraction and branch writes invalidate promotion
+ok 15 - CASE reads use the value abstraction and branch writes invalidate promotion
+  ---
+  duration_ms: 13.2612
+  type: 'test'
+  ...
+# Subtest: BYREF disables promotion and parameter aliases observe writes
+ok 16 - BYREF disables promotion and parameter aliases observe writes
+  ---
+  duration_ms: 9.9683
+  type: 'test'
+  ...
+# Subtest: raw pointer writes to adjacent parameters disable the optimization
+ok 17 - raw pointer writes to adjacent parameters disable the optimization
+  ---
+  duration_ms: 8.561
+  type: 'test'
+  ...
+# Subtest: mixed scalar types and sibling scopes have independent local contexts
+ok 18 - mixed scalar types and sibling scopes have independent local contexts
+  ---
+  duration_ms: 22.8866
+  type: 'test'
+  ...
+# Subtest: recursion preserves parameters and independent caller/callee values
+ok 19 - recursion preserves parameters and independent caller/callee values
+  ---
+  duration_ms: 7.334
+  type: 'test'
+  ...
+# Subtest: retained parameter spills preserve current frame-reuse behavior
+ok 20 - retained parameter spills preserve current frame-reuse behavior
+  ---
+  duration_ms: 5.8859
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 550.5883
+48 unoptimized/Binaryen O2 differential cases passed
+12 measured Wasm-size and host-call budgets passed
+Browser tests passed in msedge.exe
+Browser tests passed in msedge.exe
+Packed npm artifact passed Node and browser entry checks (pseudo2wasm-1.2.0.tgz)

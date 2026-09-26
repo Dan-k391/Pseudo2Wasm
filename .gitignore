@@ -5,3 +5,6 @@ node_modules
 archive
 benchmarks/.toolchains/
 benchmarks/comparison/build/
+
+# Local milestone implementation prompts
+/MILESTONE*_PROMPT.md
