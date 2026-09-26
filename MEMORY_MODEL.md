@@ -14,8 +14,8 @@ current stack and input-string heap.
 | 1,048,576–1,572,863 | Upward-growing callable stack | Frame reservation fails with the declaration's source location. |
 | 1,572,864–1,966,079 | Upward-growing input-string heap | `INPUT` fails with its source location if encoded bytes plus terminator do not fit. |
 
-Each call reserves a four-byte previous-frame pointer and the callable's full
-local frame with one capacity check before either is written. An exactly
+Each call reserves a logical four-byte previous-frame pointer and the callable's
+full local frame with one capacity check before any frame write. An exactly
 fitting frame is allowed, including its saved pointer. Frame space is reused on return; input strings are **not** freed
 until execution ends. The final byte of each region may be used. Array and
 record data are in-place, not separately allocated. Every source basic value
@@ -25,6 +25,17 @@ use conservative one-byte Wasm alignment hints. This is valid but may cost
 performance. String literals and input strings are UTF-8, NUL-terminated;
 embedded NUL and some Unicode/CHAR operations need a separate language fix.
 
+Since Milestone 7, eligible basic locals and parameters use Wasm locals. A
+scalar-only callable can omit its memory-frame operations but still reserves
+the **same logical byte count** and retains the located capacity check. Ordinary
+returns release that reservation. Raw-pointer programs, local aggregates, and
+potentially uninitialized local reads conservatively keep the historical layout
+and shadow stores so reused memory remains observable as before. Source globals
+are not promoted. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) for
+the proof boundaries. The engine's native Wasm call stack has a separate,
+platform-dependent limit; deep recursion can hit that first, and that engine
+trap is not guaranteed to have a source location.
+
 Index bounds, pointer linear-memory range, and stack-frame limit comparisons
 run inside Wasm. The imported `failIndex`, `failPointer`, and `failStack`
 functions are called only on failure to render a source-located `RuntimeError`.
@@ -33,7 +44,9 @@ range checks compare unsigned addresses against `MEMORY_END - accessSize`, so
 32-bit addition cannot wrap an out-of-bounds address into an apparently valid
 one. Pointer-array indexing also checks its whole declared view before adding
 the element offset. Normal data reads/writes and successful checks do not call
-JavaScript; genuine INPUT/OUTPUT still cross the host boundary.
+JavaScript; genuine INPUT/OUTPUT still cross the host boundary. A statically
+proven in-range constant FOR induction value omits the corresponding array
+dimension check; dynamic/unproven cases and pointer-view checks remain.
 
 ## Pointer safety boundary
 

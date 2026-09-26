@@ -50,6 +50,7 @@ import { code45 } from "./samples/code45";
 import { code46 } from "./samples/code46";
 import { code47 } from "./samples/code47";
 import { code48 } from "./samples/code48";
+import { code49 } from "./samples/code49";
 
 interface CompilerTestCase {
     name: string;
@@ -109,6 +110,7 @@ const tests: Array<CompilerTestCase> = [
     code46,
     code47,
     code48,
+    code49,
 ];
 
 async function assertTest(test: CompilerTestCase, optimization: "none" | "binaryen-o2"): Promise<void> {

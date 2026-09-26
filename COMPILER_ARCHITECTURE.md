@@ -19,49 +19,99 @@ Call names are not treated as variable reads. The visitor is structural, not
 a control-flow graph or execution-order model; CASE/FOR identifier fields need
 explicit handling by analyses that care about reads/writes.
 
-`src/codegen/parameter-reads.ts` performs analysis without creating Wasm or
-mutating semantic symbols. Results map **symbol identity** to Wasm parameter
-indices, so same-spelled variables in different callables do not collide.
+## Backend storage and per-callable state
 
-`src/codegen/function-context.ts` owns return-value and memory-check temporary
-indices and the callable's read plan. Generator saves/restores the complete
-context and scope in `finally`, including the enclosing frame offset.
-Function and procedure emission share one lowering path; explicit returns and
-fallthrough use one epilogue implementation.
+`src/codegen/storage.ts` defines discriminated locations: Wasm local/parameter,
+linear-memory global address, frame-relative slot, and indirect BYREF parameter.
+A local can additionally have a memory shadow for compatibility. Source globals
+remain in linear memory; this milestone does not promote them to Wasm globals.
+Generator's `readVariable`, `writeVariable`, and `getPointer` separate reading,
+writing, and address formation. Addresses are fresh Binaryen expressions, not
+cached expression graphs on semantic symbols.
 
-## First optimization: immutable scalar parameter reads
+`src/codegen/function-context.ts` owns storage maps, temporary/local allocation,
+active loop ranges, and frame policy. Maps use **symbol identity**, not spelling.
+Generator saves/restores context, scope, and offset in `finally`. Functions and
+procedures share prologue/body/epilogue lowering. Scalar assignment, INPUT, FOR,
+CASE, and ordinary expressions all use the same storage abstraction.
 
-An initialized, basic BYVAL parameter can be read with `local.get` rather than
-repeated stack-memory loads if no assignment, INPUT, or FOR induction writes
-it anywhere in its body. CASE selector reads use the same read abstraction.
-All basic types, including f64 REAL and pointer-valued STRING, preserve their
-existing value representation.
+The obsolete parameter-read-only pass was replaced by `value-analysis.ts`.
+`Symbol.pointer`, `Scope.setPointer`, and `Scope.returnIndex` remain deprecated
+compatibility members, but normal code generation neither reads nor populates
+them. Low-level consumers must use Generator's address methods instead of
+expecting module-owned references to appear on a checked AST. Generator's legacy
+`setPointer` method stores a backend-owned explicit location. Re-lowering the
+same checked AST with independent generators is covered by a regression test.
 
-The optimization currently opts out for the **entire program** if executable
-syntax contains address-taking, dereference, pointer-valued expressions, or a
-callable has pointer/BYREF parameters. This is intentionally conservative:
-our unsafe raw pointers have no provenance and can alias adjacent objects or
-reused stack slots. Absence of `^parameter` alone is not proof of no aliases.
-Array views resolved to pointer parameters also trigger the fallback.
+## Control flow and definite assignment
 
-Parameter initialization stores and all frame sizes/offsets remain unchanged.
-This preserves exhaustion checks and reused-memory contents, including current
-uninitialized-local behavior. Only subsequent proven-immutable reads change.
-Ordinary mutable locals are **not** silently converted into zero-initialized
-Wasm locals, and no stack checks or source locations are removed.
+`definite-assignment.ts` is a structured forward must-analysis on checked syntax:
+assignment and INPUT establish values, IF/CASE joins intersect live predecessors,
+RETURN removes a predecessor, WHILE/FOR may run zero times, REPEAT runs at least
+once, and FOR initializes its induction variable even on a zero-trip loop.
+Declarations do not reset storage. BYREF calls are conservatively reads, not
+guaranteed writes. This is deliberately not SSA or an unstructured CFG: the
+source language has only structured flow and no GOTO/break/continue.
 
-## Remaining architectural work
+Only basic local symbols whose reads are definitely assigned are candidates.
+REAL gets an f64 local; INTEGER, CHAR, BOOLEAN, and STRING use i32. Incoming
+BYVAL parameters reuse parameter indices and can now be mutated directly.
+Unproven reads are **not new compilation errors** and are not silently zeroed:
+they retain legacy memory behavior, including contents from previous calls.
+This optimization analysis does not promise complete user-facing
+definite-assignment diagnostics or field/element initialization analysis.
 
-Semantic `Symbol.pointer` and `Scope.returnIndex` remain legacy coupling; the
-new context no longer uses the latter, but both fields stay compatible for
-existing low-level consumers. Replace storage pointers with backend-owned
-location descriptors before general local promotion. Keep taking an address
-separate from reading a value or assigning a value.
+## Address and call effects
 
-General promotion requires definite-assignment and alias/effect analysis.
-Frameless functions also require an explicit recursion-exhaustion contract:
-otherwise a located compiler stack error could become an engine stack trap.
-Loop-range proofs must account for mutable loop bounds and induction variables.
+`value-analysis.ts` records symbol-specific BYREF/address exposure and a call
+graph. A monotone fixed point propagates raw-memory effects through transitive
+and recursive calls. Ordinary BYREF pins its actual target, not unrelated scalar
+locals. An unrelated BYREF routine no longer disables every function's local
+reads. Unknown pointer provenance is never assumed to be object-local.
+
+Two separate safety decisions are intentional:
+
+- **Value coherence:** a callable with a reachable raw-memory effect retains
+  memory reads. In a program with raw pointers, BYREF callees also have a raw
+  effect: a forged argument can point into their own future parameter slots.
+- **Observable memory history:** any raw-address use, unproven local read, or
+  local aggregate conservatively retains original frames and scalar shadow
+  writes throughout the program. Even a pure function's old slots may later be
+  read through an unsafe view. Its reads can still use locals when coherent.
+
+The second rule is a residual whole-program *layout/spill* fallback, not the old
+whole-program ban on optimized reads. Refining it requires provenance/lifetime
+or aggregate initialization proofs; dropping it would change supported behavior.
+
+## Frameless calls and recursion
+
+When every local is promoted and memory history need not be preserved, no
+saved-base memory slot, parameter spill, or frame-base update is emitted.
+However, the original `4 + scope.size()` bytes are still charged to `__stackTop`
+and released on return. The same Wasm capacity check and declaration location
+remain. This preserves exact-fit and exhaustion semantics without memory-frame
+traffic; it is not an unlimited-recursion mode.
+
+The engine's native Wasm call stack is a separate resource. Very deep recursion
+with tiny logical frames can still exhaust it first, as before this milestone;
+its engine-specific trap is not promised to carry a pseudocode location. No
+tail-call elimination or recursion-to-loop rewrite is applied because skipping
+logical charges would alter the specified exhaustion behavior. Recursive
+benchmarks evaluate the frame/value transformation, not a different algorithm.
+
+## Proven loop checks
+
+`loop-ranges.ts` proves inclusive ranges for constant, monotone FOR loops with
+nonzero steps, no i32 overflow on the final increment, and no induction writes
+in the body (including nested FOR and INPUT). Calls and pointer effects in the
+body, and BYREF parameters in the current callable, conservatively reject the
+proof. Bounds are attached to the induction symbol only while lowering its body.
+Each matching array dimension is unchecked only if its full proven range fits.
+Nested loops and non-unit/descending steps are covered. Dynamic bounds, affine
+index expressions, WHILE induction, pointer-view range checks, and all uncertain
+cases retain checks. No speculative guard or unsafe optimization mode is added.
+
+## Naming and extension rules
 
 New internal modules use descriptive PascalCase types, camelCase members,
 explicit discriminated cases, and comments documenting invariants. Refactor
@@ -71,9 +121,11 @@ language merely because AssemblyScript has those features.
 
 ## Verification
 
-`test/codegen.test.mjs` checks generated code and execution for eligible reads,
-mutation, nested control flow, CASE/FOR/INPUT, aliases, scope separation, mixed
-parameter types, and frame reuse. Browser tests cover suspension and the
-existing exact-fit/overflow memory boundaries in both optimization modes.
+`test/codegen.test.mjs` checks generated code and execution for value promotion,
+branch joins, nested control flow, CASE/FOR/INPUT, transitive and forged aliases,
+scope separation, mixed types, frame reuse, repeatable lowering, and loop-proof
+rejections. Frameless recursion tests exact logical capacity and error location.
+Browser tests cover promoted values across asynchronous suspension and existing
+exact-fit/overflow memory boundaries in both optimization modes.
 The portable benchmarks compare results against independent references; old
 measurement reports remain historical rather than being silently overwritten.

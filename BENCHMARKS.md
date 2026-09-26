@@ -273,11 +273,12 @@ checked whenever the comparison runs.
 
 ### Parameter-read lowering
 
-The first AssemblyScript-inspired architecture slice reuses initialized,
+The first AssemblyScript-inspired architecture slice (historical) reused initialized,
 immutable scalar Wasm parameters for reads, while retaining frame sizes and
-initialization stores. It does not promote mutable locals or eliminate frames.
-See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) for its conservative
-whole-program alias fallback and compatibility constraints.
+initialization stores. It did not promote mutable locals or eliminate frames.
+Its whole-program alias fallback has since been refined; see the completed
+milestone results below and [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md)
+for the current safety boundaries.
 
 A full follow-up run with all four modes passed reference and host-call checks.
 Raw data: [parameter-read report](benchmarks/comparison/results-parameter-reads.json).
@@ -295,5 +296,67 @@ Size reductions and removed parameter loads are directly observable. Runtime
 changes are preliminary: unchanged competitor binaries also varied (for
 example, Emscripten Fibonacci measured 62.54 µs versus the earlier 56.72 µs
 aggregate). Do not treat this as an isolated causal timing experiment or a
-guaranteed speedup. The remaining stack-frame and mutable-local traffic is
-still a target for later milestone work.
+guaranteed speedup. The follow-up below targets the remaining stack-frame and
+mutable-local traffic.
+
+### Milestone 7 value and frame lowering
+
+The completed backend promotes definitely assigned basic locals and mutable
+BYVAL parameters, separates storage from semantic symbols, and omits eligible
+memory frames while retaining their logical stack budget. Constant monotone
+FOR ranges can remove proven dimension checks. The portable array kernels use
+dynamic bounds/affine indexes, so their bounds checks are **still present**;
+their improvements primarily accompany value/frame lowering, not unchecked C
+semantics. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) for alias and
+uninitialized-memory fallbacks.
+
+Three full runs on 2026-09-26 UTC passed every reference and host-call check:
+[run 1](benchmarks/comparison/results-milestone7.json),
+[run 2](benchmarks/comparison/results-milestone7-run2.json), and
+[run 3](benchmarks/comparison/results-milestone7-run3.json).
+These use Node 22.23.1, Binaryen 132, AssemblyScript 0.28.20, and Emscripten
+6.0.10 on the same Ryzen 9 9955HX3D Windows machine. Each retains nine rotating
+runtime batches and three fresh-process build samples. All three reports record
+compiler source hash `94adbd57c44a1f9f42ce1f679e6f81b7e4a1b91e87c391de5e4466da748636c0`.
+Package version remains 1.2.0; these are working-source measurements, not a claim
+that an already published artifact contains this milestone.
+
+Runtime below is the **median of three run medians**, in microseconds/invocation:
+
+| Workload | Pseudo2Wasm default | Pseudo2Wasm O2 | AssemblyScript O3 | Emscripten O3 |
+| --- | ---: | ---: | ---: | ---: |
+| Integer recurrence | 553.01 | 555.68 | 554.92 | 553.81 |
+| Prime sieve | 6.95 | 8.57 | 21.05 | 2.27 |
+| Matrix multiplication | 17.15 | 17.14 | 39.54 | 6.70 |
+| Recursive Fibonacci | 162.32 | 161.62 | 120.76 | 52.31 |
+
+Compared with the immediately preceding parameter-read report (one full run):
+
+| Workload, Pseudo2Wasm O2 | Previous time → current median | Previous → current Wasm |
+| --- | ---: | ---: |
+| Integer recurrence | 582.89 → 555.68 µs | 340 → 237 B |
+| Prime sieve | 12.59 → 8.57 µs | 744 → 522 B |
+| Matrix multiplication | 27.38 → 17.14 µs | 947 → 679 B |
+| Recursive Fibonacci | 238.88 → 161.62 µs | 296 → 244 B |
+
+Default binaries are now 262, 599, 771, and 256 bytes respectively (previously
+370, 856, 1064, and 318). O2 binaries shrank **18–30%**. These exact size
+reductions and generated-code tests provide structural evidence independent of
+CPU scheduling. Timing is less isolated: unchanged competitor binaries also got
+faster across sessions, so the entire before/after time difference must not be
+attributed to this patch. Current O2 run medians ranged from 554.11–575.57 µs,
+8.54–9.35 µs, 17.11–17.20 µs, and 161.41–164.32 µs respectively.
+
+O2 is **not universally faster**: sieve is about 23% slower than the new default
+in this set, while its binary is smaller. Keep O2 opt-in. Emscripten still leads
+the array/recursive workloads, with different safety and optimizer contracts;
+Pseudo2Wasm now beats AssemblyScript on these two array kernels but not Fibonacci.
+The arithmetic recurrence remains approximately tied across all four modes.
+No tail-recursion elimination, algorithm rewrite, SIMD, or safety-check disabling
+was introduced to obtain these results.
+
+Median fresh-process build times across the four workloads were 271–317 ms
+(default), 372–432 ms (O2), 556–663 ms (AssemblyScript), and 895–913 ms
+(Emscripten). These include startup and are not frontend-only timings. Every
+timed invocation retained two input calls, one output call, and zero failure
+calls. The internal suite's 12 size/host-call budgets also passed unchanged.

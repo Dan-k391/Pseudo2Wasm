@@ -1,4 +1,3 @@
-// TODO: maybe change back to the one single map data structure LOL
 import binaryen from "binaryen";
 import { Type } from "./type";
 
@@ -12,7 +11,6 @@ export const enum symbolKind {
 }
 
 export class Symbol {
-    // all public here is actually very convinient
     public type: Type;
     // pointer is the absolute address of the variable
     // memory
@@ -23,6 +21,7 @@ export class Symbol {
     // -----------------------------------------
     // assign pointer in the codegen phase
     public kind: symbolKind;
+    /** @deprecated Compatibility field only. Generator owns its storage map. */
     public pointer!: ExpressionRef;
 
     constructor(type: Type, kind: symbolKind) {

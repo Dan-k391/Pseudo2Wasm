@@ -80,8 +80,8 @@ the backend cannot faithfully execute. Features are complete across every
 compiler stage, not merely recognized by the parser.
 
 Implemented subset and remaining gaps: [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md).
-The Milestone 4 prompt and acceptance criteria are in
-[MILESTONE4_PROMPT.md](MILESTONE4_PROMPT.md). `npm test` passes the Node,
+The Milestone 4 implementation brief is kept locally in the ignored
+`MILESTONE4_PROMPT.md`. `npm test` passes the Node,
 headless Edge, and packed-package checks.
 
 ## Milestone 5: Safe, efficient Wasm execution
@@ -107,7 +107,7 @@ matches what the generated Wasm actually enforces.
 The chosen contract is **linear-memory range checking, not allocation-safe
 pointers**. The fixed 30-page partition is retained as a deterministic cap.
 See [MEMORY_MODEL.md](MEMORY_MODEL.md) for layout, alignment, exhaustion,
-unsafe aliases, and known limits; [MILESTONE5_PROMPT.md](MILESTONE5_PROMPT.md)
+unsafe aliases, and known limits; the ignored local `MILESTONE5_PROMPT.md`
 records the implementation brief. The generated-Wasm test checks that failure
 imports are conditional; browser tests exercise the memory boundaries.
 
@@ -133,13 +133,13 @@ and optimization cannot silently change program results or diagnostics.
 The existing checked AST already separates semantic analysis from Wasm
 lowering; no new IR was needed for the demonstrated local transforms. Binaryen
 O2 is opt-in because measured compile/runtime tradeoffs vary by workload.
-See [BENCHMARKS.md](BENCHMARKS.md), its recorded baseline and budgets, and
-[MILESTONE6_PROMPT.md](MILESTONE6_PROMPT.md). Timing budgets remain advisory
+See [BENCHMARKS.md](BENCHMARKS.md), its recorded baseline and budgets, and the
+ignored local `MILESTONE6_PROMPT.md`. Timing budgets remain advisory
 until measurements are stable in a controlled environment.
 
 ## Milestone 7: AssemblyScript-inspired compiler architecture and value lowering
 
-Status: **in progress**. Adopt explicit typed analysis, per-function backend
+Status: **implemented with conservative safety boundaries**. Adopt explicit typed analysis, per-function backend
 state, and direct Wasm value operations. Keep CAIE syntax and the existing
 public API; this is not a new TypeScript-like source language or a port of the
 compiler itself to AssemblyScript. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md).
@@ -151,26 +151,40 @@ compiler itself to AssemblyScript. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHI
 - [x] Read immutable basic BYVAL parameters directly from Wasm parameters when
       conservative alias analysis permits it. Preserve existing frame layout,
       initialization stores, runtime checks, and diagnostics in this first slice.
-- [ ] Separate semantic symbols from backend storage: explicitly represent
+- [x] Separate semantic symbols from backend storage: explicitly represent
       Wasm locals, globals, frame slots, and indirect/BYREF locations rather
       than storing Binaryen expression references on semantic symbols.
-- [ ] Add control-flow and definite-assignment analysis before promoting
+- [x] Add control-flow and definite-assignment analysis before promoting
       general mutable locals; specify and test uninitialized-read behavior.
-- [ ] Replace the whole-program alias fallback with sound per-symbol/per-call
-      address and effect analysis, including pointers, BYREF, and array views.
-- [ ] Promote eligible scalars and omit unnecessary memory frames. Preserve
+- [x] Replace the whole-program ban on optimized reads with sound per-symbol/
+      per-call address and effect analysis, including pointers, BYREF, and array
+      views. Retain layout/shadow writes where memory history may be observed.
+- [x] Promote eligible scalars and omit unnecessary memory frames. Preserve
       addressable values and specify stack-exhaustion diagnostics for frameless
       recursion before changing the existing runtime contract.
-- [ ] Add proven loop-range/check elimination and evaluate loop/recursion
+- [x] Add proven loop-range/check elimination and evaluate loop/recursion
       transformations using the cross-compiler suite. Never disable checks
       merely to match unchecked C benchmark results.
-- [ ] Complete module/API naming and invariant documentation incrementally;
+- [x] Complete module/API naming and invariant documentation incrementally;
       keep legacy exported names compatible instead of a broad cosmetic rename.
 
 Done when storage decisions and analyses have explicit contracts, eligible
 scalar-heavy code avoids unnecessary memory traffic, aliasing/diagnostic
 regressions are covered, and before/after measurements justify the changes.
-This first slice does **not** complete the milestone or remove memory frames.
+Implemented using backend storage descriptors, structured must-analysis,
+transitive raw-call effects, symbol-specific BYREF pinning, mutable scalar locals,
+and frameless lowering with unchanged logical stack charges. Constant monotone
+FOR proofs remove only proven dimension checks. Reference benchmarks cover
+loop and recursion workloads; no algorithm substitution or tail-call rewrite is
+used. Tests cover generated code, default/O2 execution, async INPUT, unsafe
+cross-frame aliases, and exact logical stack capacity. See the contracts in
+[COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) and the before/after evidence
+in [BENCHMARKS.md](BENCHMARKS.md#milestone-7-value-and-frame-lowering).
+
+Remaining opportunities, not promises of this milestone: pointer provenance,
+field/element initialization diagnostics, removal of compatibility shadow stores,
+global promotion, dynamic/affine loop proofs, and recursion transformations that
+preserve the documented exhaustion contract.
 
 ## Milestone 8: Predictable runtime and package API
 

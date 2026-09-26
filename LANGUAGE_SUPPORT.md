@@ -35,6 +35,10 @@ provenance checks are documented in the README and targeted for Milestone 5.
 
 `RETURN` terminates a function path; the checker requires a return on every
 statically visible path, including all CASE branches when OTHERWISE exists.
-The compiler does not yet perform general definite-assignment analysis for
-variables: declarations without explicit initialization have Wasm's zeroed
-memory representation. Treat that as an implementation detail, not a CAIE rule.
+The backend performs conservative definite-assignment analysis before promoting
+basic local variables to Wasm locals. Unproven reads are still accepted and stay
+memory-backed: fresh memory is zeroed, but callable slots can contain values from
+previous calls. A declaration does not clear its slot. This legacy behavior is
+preserved, not a CAIE guarantee; initialize variables before reading them.
+Field/array-element initialization and user-facing uninitialized-read diagnostics
+remain future work. See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md).

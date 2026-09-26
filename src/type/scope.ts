@@ -15,6 +15,7 @@ export class Scope {
     public parent?: Scope;
     public returnType?: Type;
     // if is function, returnIndex is the local index of the return value
+    /** @deprecated Backend return locals are owned by FunctionContext. */
     public returnIndex?: number;
     public children: Array<Scope>;
     public elems: Map<string, Symbol>;
@@ -64,6 +65,7 @@ export class Scope {
         return this.elems.get(name)!;
     }
 
+    /** @deprecated Legacy metadata setter; Generator no longer reads this field. */
     public setPointer(name: string, ptr: ExpressionRef): void {
         if (!this.elems.has(name)) {
             if (!this.parent) {

@@ -8,7 +8,7 @@ boundary.
 See [BENCHMARKS.md](BENCHMARKS.md) for reproducible performance measurements and
 the optional Binaryen O2 mode.
 See [COMPILER_ARCHITECTURE.md](COMPILER_ARCHITECTURE.md) for the value/storage
-design and the in-progress AssemblyScript-inspired architecture milestone.
+design, scalar value lowering, and the AssemblyScript-inspired architecture milestone.
 
 ## Development setup
 
